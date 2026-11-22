@@ -91,7 +91,7 @@ ApplicationWindow {
     readonly property int _modeListWidth: Style.dp(200)
     readonly property int _modeListMinWidth: Style.dp(120)
     function _toolbarWidth(withCaptions) {
-        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, _searchButton,
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, _searchButton, _healthButton,
                        _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         var w = _homeButton.rightPadding + _toolbarRow.spacing * buttons.length
         for (var i = 0; i < buttons.length; i++)
@@ -194,7 +194,7 @@ ApplicationWindow {
     // are one button).
     function _helpToolbarButton(name) {
         var want = _helpNorm(name)
-        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, _searchButton,
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, _searchButton, _healthButton,
                        _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         for (var i = 0; i < buttons.length; ++i) {
             var b = buttons[i]
@@ -1901,6 +1901,7 @@ ApplicationWindow {
                 ThemedMenuItem { command: "tools.autoMappingTool" }
                 ThemedMenuItem { command: "tools.manageModes" }
                 ThemedMenuItem { command: "tools.search" }
+                ThemedMenuItem { command: "tools.health" }
             }
             ThemedMenuSeparator {}
             ThemedMenuItem { command: "tools.oscMonitor" }
@@ -2036,6 +2037,37 @@ ApplicationWindow {
                         caption: "Search"
 
                         onClicked: () => { openSearch(null) }
+                    }
+
+                    // 01 S197 (D-01-HEALTH): bindings whose output isn't found
+                    // in the open profile; opens Tools › Health.
+                    JGToolButton {
+                        id: _healthButton
+                        objectName: "healthToolbarButton"
+                        readonly property int brokenCount: backend ? backend.healthBrokenCount : 0
+                        compact: _root.toolbarCompact
+                        text: ""
+                        caption: "Health"
+                        color: brokenCount > 0 ? Style.danger : Style.fgMuted
+                        tooltip: brokenCount > 0
+                                 ? (brokenCount === 1 ? qsTr("1 binding output not found in this profile") : qsTr("%1 binding outputs not found in this profile").arg(brokenCount))
+                                 : qsTr("No problems found")
+
+                        onClicked: () => { Commands.trigger("tools.health") }
+
+                        // The number, in red at the icon's top right (none at 0);
+                        // shown with or without the caption.
+                        Label {
+                            objectName: "healthCount"
+                            visible: _healthButton.brokenCount > 0
+                            text: _healthButton.brokenCount
+                            color: Style.danger
+                            font.bold: true
+                            font.pixelSize: Style.dp(16)
+                            x: (_healthButton.width + _healthButton.compactWidth) / 2
+                               - _healthButton.rightPadding - implicitWidth / 2
+                            y: _healthButton.topPadding
+                        }
                     }
 
                     JGToolButton {

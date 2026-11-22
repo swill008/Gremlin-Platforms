@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Search index (01 S157-S164, D-01-SEARCH-INDEX): rows from every profile
 file in the folder (read without opening them), the open profile in place
-of its file, Device Library setups and registered sources; "Used twice";
+of its file, Device Library setups and registered sources; each row's
+declared references (gremlin.health reads them for "Used twice");
 unreadable files with the reason; status while it builds."""
 
 from __future__ import annotations
@@ -17,8 +18,9 @@ sys.path.append(".")
 
 import pytest
 
-from gremlin import search_index, shared_state
+from gremlin import health, search_index, shared_state
 from gremlin.modules import ids, output
+from gremlin.references import Reference
 from gremlin.search_index import SearchIndex, SearchRow
 from gremlin.types import InputType
 
@@ -104,10 +106,24 @@ def _built(index: SearchIndex, open_profile: object = None) -> tuple[SearchRow, 
 def _index(folder: pathlib.Path, **kw: object) -> SearchIndex:
     return SearchIndex(
         folder=folder,
-        plugged=lambda guid, name: True,
         library=False,
         **kw,  # type: ignore[arg-type]
     )
+
+
+def _twice(rows: tuple[SearchRow, ...] | list[SearchRow]) -> set[int]:
+    """Indexes of the rows health marks "Used twice"."""
+    found = health.compute(rows)
+    return {
+        i
+        for i, r in enumerate(rows)
+        if any(f.check == "usedTwice" for f in found.get(health.row_key(r), ()))
+    }
+
+
+@pytest.fixture(autouse=True)
+def _all_plugged(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(health, "_plugged", lambda guid, name: True)
 
 
 def test_rows_from_every_profile_file(folder: pathlib.Path) -> None:
@@ -120,7 +136,9 @@ def test_rows_from_every_profile_file(folder: pathlib.Path) -> None:
     assert gear.target_keys == (("vjoy", 1, B.value, 5),)
     assert gear.targets and all(gear.targets)
     assert gear.role == "sends-output"
-    assert gear.plugged is True
+    assert [(r.role, r.target, r.missing) for r in gear.references] == [
+        ("sends-output", ("vjoy", 1, B.value, 5), False)
+    ]
     assert gear.mode == "Default"
     assert {"action", "name", "vjoy"} <= gear.kinds
     key = next(r for r in rows if r.device_guid == str(ids.KEYBOARD))
@@ -141,7 +159,7 @@ def test_unreadable_file_listed_with_reason(folder: pathlib.Path) -> None:
 
 def test_used_twice_same_output_same_mode_same_profile(folder: pathlib.Path) -> None:
     rows = _built(_index(folder))
-    twice = {(r.source_name, r.input_id) for r in rows if r.used_twice}
+    twice = {(rows[i].source_name, rows[i].input_id) for i in _twice(rows)}
     # b.xml's Button 3 sends the same output, but in another profile.
     assert twice == {("a", 1), ("a", 2)}
 
@@ -171,7 +189,6 @@ def _row(input_id: int, **kw: object) -> SearchRow:
         source_path="plug",
         device_guid=str(_STICK),
         device_name="Stick",
-        plugged=None,
         mode="Default",
         input_type=B.value,
         input_id=input_id,
@@ -183,12 +200,10 @@ def _row(input_id: int, **kw: object) -> SearchRow:
         targets=("Out 1",),
         target_keys=(("plug", 1),),
         role="sends-output",
-        not_found=False,
-        why="",
-        used_twice=False,
         binding_index=0,
         path=("Plug",),
         kinds=frozenset({"action"}),
+        references=(Reference("sends-output", ("plug", 1)),),
     )
     values.update(kw)
     return SearchRow(**values)
@@ -205,7 +220,7 @@ def test_register_source_is_the_plug_in_point(folder: pathlib.Path) -> None:
     rows = _built(index)
     plug = [r for r in rows if r.source_name == "Plug"]
     assert len(plug) == 2
-    assert all(r.used_twice for r in plug)
+    assert _twice(plug) == {0, 1}
     assert ("Broken", "no plug today") in index.status()["unreadable"]
 
 
@@ -264,9 +279,8 @@ def test_device_library_setups(
     assert {r.source for r in rows} == {"library"}
     assert {r.source_name for r in rows} == {"Setup 1"}
     assert {r.device_name for r in rows} == {"Stick"}
-    assert {r.plugged for r in rows} == {None}
     assert {r.input_id for r in rows} == {1, 2}
-    assert all(r.used_twice for r in rows)
+    assert _twice(rows) == set(range(len(rows)))
     assert {r.custom_name for r in rows} == {"Gear", ""}
     assert asked == ["set1"]
 
@@ -278,7 +292,7 @@ def test_device_library_is_a_built_in_source(
     monkeypatch.setattr(
         search_index, "library_rows", lambda: called.append(1) or iter(())
     )
-    index = SearchIndex(folder=folder, plugged=lambda guid, name: True)
+    index = SearchIndex(folder=folder)
     _built(index)
     assert index.status()["total"] == 4
     assert called == [1]
@@ -313,7 +327,6 @@ def test_default_index_is_one_and_hears_saves(
     monkeypatch.setattr(search_index, "_default", None)
     monkeypatch.setattr(util, "profiles_dir", lambda: folder)
     monkeypatch.setattr(search_index, "library_rows", lambda: iter(()))
-    monkeypatch.setattr(search_index, "_default_plugged", lambda guid, name: True)
     seen: list[pathlib.Path] = []
     first = search_index.default_index()
     monkeypatch.setattr(first, "file_saved", lambda path: seen.append(path))
@@ -383,10 +396,24 @@ def test_child_mode_inherits_parent_bindings(folder: pathlib.Path) -> None:
     inherited = [r for r in child if r.inherited_from]
     assert [(r.input_id, r.inherited_from) for r in inherited] == [(1, "Default")]
     assert {r.input_id for r in child} == {1, 2}
-    assert all(r.used_twice for r in child)
+    assert _twice(child) == set(range(len(child)))
     assert inherited[0].target_keys == (("vjoy", 1, B.value, 5),)
     own = [r for r in rows if r.mode == "Own"]
     assert [(r.input_id, r.inherited_from) for r in own] == [(1, "")]
     parent = [r for r in rows if r.mode == "Default"]
     assert [r.inherited_from for r in parent] == [""]
-    assert not parent[0].used_twice
+    assert not _twice(parent)
+
+
+def test_refresh_sources_reads_a_source_again(folder: pathlib.Path) -> None:
+    """A window opening after the build (the toolbar's Health count builds
+    the index at start-up, 01 S197) sees what a source holds now."""
+    held = [_row(1)]
+    index = _index(folder)
+    index.register_source("Plug", lambda: list(held))
+    _built(index)
+    held.append(_row(2))
+    thread = index.refresh_sources()
+    assert thread is not None
+    thread.join(5)
+    assert len([r for r in index.rows() if r.source_name == "Plug"]) == 2

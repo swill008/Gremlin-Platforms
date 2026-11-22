@@ -15,11 +15,17 @@ opened again (File > Load Profile), then through the real Search window
 and its SearchModel:
 
 1. The load notice names the X52 by its module name, never its id.
-2. "Binding output not found" lists the X52's Button 1.
+2. Searching "Button 1" lists the X52's Button 1 (sending to vJoy 3);
+   Health (gremlin.health over the window's index) finds it not found.
 3. Remove binding… asks (naming the binding), Remove: the row is gone,
-   the profile is changed, the health count drops; Undo puts it back.
-4. Change target… to vJoy 1 Button 2: the row is no longer not found.
+   the profile is changed, Health's not-found count drops; Undo puts it
+   back.
+4. Change target… to vJoy 1 Button 2: the row sends to vJoy 1 Button 2
+   and Health no longer finds it not found.
 5. Open on the X52's row says it isn't plugged in (S195's message).
+
+Search shows no health part (01 S196): the count is read from
+gremlin.health (01 S197), the owner of the checks.
 
 Only the hardware edge is faked (fake driver, fake vJoy).
 
@@ -98,28 +104,25 @@ def _results(model: Any) -> list[dict]:  # noqa: ANN401
                 "input": str(r.get("inputLabel") or ""),
                 "mode": str(r.get("mode") or ""),
                 "targets": [str(t) for t in (r.get("targets") or [])],
-                "notFound": bool(r.get("notFound")),
             }
         )
     return out
 
 
-def _health(model: Any) -> int:  # noqa: ANN401
-    """The "Binding output not found" filter's count."""
-    for f in model.property("filters") or []:
-        if str(f.get("name")) == "notFound":
-            return int(f.get("count") or 0)
-    raise AssertionError("no notFound filter")
-
-
 def _x52_rows(j: Journey, model: Any) -> list[dict]:  # noqa: ANN401
-    """The X52's rows in the open profile, with the not-found filter on."""
-    model.setProperty("text", "")
-    j.wait_until(lambda: not model._debounce.isActive(), "the search", timeout=5.0)
-    model.clearFilters()
-    model.setFilter("notFound", True)
-    j.settle()
-    return [r for r in _results(model) if r["input"] == "Button 1" and r["notFound"]]
+    """The X52's Button 1 rows in the open profile still sending to vJoy 3
+    (an output that isn't there)."""
+    return [r for r in _all_x52(j, model) if any("vJoy 3" in t for t in r["targets"])]
+
+
+def _not_found(model: Any) -> int:  # noqa: ANN401
+    """Health's "Binding output not found" count over the open profile's
+    rows of the index the window searches (01 S197)."""
+    from gremlin import health
+
+    rows = [r for r in model.search_index().rows() if r.source == "open"]
+    found = health.compute(rows)
+    return sum(1 for f in found.values() if any(x.check == "notFound" for x in f))
 
 
 def _all_x52(j: Journey, model: Any) -> list[dict]:  # noqa: ANN401
@@ -165,7 +168,7 @@ def _profiles(j: Journey) -> str:
 
 def _part_listed(j: Journey, model: Any) -> None:  # noqa: ANN401
     j.out["2:rows"] = _x52_rows(j, model)
-    j.out["2:health"] = _health(model)
+    j.out["2:health"] = _not_found(model)
 
 
 def _ask(j: Journey, window: Any, row: int) -> Any:  # noqa: ANN401
@@ -179,8 +182,8 @@ def _ask(j: Journey, window: Any, row: int) -> Any:  # noqa: ANN401
 
 def _part_remove(j: Journey, window: Any, model: Any) -> None:  # noqa: ANN401
     rows = _x52_rows(j, model)
-    assert rows, "no not-found X52 row"
-    before = _health(model)
+    assert rows, "no X52 row sending to vJoy 3"
+    before = _not_found(model)
     j.out["3:fixes"] = dict(model.fixes(rows[0]["_row"]))
     # Cancel first: nothing changes.
     dialog = _ask(j, window, rows[0]["_row"])
@@ -197,16 +200,14 @@ def _part_remove(j: Journey, window: Any, model: Any) -> None:  # noqa: ANN401
     j.wait_until(lambda: not _x52_rows(j, model), "the row to go", timeout=8.0)
     j.out["3:gone"] = _all_x52(j, model)
     j.out["3:dirty"] = bool(j.backend.profileContainsUnsavedChanges)
-    model.setFilter("notFound", True)
-    j.settle()
-    j.out["3:health"] = [before, _health(model)]
+    j.out["3:health"] = [before, _not_found(model)]
     j.out["3:in-profile"] = _bindings(j)
     j.out["3:can-undo"] = bool(model.property("canUndo"))
     # Undo (Ctrl+Z in the window).
     j.ev("undo(); true", window)
     j.wait_until(lambda: _x52_rows(j, model), "the row back", timeout=8.0)
     j.out["3:back"] = _x52_rows(j, model)
-    j.out["3:health-back"] = _health(model)
+    j.out["3:health-back"] = _not_found(model)
     j.out["3:in-profile-back"] = _bindings(j)
 
 
@@ -232,7 +233,7 @@ def _bindings(j: Journey) -> list:
 
 def _part_change(j: Journey, window: Any, model: Any) -> None:  # noqa: ANN401
     rows = _x52_rows(j, model)
-    assert rows, "no not-found X52 row"
+    assert rows, "no X52 row sending to vJoy 3"
     j.out["4:before"] = _bindings(j)
     # Change target…: the box, vJoy 1 Button 2 picked, Change.
     j.ev(f"askChangeTarget({rows[0]['_row']}); true", window)
@@ -244,8 +245,9 @@ def _part_change(j: Journey, window: Any, model: Any) -> None:  # noqa: ANN401
     )
     j.ev("_targetBox.vjoyId = 1; _targetBox.inputId = 2; true", window)
     j.press_in("_targetBox", "Change", window)
-    j.wait_until(lambda: not _x52_rows(j, model), "not found to clear", timeout=8.0)
-    j.out["4:not-found"] = _x52_rows(j, model)
+    j.wait_until(lambda: not _x52_rows(j, model), "the new target", timeout=8.0)
+    j.out["4:old-target"] = _x52_rows(j, model)
+    j.out["4:health"] = _not_found(model)
     j.out["4:rows"] = _all_x52(j, model)
     j.out["4:after"] = _bindings(j)
     j.out["4:dirty"] = bool(j.backend.profileContainsUnsavedChanges)
@@ -336,7 +338,7 @@ def test_the_load_notice_names_the_unplugged_device_by_its_module_name(
     assert run["0:x52-guid"] not in json.dumps(notices), notices
 
 
-def test_search_lists_the_binding_under_binding_output_not_found(run: dict) -> None:
+def test_search_lists_the_unplugged_devices_binding(run: dict) -> None:
     rows = _step(run, "2:rows")
     assert len(rows) == 1, rows
     assert rows[0]["device"] == MODULE_NAME, rows
@@ -361,13 +363,15 @@ def test_remove_binding_asks_then_removes_and_undo_puts_it_back(run: dict) -> No
     assert _step(run, "3:in-profile-back") == [[3, 1]]
 
 
-def test_change_target_to_an_existing_vjoy_clears_not_found(run: dict) -> None:
+def test_change_target_to_an_existing_vjoy(run: dict) -> None:
     assert _step(run, "4:before") == [[3, 1]]
     start = _step(run, "4:start")
     assert start["vjoy"] == 3 and start["id"] == 1, start
-    assert _step(run, "4:not-found") == []
+    assert _step(run, "4:old-target") == []
     rows = _step(run, "4:rows")
-    assert len(rows) == 1 and not rows[0]["notFound"], rows
+    assert len(rows) == 1 and rows[0]["targets"], rows
+    assert not any("vJoy 3" in t for t in rows[0]["targets"]), rows
+    assert _step(run, "4:health") == _step(run, "2:health") - 1, run["4:health"]
     assert _step(run, "4:after") == [[1, 2]]
     assert _step(run, "4:dirty") is True
     assert _step(run, "4:undone") == [[3, 1]]

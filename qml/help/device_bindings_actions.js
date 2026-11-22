@@ -946,7 +946,8 @@ function topics() {
                 + "<li>that vJoy device is turned off.</li>"
                 + "</ul>"
                 + "<p>To fix it, pick another output from the list. Or tick this output in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>.</p>"
-                + "<p>To find them all, look at the device's card on Home, which counts them. The Find tick <b>Binding output not found</b> lists them.</p>",
+                + "<p>To find them all, look at the device's card on Home, which counts them. The Find tick <b>Binding output not found</b> lists them.</p>"
+                + "<p>To fix many at once, see <a href=\"topic:tools-health\">Find problems with Health</a>.</p>",
             related: ["device-bindings-actions-map-to-vjoy", "device-bindings-actions-filter"]
         },
         {

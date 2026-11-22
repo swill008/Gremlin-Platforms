@@ -347,6 +347,11 @@ class Backend(QtCore.QObject):
     # Something the "*" covers changed outside the profile (a Logical page
     # edit): Main.qml checks the "*" again.
     unsavedChanged = QtCore.Signal()
+    # Health's results may have changed (gremlin/health.py, 01 S197): the
+    # toolbar's Health count reads healthBrokenCount again.
+    healthChanged = QtCore.Signal()
+    # health.on_changed may call from a program thread: queued to healthChanged.
+    _healthPoked = QtCore.Signal()
 
     def __init__(
         self, engine: QtQml.QQmlApplicationEngine, parent: ta.OQO = None
@@ -426,6 +431,11 @@ class Backend(QtCore.QObject):
         if app is not None:
             # A clean close: this session's copies go.
             app.aboutToQuit.connect(self._recovery.forget_session)
+        # The toolbar's Health count (01 S197) follows Health's results.
+        from gremlin import health
+
+        self._healthPoked.connect(self.healthChanged, queued)
+        health.on_changed(self._healthPoked.emit)
         self.profileChanged.emit()
 
     def _highlight_input(self, event: event_handler.Event) -> None:
@@ -709,6 +719,14 @@ class Backend(QtCore.QObject):
     @QtCore.Property(bool, notify=propertyChanged)
     def useDarkMode(self) -> bool:
         return self.config.value("ui", "general", "dark-mode")
+
+    @QtCore.Property(int, notify=healthChanged)
+    def healthBrokenCount(self) -> int:
+        """Bindings in the open profile whose output isn't found (the
+        toolbar's Health number, 01 S197)."""
+        from gremlin import health
+
+        return health.broken_count()
 
     @QtCore.Property(int, notify=uiScaleChanged)
     def uiScale(self) -> int:

@@ -3,14 +3,17 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The Search window's model (D-01-SEARCH-INDEX, layer 3): typing searches
-the index after a short wait, toggles and Look in, quick and Health filters
-with counts, grouping profile → device with folds and sort, the detail
-pane, Listen (stick, key, OSC; OSC off said so), the nothing-found hints,
-Recent and the remembered state. A stand-in index gives the rows; matching
-is the real gremlin.search_query."""
+the index after a short wait, toggles and Look in, quick filters with
+counts (Search has no health part, 01 S196), grouping profile → device
+with folds and sort, the detail pane, Listen (stick, key, OSC; OSC off
+said so), the nothing-found hints, Recent and the remembered state. A
+stand-in index gives the rows; matching is the real gremlin.search_query."""
 
 from __future__ import annotations
 
+import ast
+import dataclasses
+import pathlib
 import types
 import uuid
 from collections.abc import Iterator
@@ -39,7 +42,6 @@ def _row(**fields: object) -> SearchRow:
         "source_path": "C:/p/DCS.xml",
         "device_guid": _STICK,
         "device_name": "T.16000M",
-        "plugged": True,
         "mode": "Default",
         "input_type": int(InputType.JoystickButton.value),
         "input_id": 3,
@@ -51,15 +53,19 @@ def _row(**fields: object) -> SearchRow:
         "targets": ("vJoy 1 Button 3",),
         "target_keys": (("vjoy", 1, 2, 3),),
         "role": "reads-input",
-        "not_found": False,
-        "why": "",
-        "used_twice": False,
         "binding_index": 0,
         "path": (),
         "kinds": frozenset({"action", "vjoy"}),
     }
     base.update(fields)
-    return SearchRow(**base)
+    # Only SearchRow's own fields (the index keeps plain facts, 01 S197);
+    # neutral values for health fields while an index still has them.
+    known = {f.name for f in dataclasses.fields(SearchRow)}
+    for name, value in (
+        ("plugged", True), ("not_found", False), ("why", ""), ("used_twice", False)
+    ):  # fmt: skip
+        base.setdefault(name, value)
+    return SearchRow(**{k: v for k, v in base.items() if k in known})
 
 
 ROWS = [
@@ -69,15 +75,12 @@ ROWS = [
         input_label="Button 4",
         custom_name="Gear Toggle",
         kinds=frozenset({"action", "vjoy", "name"}),
-        used_twice=True,
         target_keys=(("vjoy", 1, 2, 9),),
     ),
     _row(
         input_id=5,
         input_label="Button 5",
-        used_twice=True,
         target_keys=(("vjoy", 1, 2, 9),),
-        plugged=False,
     ),
     _row(
         source="open",
@@ -99,11 +102,8 @@ ROWS = [
         source="library",
         source_name="Warthog setup",
         source_path="pack.zip",
-        plugged=None,
         input_label="Button 7",
         input_id=7,
-        not_found=True,
-        why="vJoy 3 is not set up",
     ),
 ]
 
@@ -181,10 +181,11 @@ def test_roles_hold_the_contract_names(model: SearchModel) -> None:
     for name in (
         "rowKind", "title", "count", "folded", "sourceName", "deviceName",
         "mode", "inputLabel", "customName", "actionName", "text", "targets",
-        "notFound", "usedTwice", "bindingIndex", "path", "highlights", "tags",
-        "notPlugged",
+        "bindingIndex", "path", "highlights", "tags",
     ):  # fmt: skip
         assert name in names
+    for name in ("notFound", "why", "usedTwice", "plugged", "notPlugged"):
+        assert name not in names  # health is Health's (01 S196)
 
 
 def test_follows_the_index(model: SearchModel, index: _Index) -> None:
@@ -229,23 +230,61 @@ def test_look_in_this_profile_and_library(model: SearchModel, saved: dict) -> No
 def test_filters_have_counts_and_narrow(model: SearchModel) -> None:
     model.searchFor("button")
     counts = {f["name"]: f["count"] for f in model.filters}
-    assert counts["usedTwice"] == 2
-    assert counts["notFound"] == 1
-    assert counts["notPlugged"] == 1  # the library row doesn't count
-    model.setFilter("usedTwice", True)
-    assert model.resultCount == 2
-    assert all("usedTwice" in r["tags"] for r in _results(model))
+    assert counts["name"] == 1
+    assert counts["vjoy"] == 4
     model.setFilter("name", True)
     assert [r["customName"] for r in _results(model)] == ["Gear Toggle"]
     model.clearFilters()
     assert model.resultCount == 4
 
 
-def test_a_health_filter_alone_lists_without_text(model: SearchModel) -> None:
-    model.searchFor("")
-    assert model.resultCount == 0
-    model.setFilter("notFound", True)
-    assert [r["why"] for r in _results(model)] == ["vJoy 3 is not set up"]
+HEALTH_NAMES = ("usedTwice", "notFound", "noBindings", "notPlugged")
+
+
+def test_search_has_no_health_part(model: SearchModel) -> None:
+    """01 S196: no Health filters or counts, no health marks on lines, and
+    Search never reads gremlin.health (only Health does, 01 S197)."""
+    assert not hasattr(search_model, "HEALTH_FILTERS")
+    model.searchFor("button")
+    assert {f["group"] for f in model.filters} == {"show"}
+    assert [f["name"] for f in model.filters] == list(search_model.KIND_FILTERS)
+    for name in HEALTH_NAMES:
+        model.setFilter(name, True)
+        assert name not in model._filters_on
+    assert model.resultCount == 4
+    for row in _results(model):
+        assert not set(row["tags"]) & set(HEALTH_NAMES), row["tags"]
+        for name in (*HEALTH_NAMES, "why", "plugged"):
+            assert name not in row
+    gear = next(i for i, r in enumerate(_rows(model)) if r.get("customName"))
+    assert "clashPartners" not in model.detail(gear)
+    source = pathlib.Path(search_model.__file__).read_text(encoding="utf-8")
+    imported = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.ImportFrom):
+            imported.add(node.module or "")
+            imported.update(f"{node.module}.{a.name}" for a in node.names)
+        elif isinstance(node, ast.Import):
+            imported.update(a.name for a in node.names)
+    assert "gremlin.health" not in imported
+    for field in ("not_found", "used_twice", ".why", "plugged=", '"plugged"'):
+        assert field not in source, field
+
+
+def test_health_filters_in_the_saved_state_are_dropped(
+    qapp: object, monkeypatch: pytest.MonkeyPatch, index: _Index
+) -> None:
+    monkeypatch.setattr(
+        search_model,
+        "_settings_load",
+        lambda: {"filters": ["notFound", "usedTwice", "key"]},
+    )
+    monkeypatch.setattr(search_model, "_settings_save", lambda _s: None)
+    made = SearchModel(index=index)
+    try:
+        assert made._filters_on == {"key"}
+    finally:
+        made.close()
 
 
 def test_prefix_and_regex(model: SearchModel) -> None:
@@ -276,13 +315,10 @@ def test_sort_and_folds(model: SearchModel) -> None:
     assert len(_results(model)) == 4
 
 
-def test_detail_has_clash_partners_and_copy_text(
-    model: SearchModel, copied: list[str]
-) -> None:
+def test_detail_and_copy_text(model: SearchModel, copied: list[str]) -> None:
     model.searchFor("gear")
     row = next(i for i, r in enumerate(_rows(model)) if r["rowKind"] == "result")
     info = model.detail(row)
-    assert info["clashPartners"] == ["T.16000M · Button 5"]
     assert info["modeChain"] == ["Default"]
     assert "vJoy 1 Button 3" in info["bindingText"]
     line = model.copyText(row)
@@ -365,6 +401,7 @@ def test_profile_notices_rebuild_the_open_profile_once(
     from gremlin.profile import Profile
 
     profile = Profile()
+    index.rebuilt.clear()  # the model's own read when it was made
     monkeypatch.setattr(shared_state, "current_profile", profile)
     signal.bindingsChanged.emit()
     signal.actionsChanged.emit()
@@ -614,3 +651,24 @@ def test_own_rows_are_not_inherited(model: SearchModel) -> None:
     found = _results(model)
     assert found[0]["inheritedFrom"] == ""
     assert "inherited" not in found[0]["tags"]
+
+
+def test_a_new_window_reads_the_open_profile_and_sources_again(
+    index: _Index,
+) -> None:
+    """The index can be older than the window (the toolbar's Health count
+    builds it at start-up, 01 S197): a new model reads the open profile and
+    the registered sources again."""
+    index.rebuilt.clear()
+    index.refreshed = 0
+
+    def refresh() -> None:
+        index.refreshed += 1
+
+    index.refresh_sources = refresh  # type: ignore[attr-defined]
+    made = SearchModel(index=index)
+    try:
+        assert index.rebuilt == [shared_state.current_profile]
+        assert index.refreshed == 1
+    finally:
+        made.close()

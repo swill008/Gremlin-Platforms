@@ -15,7 +15,7 @@ sys.path.append(".")
 
 import pytest
 
-from gremlin import binding_edit, search_index, shared_state
+from gremlin import binding_edit, health, search_index, shared_state
 from gremlin.modules import output
 from gremlin.profile import DeviceInfo
 from gremlin.types import InputType
@@ -92,7 +92,7 @@ def notices() -> Iterator[list[int]]:
 
 
 def _rows(p: object) -> list[search_index.SearchRow]:
-    return search_index.profile_rows(p, "open", "test", "", lambda g, n: False)
+    return search_index.profile_rows(p, "open", "test", "")
 
 
 def _row(p: object, input_id: int, vjoy: int, control: int) -> search_index.SearchRow:
@@ -100,9 +100,14 @@ def _row(p: object, input_id: int, vjoy: int, control: int) -> search_index.Sear
     return next(r for r in _rows(p) if r.input_id == input_id and r.target_keys == want)
 
 
-def test_describe_names_the_unplugged_device(profile: object) -> None:
+def test_describe_names_the_unplugged_device(
+    profile: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
     row = _row(profile, 2, 3, 1)
-    assert row.plugged is False
+    # Health owns the plugged-in check (01 S197); the device list is empty.
+    monkeypatch.setattr(health, "_plugged", lambda guid, name: False)
+    found = health.compute(_rows(profile))[health.row_key(row)]
+    assert "notPlugged" in {f.check for f in found}
     assert binding_edit.describe(row) == (
         "the Map to vJoy binding from Button 2 of HID Remapper 2DGG (Default mode)"
     )

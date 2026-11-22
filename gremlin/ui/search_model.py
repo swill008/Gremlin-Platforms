@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The Search window's model (D-01-SEARCH-INDEX, layer 3): the typed text
-and toggles, Look in, quick and Health filters with counts, results grouped
+and toggles, Look in, quick filters with counts, results grouped
 profile → device as one flat list (header rows and result rows), sort,
-folds, the detail pane's facts, Listen, suggestions and the nothing-found
-hints. Rows come from gremlin.search_index; matching from
-gremlin.search_query. Its only edits are Remove binding…, Change target…
-and their Undo (01 S195), done by gremlin.binding_edit."""
+folds, the detail pane's facts, Listen, recent searches, suggestions and
+the nothing-found hints. Rows come from gremlin.search_index; matching from
+gremlin.search_query. Search has no health part (01 S196): health checks,
+counts and marks are gremlin.health's, shown only by Health (01 S197).
+Its only edits are Remove binding…, Change target… and their Undo
+(01 S195), done by gremlin.binding_edit."""
 
 from __future__ import annotations
 
@@ -57,27 +59,6 @@ KIND_FILTERS: dict[str, str] = {
 }
 
 
-def _no_bindings(row: Any) -> bool:  # noqa: ANN401
-    return not getattr(row, "action_tag", "")
-
-
-# Health filters: name -> (label, test on a SearchRow).
-HEALTH_FILTERS: dict[str, tuple[str, Callable[[Any], bool]]] = {
-    "usedTwice": ("Used twice", lambda row: bool(getattr(row, "used_twice", False))),
-    "notFound": (
-        "Binding output not found",
-        lambda row: bool(getattr(row, "not_found", False)),
-    ),
-    "noBindings": ("No bindings", _no_bindings),
-    "notPlugged": (
-        "Not plugged in",
-        lambda row: (
-            getattr(row, "source", "") != "library"
-            and getattr(row, "plugged", None) is False
-        ),
-    ),
-}
-
 # The SearchRow fields shown as roles (camelCase), in contract order.
 ROW_FIELDS = (
     ("source", "source"),
@@ -85,7 +66,6 @@ ROW_FIELDS = (
     ("source_path", "sourcePath"),
     ("device_guid", "deviceGuid"),
     ("device_name", "deviceName"),
-    ("plugged", "plugged"),
     ("mode", "mode"),
     ("input_type", "inputType"),
     ("input_id", "inputId"),
@@ -97,9 +77,6 @@ ROW_FIELDS = (
     ("targets", "targets"),
     ("target_keys", "targetKeys"),
     ("role", "role"),
-    ("not_found", "notFound"),
-    ("why", "why"),
-    ("used_twice", "usedTwice"),
     ("binding_index", "bindingIndex"),
     ("path", "path"),
     ("kinds", "kinds"),
@@ -118,7 +95,6 @@ ROLE_NAMES = (
     *(name for _, name in ROW_FIELDS),
     "highlights",
     "tags",
-    "notPlugged",
     "score",
 )
 # The box's title when an edit can't be made (01 S195).
@@ -150,15 +126,20 @@ def _qml(value: object) -> object:
 
 def _tags(row: Any) -> list[str]:  # noqa: ANN401
     tags = []
-    if getattr(row, "used_twice", False):
-        tags.append("usedTwice")
-    if getattr(row, "not_found", False):
-        tags.append("notFound")
-    if HEALTH_FILTERS["notPlugged"][1](row):
-        tags.append("notPlugged")
     if getattr(row, "inherited_from", ""):
         tags.append("inherited")
     return tags
+
+
+def _plugged(row: Any) -> bool:  # noqa: ANN401
+    """Whether the row's device is there now (a device fact for Open, not a
+    health check)."""
+    from gremlin.modules import hardware
+
+    try:
+        return bool(hardware.plugged_in(str(row.device_guid), str(row.device_name)))
+    except Exception:  # noqa: BLE001 - no device list: not plugged in
+        return False
 
 
 def _spans(match: Any) -> dict:  # noqa: ANN401
@@ -370,6 +351,13 @@ class SearchModel(QtCore.QAbstractListModel):
         try:
             index = self.search_index()
             index.set_on_change(self._index_changed_any_thread)
+            # The index may be older than this window (the toolbar's Health
+            # count builds it at start-up): the open profile and the Device
+            # Library's setups are read again.
+            self._rebuild_open()
+            refresh = getattr(index, "refresh_sources", None)
+            if refresh is not None:
+                refresh()
         except Exception:  # noqa: BLE001 - no index: Search shows nothing
             log.exception("Search: the index could not start")
 
@@ -437,7 +425,7 @@ class SearchModel(QtCore.QAbstractListModel):
         self._regex = bool(state.get("regex", False))
         look_in = str(state.get("lookIn", "all"))
         self._look_in = look_in if look_in in LOOK_IN else "all"
-        known = set(KIND_FILTERS) | set(HEALTH_FILTERS)
+        known = set(KIND_FILTERS)
         self._filters_on = {str(n) for n in state.get("filters", []) if n in known}
         self._suggestions_on = bool(state.get("suggestionsOn", False))
         self._detail_open = bool(state.get("detailOpen", True))
@@ -531,8 +519,8 @@ class SearchModel(QtCore.QAbstractListModel):
 
     @QtCore.Property(list, notify=resultsChanged)
     def filters(self) -> list:
-        """[{name, label, group "show"|"health", on, count}]."""
-        rows = [
+        """[{name, label, group "show", on, count}]: the Show filters."""
+        return [
             {
                 "name": name,
                 "label": label,
@@ -542,21 +530,10 @@ class SearchModel(QtCore.QAbstractListModel):
             }
             for name, label in KIND_FILTERS.items()
         ]
-        rows.extend(
-            {
-                "name": name,
-                "label": label,
-                "group": "health",
-                "on": name in self._filters_on,
-                "count": self._counts.get(name, 0),
-            }
-            for name, (label, _) in HEALTH_FILTERS.items()
-        )
-        return rows
 
     @QtCore.Slot(str, bool)
     def setFilter(self, name: str, on: bool) -> None:  # noqa: N802
-        if name not in KIND_FILTERS and name not in HEALTH_FILTERS:
+        if name not in KIND_FILTERS:
             return
         if on == (name in self._filters_on):
             return
@@ -642,10 +619,7 @@ class SearchModel(QtCore.QAbstractListModel):
 
     def _passes(self, row: Any) -> bool:  # noqa: ANN401
         kinds = {n for n in self._filters_on if n in KIND_FILTERS}
-        health = {n for n in self._filters_on if n in HEALTH_FILTERS}
-        if kinds and not kinds & set(row.kinds):
-            return False
-        return not health or any(HEALTH_FILTERS[n][1](row) for n in health)
+        return not kinds or bool(kinds & set(row.kinds))
 
     @QtCore.Slot()
     def search(self) -> None:
@@ -678,9 +652,6 @@ class SearchModel(QtCore.QAbstractListModel):
         for row, _ in matched:
             for name in KIND_FILTERS:
                 if name in row.kinds:
-                    counts[name] = counts.get(name, 0) + 1
-            for name, (_, test) in HEALTH_FILTERS.items():
-                if test(row):
                     counts[name] = counts.get(name, 0) + 1
         self._counts = counts
         self._matched = [(row, m) for row, m in matched if self._passes(row)]
@@ -860,7 +831,6 @@ class SearchModel(QtCore.QAbstractListModel):
             "depth": 2,
             "highlights": _spans(match) if match is not None else {},
             "tags": _tags(row),
-            "notPlugged": "notPlugged" in _tags(row),
             "score": float(getattr(match, "score", 0) or 0),
             "_row": row,
         }
@@ -930,31 +900,16 @@ class SearchModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(int, result="QVariantMap")
     def detail(self, row: int) -> dict:
-        """The detail pane: the row's fields, its binding text, mode chain
-        and the other inputs sending to the same output (Used twice)."""
+        """The detail pane: the row's fields, its binding text and mode
+        chain."""
         if not 0 <= row < len(self._rows) or "_row" not in self._rows[row]:
             return {}
         found = self._rows[row]["_row"]
-        partners = []
-        if found.used_twice:
-            mine = set(found.target_keys)
-            for other in self._all_rows():
-                if (
-                    other.source == found.source
-                    and other.source_path == found.source_path
-                    and other.mode == found.mode
-                    and (other.device_guid, other.input_id)
-                    != (found.device_guid, found.input_id)
-                    and mine & set(other.target_keys)
-                ):
-                    name = other.custom_name or other.input_label
-                    partners.append(f"{other.device_name} · {name}")
         info = self._plain(row)
         info["bindingText"] = "\n".join(
             [str(found.text), *(f"→ {t}" for t in found.targets)]
         )
         info["modeChain"] = self._mode_chain(found)
-        info["clashPartners"] = sorted(set(partners), key=str.casefold)
         info["notes"] = [str(n) for n in getattr(found, "notes", ()) or ()]
         info["inheritedFrom"] = str(getattr(found, "inherited_from", "") or "")
         return info
@@ -1112,7 +1067,7 @@ class SearchModel(QtCore.QAbstractListModel):
         self.editRefused.emit(REFUSED_TITLE, text)
 
     def _refresh_now(self) -> None:
-        """Index the open profile again and search (results, health counts)."""
+        """Index the open profile again and search (results and counts)."""
         self._rebuild_timer.stop()
         self._rebuild_open()
         from gremlin import search_query
@@ -1165,7 +1120,7 @@ class SearchModel(QtCore.QAbstractListModel):
         """Why Open can't go to the row's page ("" when it can): its device
         isn't plugged in."""
         found = self._found(row)
-        if found is None or not HEALTH_FILTERS["notPlugged"][1](found):
+        if found is None or found.source == "library" or _plugged(found):
             return ""
         name = str(found.device_name or "")
         try:

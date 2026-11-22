@@ -1338,3 +1338,15 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-22 | Refused-edit box: SEARCHUI follow-up (Opus agent) + Help line | fix | 3-8 min | 2 min | 08:33-08:35 |
 | 2026-11-22 | Quick tests --changed (4,212 tests; one extra run by mistake before it) | test | ~10 min | 14 min | 08:22-08:36 |
 | 2026-11-22 | Build 1.1.1 + setup on the user's PC | build | ~2 min | 1 min | 08:36-08:37 |
+| 2026-11-22 | Screen Saver Mode S40 settle: SSM (Opus agent) | fix | 3-8 min | 2 min | 09:26-09:28 |
+| 2026-11-22 | Health core: HCORE (Opus agent) | feature | up to 15 min | 4 min | 09:25-09:29 |
+| 2026-11-22 | Search layout S196: SQML (Opus agent) | feature | up to 15 min | 4 min | 09:26-09:30 |
+| 2026-11-22 | Search model health removal: SMODEL (Opus agent) | feature | up to 12 min | 4 min | 09:26-09:30 |
+| 2026-11-22 | Health toolbar button: TBAR (Opus agent) | feature | up to 12 min | 5 min | 09:26-09:31 |
+| 2026-11-22 | Docs for Search/Health/SSM: DOCS (Opus agent) | docs | up to 12 min | 5 min | 09:26-09:31 |
+| 2026-11-22 | Test updates for removed fields: TFIX (Opus agent) | fix | 3-8 min | 1 min | 09:30-09:31 |
+| 2026-11-22 | Health end-to-end tests: E2E (Opus agent) | test | up to 15 min | 7 min | 09:26-09:33 |
+| 2026-11-22 | Lead: ⚠ out of Search text, index follows open profile + refresh_sources, tooltip wording | fix | no data | 6 min | 09:28-09:34 |
+| 2026-11-22 | Health window + model: HUI (Opus agent) | feature | up to 20 min | 9 min | 09:26-09:35 |
+| 2026-11-22 | Quick tests --changed (5,140 tests; 2 failed: one flaky OSC, one Help click below the fold) | test | ~10-14 min | 11 min | 09:36-09:47 |
+| 2026-11-22 | Health picture check: SHOT (Opus agent) + lead fixes (⚠ font, column widths, Help test scroll) | fix | 2-3 min | 4 min | 09:46-09:50 |

@@ -2475,3 +2475,150 @@ def test_ssm2_last_away_filled_when_input_ends_keep_off(env: Env) -> None:
     assert 61.0 <= away["off_s"] <= 63.0
     assert away["end"] >= away["start"]
     assert mode.status().wake_count == mode.status().wakes
+
+
+# ----- S40: Turn displays off now ignores movement and program input
+
+
+_NOT_PRESSES = [
+    {"source": 0x1001, "kind": "mouse"},  # movement
+    {"source": None, "kind": "mouse"},  # a program
+    {"source": None, "kind": "keyboard", "press": True},  # a program
+]
+_NOT_PRESS_IDS = ["mouse movement", "program mouse", "program key"]
+_PRESSES = [
+    {"kind": "keyboard", "press": True},
+    {"kind": "mouse", "press": True},
+    {"kind": "mouse", "wheel": True},
+]
+_PRESS_IDS = ["key press", "mouse click", "mouse wheel"]
+
+
+def _turn_off_waiting(env: Env) -> _Devices:
+    """Turn displays off now with a device still being switched off."""
+    mode, api, _clk, _now, run, _t = env
+    dev = _Devices(1)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_on(saver_wait=3600, off_wait=7200))
+    run(2)
+    mode.turn_off_now()
+    assert dev.starts == 1 and api.powered_off == 0
+    return dev
+
+
+@pytest.mark.parametrize("inp", _NOT_PRESSES, ids=_NOT_PRESS_IDS)
+def test_s40_movement_during_the_device_wait_does_not_cancel(
+    env: Env, inp: dict
+) -> None:
+    mode, api, clk, now, run, _t = env
+    dev = _turn_off_waiting(env)
+    now[0] += 0.05
+    clk.note_input(**inp)  # right after the menu click
+    assert mode.on_power_wait_timer() == ssm.DEVICES_POLL_S
+    run(1)
+    dev.busy = False
+    assert mode.on_power_wait_timer() is None
+    assert api.powered_off == 1 and mode.status().keeping_off
+
+
+@pytest.mark.parametrize("inp", _PRESSES, ids=_PRESS_IDS)
+def test_s40_press_during_the_device_wait_cancels(env: Env, inp: dict) -> None:
+    mode, api, clk, now, run, _t = env
+    dev = _turn_off_waiting(env)
+    now[0] += 0.05
+    clk.note_input(source=0x1001, **inp)
+    assert mode.on_power_wait_timer() is None
+    run(1)
+    dev.busy = False
+    run(5)
+    assert api.powered_off == 0 and not mode.status().keeping_off
+
+
+@pytest.mark.parametrize("inp", _NOT_PRESSES, ids=_NOT_PRESS_IDS)
+def test_s40_movement_within_2_s_after_power_off_does_not_wake(
+    env: Env, inp: dict
+) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_on(saver_wait=3600, off_wait=7200))
+    run(2)
+    mode.turn_off_now()
+    assert api.powered_off == 1
+    now[0] += 1.5
+    clk.note_input(**inp)
+    mode.tick()
+    assert mode.status().keeping_off
+    now[0] += 0.2
+    mode.on_display_state(True)  # Windows woke them: keep off still re-sends
+    assert api.powered_off == 2
+    run(10)
+    assert mode.status().keeping_off  # the in-time movement never wakes later
+    clk.note_input(**inp)  # after the 2 s
+    run(1)
+    assert not mode.status().keeping_off
+
+
+@pytest.mark.parametrize("inp", _PRESSES, ids=_PRESS_IDS)
+def test_s40_press_within_2_s_after_power_off_wakes(env: Env, inp: dict) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_on(saver_wait=3600, off_wait=7200))
+    run(2)
+    mode.turn_off_now()
+    now[0] += 0.5
+    clk.note_input(source=0x1001, **inp)
+    mode.tick()
+    assert not mode.status().keeping_off
+
+
+def test_s40_timers_still_wake_on_movement(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_off_only())
+    run(120)
+    assert api.powered_off == 1 and mode.status().keeping_off
+    now[0] += 0.5
+    clk.note_input(source=0x1001, kind="mouse")
+    mode.tick()
+    assert not mode.status().keeping_off
+
+
+def test_s40_timer_device_wait_still_cancelled_by_movement(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    dev = _Devices(1)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    run(120)
+    assert dev.starts == 1 and api.powered_off == 0
+    now[0] += 0.05
+    clk.note_input(source=0x1001, kind="mouse")
+    assert mode.on_power_wait_timer() is None
+    dev.busy = False
+    run(1)
+    assert api.powered_off == 0
+
+
+def test_s40_test_now_still_wakes_on_movement_after_power_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_on(saver_wait=3600, off_wait=7200))
+    mode.start_test(delay_s=1.0)
+    run(1)
+    assert api.powered_off == 1 and mode.status().keeping_off
+    now[0] += 0.5
+    clk.note_input(source=0x1001, kind="mouse")
+    mode.tick()
+    assert not mode.status().keeping_off
+
+
+def test_s40_quiet_time_ends_with_the_next_wake(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_off_only(off_wait=60))
+    run(2)
+    mode.turn_off_now()
+    run(5)
+    clk.note_input(source=0x1001, kind="mouse")
+    run(1)
+    assert not mode.status().keeping_off
+    run(60)  # the timer's own power-off: movement wakes at once again
+    assert api.powered_off == 2 and mode.status().keeping_off
+    now[0] += 0.5
+    clk.note_input(source=0x1001, kind="mouse")
+    mode.tick()
+    assert not mode.status().keeping_off

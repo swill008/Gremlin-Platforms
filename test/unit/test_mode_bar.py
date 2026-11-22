@@ -119,7 +119,7 @@ out['toolbarHasMode'] = run('(function() { var inside = ' + INSIDE + '; '
                             '|| inside(_manageModesButton, _toolbarFlick) })()')
 # The toolbar buttons sit on the left, one row-spacing apart (not spread out).
 GAPS = ('(function() { var b = [_homeButton, _toggleButton, _vjoyViewerButton, '
-        '_inputTesterButton, _searchButton, '
+        '_inputTesterButton, _searchButton, _healthButton, '
         '_deviceMappingEditorButton, _deviceLibraryButton, '
         '_logicalButton, '
         '_optionsButton]; '

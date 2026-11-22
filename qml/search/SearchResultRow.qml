@@ -11,7 +11,9 @@ import "search_text.js" as SearchText
 // One row of the Search window's results (SearchModel rowKind): a profile
 // heading, a device heading under it (both with a count and a fold arrow),
 // or a result with its Input / Mode / Action columns, the matched
-// characters lit and its tags.
+// characters lit and its tags. Search shows no health marks (01 S196);
+// Health (01 S197) sets showStatus and passes notFound / why / notPlugged /
+// usedTwice to draw the ⚠ (hover: why) and the chips.
 Rectangle {
     id: _row
 
@@ -22,6 +24,13 @@ Rectangle {
     property real inputWidth: Style.dp(200)
     property real modeWidth: Style.dp(110)
     property bool current: false
+
+    // Health's marks (off in Search): the caller passes the findings.
+    property bool showStatus: false
+    property bool notFound: false
+    property string why: ""
+    property bool notPlugged: false
+    property bool usedTwice: false
 
     signal picked(int index)
     signal opened(int index)
@@ -124,6 +133,7 @@ Rectangle {
 
         ColumnLayout {
             Layout.preferredWidth: _row.inputWidth - Style.dp(38)
+            Layout.minimumWidth: _row.inputWidth - Style.dp(38)
             Layout.maximumWidth: _row.inputWidth - Style.dp(38)
             spacing: 0
             Label {
@@ -144,6 +154,7 @@ Rectangle {
         }
         Label {
             Layout.preferredWidth: _row.modeWidth
+            Layout.minimumWidth: _row.modeWidth
             Layout.maximumWidth: _row.modeWidth
             textFormat: Text.StyledText
             text: _row.lit("mode", _row.f("mode", ""))
@@ -154,9 +165,36 @@ Rectangle {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Style.dp(2)
+            RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.dp(4)
+            // Health only: the binding's output is not there; hover says why.
+            Label {
+                objectName: "searchRowWarn:" + _row.index
+                visible: _row.showStatus && _row.notFound
+                // Text form (U+FE0E), so it takes the danger colour, not emoji colours.
+                text: "⚠︎"
+                color: Style.danger
+                font.bold: true
+                // A font with a plain ⚠ (the default falls back to the colour emoji).
+                font.family: "Segoe UI Symbol"
+                ToolTip.visible: _warnMouse.containsMouse && _row.why.length > 0
+                ToolTip.text: _row.why
+                MouseArea {
+                    id: _warnMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
+                }
+            }
+            TextMetrics {
+                id: _actionMetrics
+                font: _actionText.font
+                text: _row.f("text", "")
+            }
             Rectangle {
                 Layout.fillWidth: true
-                Layout.maximumWidth: _actionText.implicitWidth + Style.dp(10)
+                Layout.maximumWidth: _actionMetrics.advanceWidth + Style.dp(12)
                 implicitHeight: _actionText.implicitHeight + Style.dp(4)
                 radius: Style.dp(5)
                 color: Style.bindingBg
@@ -169,12 +207,26 @@ Rectangle {
                     anchors.leftMargin: Style.dp(5)
                     anchors.rightMargin: Style.dp(5)
                     anchors.verticalCenter: parent.verticalCenter
-                    textFormat: Text.StyledText
-                    text: _row.lit("text", _row.f("text", ""))
+                    // In full when it fits (matches lit); else plain, cut
+                    // in the middle so the number at its end stays (01 S196).
+                    readonly property bool fits: _actionMetrics.advanceWidth <= width + 1
+                    textFormat: fits ? Text.StyledText : Text.PlainText
+                    text: fits ? _row.lit("text", _row.f("text", "")) : _row.f("text", "")
                     font.family: Style.monoFont
                     color: Style.bindingText
-                    elide: Text.ElideRight
+                    elide: Text.ElideMiddle
                 }
+                // Health: a cut action shows in full on hover (01 S197).
+                HoverHandler {
+                    id: _actionHover
+                    enabled: _row.showStatus && !_actionText.fits
+                }
+                ToolTip {
+                    objectName: "searchRowActionTip:" + _row.index
+                    visible: _actionHover.hovered && _actionHover.enabled
+                    text: _row.f("text", "")
+                }
+            }
             }
             Label {
                 objectName: "searchRowNotes:" + _row.index
@@ -189,9 +241,10 @@ Rectangle {
         }
         Repeater {
             model: [
-                { on: _row.f("usedTwice", false), text: "Used twice", tone: Style.warn },
-                { on: _row.f("notFound", false), text: "Binding output not found", tone: Style.danger },
-                { on: _row.f("notPlugged", false), text: "Not plugged in", tone: Style.fgMuted },
+                { on: _row.showStatus && _row.usedTwice, text: "Used twice", tone: Style.warn,
+                  name: "searchRowUsedTwice:" + _row.index },
+                { on: _row.showStatus && _row.notPlugged, text: "Not plugged in", tone: Style.fgMuted,
+                  name: "searchRowNotPlugged:" + _row.index },
                 { on: _row.inheritedFrom.length > 0, text: "Inherited from " + _row.inheritedFrom,
                   tone: Style.fgSoft, name: "searchRowInherited:" + _row.index }
             ]
@@ -201,6 +254,8 @@ Rectangle {
                 objectName: modelData.name ? modelData.name + ":tag" : ""
                 implicitWidth: _tag.implicitWidth + Style.dp(10)
                 implicitHeight: _tag.implicitHeight + Style.dp(2)
+                // A chip never shrinks below its words; the action text gives way.
+                Layout.minimumWidth: implicitWidth
                 radius: height / 2
                 color: Style.alpha(modelData.tone, 0.15)
                 border.color: modelData.tone

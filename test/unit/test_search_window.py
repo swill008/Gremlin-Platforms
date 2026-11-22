@@ -159,6 +159,69 @@ def _fix(j: Journey, win: str) -> Any:  # noqa: ANN401
     return found
 
 
+def _layout(j: Journey, win: str) -> Any:  # noqa: ANN401
+    """01 S196: Listen left of the box, the Suggestion list tick under the
+    bar (not in the sidebar), recent searches in the drop-down under the
+    empty focused box with Clear at its end, the welcome panel only with
+    nothing typed and no results, no health filters."""
+    from PySide6 import QtCore
+
+    window = j.ev(win)
+    if window is None or isinstance(window, str):
+        return "no window"
+
+    def item(name: str) -> Any:  # noqa: ANN401
+        return window.findChild(QtCore.QObject, name)
+
+    listen, box, tick = (
+        item("searchListenButton"),
+        item("searchBox"),
+        item("searchSuggestionsOn"),
+    )
+    side = item("searchSidebar")
+    found: dict[str, Any] = {
+        "listenFirst": listen is not None
+        and box is not None
+        and listen.mapToScene(QtCore.QPointF(0, 0)).x()
+        < box.mapToScene(QtCore.QPointF(0, 0)).x(),
+        "tickUnderBar": tick is not None
+        and box is not None
+        and tick.mapToScene(QtCore.QPointF(0, 0)).y()
+        > box.mapToScene(QtCore.QPointF(0, 0)).y(),
+        "tickInSidebar": side is not None
+        and side.findChild(QtCore.QObject, "searchSuggestionsOn") is not None,
+        "healthFilters": _safe(
+            j,
+            "(" + win + ".search.filters || []).filter(function(f) "
+            "{ return f.group !== 'show' }).length",
+        ),
+    }
+    # Results with nothing typed (a Show filter): no welcome panel.
+    _safe(j, win + '.search.text = ""')
+    _safe(j, win + '.search.setFilter("action", true)')
+    j.settle()
+    found["results"] = _safe(j, win + "._list.count")
+    welcome = item("searchFirstOpen")
+    found["welcomeShown"] = (
+        None if welcome is None else bool(welcome.property("visible"))
+    )
+    _safe(j, win + '.search.setFilter("action", false)')
+    # The recent drop-down under the empty, focused box.
+    found["drop"] = _safe(
+        j,
+        "(function() { var w = " + win + "; w._suggestDismissed = false; "
+        "w.focusBox(); return { recent: w.showingRecent, lines: w.dropList.length, "
+        "count: w.dropCount } })()",
+    )
+    j.settle()
+    popup = item("searchSuggestions")
+    clear = item("searchClearRecent")
+    found["dropOpen"] = None if popup is None else bool(popup.property("visible"))
+    found["clearShown"] = None if clear is None else bool(clear.property("visible"))
+    _safe(j, win + "._suggestDismissed = true")
+    return found
+
+
 def story(j: Journey) -> None:
     out = j.out
     j.settle()
@@ -217,6 +280,7 @@ def story(j: Journey) -> None:
     # <mode>" on the row and in the detail pane (stand-in row values).
     out["shown"] = _shown(j, win)
     out["fix"] = _fix(j, win)
+    out["layout"] = _layout(j, win)
     # Nothing found, then Esc clears the box and Esc again closes the window.
     _safe(j, win + '.searchFor("zzqqxxw")')
     j.await_value(lambda: _safe(j, win + ".nothingFound"), True, timeout=8.0)
@@ -391,3 +455,17 @@ def test_a_refused_edit_shows_why_in_a_box(result: dict) -> None:
         "title": "Can't change the binding",
         "text": "The profile is running: stop it to change its bindings.",
     }
+
+
+def test_search_layout_follows_s196(result: dict) -> None:
+    layout = result["layout"]
+    assert layout["listenFirst"] is True
+    assert layout["tickUnderBar"] is True
+    assert layout["tickInSidebar"] is False
+    assert layout["healthFilters"] == 0
+    assert layout["welcomeShown"] is False
+    assert layout["drop"]["recent"] is True
+    assert layout["drop"]["lines"] >= 1
+    assert layout["drop"]["count"] == layout["drop"]["lines"] + 1
+    assert layout["dropOpen"] is True
+    assert layout["clearShown"] is True

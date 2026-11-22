@@ -76,6 +76,7 @@ function topics() {
                 + "<li><b>vJoy Viewer</b>: opens the viewer, or closes it when it is open.</li>"
                 + "<li><b>Input Tester</b>: starts the Input Tester, which shows what other programs see through HidHide.</li>"
                 + "<li><b>Search</b>: finds keys, actions, names and outputs in every profile (see <a href=\"topic:tools-search\">Search your profiles</a>).</li>"
+                + "<li><b>Health</b>: lists bindings with a problem. Red with a number when outputs in the open profile aren't found (see <a href=\"topic:tools-health\">Find problems with Health</a>).</li>"
                 + "<li><b>Mapping Editor</b>: opens a blank Device Mapping Editor.</li>"
                 + "<li><b>Device Library</b>: every device and its saved setups.</li>"
                 + "<li><b>Logical Device</b>: the Logical Device's page.</li>"
@@ -438,12 +439,13 @@ function topics() {
                 + "<li>Is the profile running? The toolbar button reads <b>Stop</b> <a href=\"show:toolbar/Run\">Show me ›</a>, and the bottom bar reads Running.</li>"
                 + "<li>Is the input ticked in its stick's <b>Module Setup</b>? Inputs that aren't ticked are ignored.</li>"
                 + "<li>On <b>Device Bindings</b>, does the output read <b>(not claimed)</b>? Tick that output in <b>Output Module Setup</b> <a href=\"open:tools.configureOutput\">Open ›</a>.</li>"
+                + "<li>Is the toolbar's <b>Health</b> button red? Some outputs aren't found. See <a href=\"topic:tools-health\">Find problems with Health</a>.</li>"
                 + "<li>Is the action in the running mode (the <b>Mode</b> box <a href=\"show:modebar\">Show me ›</a> under the toolbar)? Only that mode's actions, and its parents', run.</li>"
                 + "<li>Still stuck? system.log in the logs folder notes each blocked output once. <b>Logs folder</b> <a href=\"show:option/Logs folder\">Show me ›</a> in <b>Options</b> says where it is.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li>\"vJoy N is in use by another program.\" means another program holds that vJoy device. The program tries again every 3 seconds and carries on by itself once the device is free.</li></ul>",
-            related: ["getting-started-run", "home-devices-input-modules", "home-devices-vjoy-output", "modes-modes"]
+            related: ["getting-started-run", "home-devices-input-modules", "home-devices-vjoy-output", "modes-modes", "tools-health"]
         },
         {
             id: "getting-started-xbox-does-nothing",

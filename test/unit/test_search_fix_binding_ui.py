@@ -50,7 +50,6 @@ UNPLUGGED = _row(
     source_name="Elite",
     source_path="C:/p/Elite.xml",
     device_name="HID Remapper 2DGG",
-    plugged=False,
     input_id=9,
     input_label="Z Axis",
 )
@@ -132,6 +131,10 @@ def model(
     qapp: object, monkeypatch: pytest.MonkeyPatch, edits: _Edits, profile: _Profile
 ) -> Iterator[SearchModel]:
     monkeypatch.setattr(search_model, "_settings_load", dict)
+    # The device list: only the HID Remapper is unplugged.
+    monkeypatch.setattr(
+        search_model, "_plugged", lambda row: row.device_name != UNPLUGGED.device_name
+    )
     monkeypatch.setattr(search_model, "_settings_save", lambda _s: None)
     made = SearchModel(index=_Index([*ROWS, OPEN_VJOY, OPEN_KEY, UNPLUGGED]))
     made.searchFor("button")

@@ -20,9 +20,11 @@ import "search/search_text.js" as SearchText
 // Search (D-01-SEARCH-INDEX): type to find keys, actions, names and outputs
 // in every profile, the open one and the Device Library, as you type. The
 // SearchModel (gremlin/ui/search_model.py) does the searching; this window
-// shows it: the box with Aa / ab / .* and Listen, a status line, Look in /
-// Show / Health / Recent on the left, results grouped profile › device in
-// the middle, the picked result on the right. A result opens through
+// shows it (01 S196): Listen, the box with Aa / ab / .*, the status line
+// with the Suggestion list tick, recent searches in the drop-down under the
+// empty box, Look in / Show on the left, results grouped profile › device in
+// the middle, the picked result on the right. Search shows no health marks
+// (those are Health's, 01 S197). A result opens through
 // Main.goToSearchRow(row) (another profile or the Device Library included).
 // Opened by Main.openSearch(text) from the toolbar, Tools › Mapping ›
 // Search…, Ctrl+Shift+F and Find uses… menus.
@@ -238,12 +240,21 @@ ApplicationWindow {
             _model.copyText(index)
     }
 
-    // Enter: the picked suggestion, else the picked (or first) result.
+    // Enter: the picked drop-down line (a suggestion, a recent search or
+    // Clear recent searches), else the picked (or first) result.
     function enter() {
-        if (_suggest.visible && _suggestAt >= 0)
-            takeSuggestion(suggestionList[_suggestAt])
-        else
+        if (_suggest.visible && _suggestAt >= 0) {
+            if (showingRecent && _suggestAt >= dropList.length)
+                clearRecent()
+            else
+                takeSuggestion(dropList[_suggestAt])
+        } else
             open(current)
+    }
+
+    function clearRecent() {
+        _model.clearRecent()
+        _suggestAt = -1
     }
 
     function toggleListen() {
@@ -274,6 +285,8 @@ ApplicationWindow {
         if (_suggest.visible) { _suggest.close(); _suggestDismissed = true; return }
         if (listening) { _model.stopListen(); return }
         if (String(_box.text).length) {
+            // Esc again closes: the recent list stays shut until asked for.
+            _suggestDismissed = true
             _model.text = ""
             _box.text = ""
             focusBox()
@@ -282,10 +295,18 @@ ApplicationWindow {
         _root.close()
     }
 
-    // Suggestions (only when the setting is on).
+    // The drop-down under the box: recent searches while the box is empty
+    // (with Clear recent searches at the end), suggestions while typing
+    // (only when the setting is on).
     property bool _suggestDismissed: false
     property int _suggestAt: -1
     readonly property var suggestionList: _model.suggestionsOn ? (_model.suggestions || []) : []
+    readonly property var recentList: _model.recent || []
+    readonly property bool showingRecent: String(_box.text).length === 0
+    readonly property var dropList: showingRecent ? recentList : suggestionList
+    // The lines arrow keys move through (Clear recent searches included).
+    readonly property int dropCount: dropList.length + (showingRecent && dropList.length > 0 ? 1 : 0)
+    onShowingRecentChanged: _suggestAt = -1
 
     function takeSuggestion(text) {
         _model.text = String(text)
@@ -327,12 +348,22 @@ ApplicationWindow {
             Layout.fillWidth: true
             spacing: Style.dp(4)
 
+            Button {
+                objectName: "searchListenButton"
+                text: _root.listening ? "Stop" : "Listen"
+                highlighted: _root.listening
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: "Press a control, a key or an OSC button to search for it"
+                onClicked: _root.toggleListen()
+            }
             TextField {
                 id: _box
                 objectName: "searchBox"
                 Layout.fillWidth: true
                 placeholderText: "Search keys, actions, names and outputs…"
                 selectByMouse: true
+                onPressed: _root._suggestDismissed = false
                 onTextEdited: {
                     _root._suggestDismissed = false
                     _root._suggestAt = -1
@@ -346,7 +377,7 @@ ApplicationWindow {
                 }
                 Keys.onDownPressed: (event) => {
                     if (_suggest.visible)
-                        _root._suggestAt = Math.min(_root.suggestionList.length - 1,
+                        _root._suggestAt = Math.min(_root.dropCount - 1,
                                                     _root._suggestAt + 1)
                     else
                         _root.move(1)
@@ -401,15 +432,6 @@ ApplicationWindow {
                 ToolTip.text: "How to search"
                 onClicked: _help.visible ? _help.close() : _help.open()
             }
-            Button {
-                objectName: "searchListenButton"
-                text: _root.listening ? "Stop" : "Listen"
-                highlighted: _root.listening
-                focusPolicy: Qt.NoFocus
-                ToolTip.visible: hovered
-                ToolTip.text: "Press a control, a key or an OSC button to search for it"
-                onClicked: _root.toggleListen()
-            }
         }
 
         // The status line: the index, the counts, profiles that could not be read.
@@ -424,7 +446,8 @@ ApplicationWindow {
             }
             Label {
                 objectName: "searchCount"
-                visible: _root.typed
+                // The status line already gives the counts when it has text.
+                visible: _root.typed && String(_model.statusText || "").length === 0
                 text: {
                     var n = Number(_model.resultCount || 0)
                     var p = Number(_model.profileCount || 0)
@@ -449,6 +472,18 @@ ApplicationWindow {
                 }
             }
             Item { Layout.fillWidth: true }
+            CheckBox {
+                objectName: "searchSuggestionsOn"
+                focusPolicy: Qt.NoFocus
+                text: "Suggestion list while typing"
+                checked: !!_model.suggestionsOn
+                onToggled: {
+                    _model.suggestionsOn = checked
+                    checked = Qt.binding(() => !!_model.suggestionsOn)
+                }
+                ToolTip.visible: hovered
+                ToolTip.text: "Show a list of matching names under the search box as you type"
+            }
         }
 
         RowLayout {
@@ -469,6 +504,7 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 color: Style.bgWell
                 border.color: Style.line
+                clip: true
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -499,9 +535,12 @@ ApplicationWindow {
                                     required property var modelData
                                     readonly property string column: modelData.column
                                     objectName: "searchSort:" + column
-                                    Layout.preferredWidth: column === "input"
+                                    readonly property real fixedWidth: column === "input"
                                         ? _list.inputWidth - Style.dp(38)
                                         : (column === "mode" ? _list.modeWidth : -1)
+                                    Layout.preferredWidth: fixedWidth
+                                    Layout.minimumWidth: fixedWidth < 0 ? 0 : fixedWidth
+                                    Layout.maximumWidth: fixedWidth < 0 ? Number.POSITIVE_INFINITY : fixedWidth
                                     Layout.fillWidth: column === "action"
                                     text: modelData.label + (_root.sortColumn !== column ? ""
                                           : (_root.sortOrder === Qt.AscendingOrder ? " ▲" : " ▼"))
@@ -540,8 +579,12 @@ ApplicationWindow {
                         clip: true
                         visible: !_root.listening
                         model: _model
-                        readonly property real inputWidth: Math.max(Style.dp(160), width * 0.32)
-                        readonly property real modeWidth: Math.max(Style.dp(80), width * 0.14)
+                        // One width for every row and the headings (01 S196);
+                        // a narrow list still leaves the action room.
+                        readonly property real inputWidth: Math.min(Math.max(Style.dp(160), width * 0.32),
+                                                                    width * 0.4)
+                        readonly property real modeWidth: Math.min(Math.max(Style.dp(80), width * 0.14),
+                                                                   width * 0.2)
                         delegate: SearchResultRow {
                             inputWidth: _list.inputWidth
                             modeWidth: _list.modeWidth
@@ -554,10 +597,11 @@ ApplicationWindow {
                     }
                 }
 
-                // First open: what Search does, examples and recent searches.
+                // First open: what Search does and examples, only while
+                // nothing is typed and no results show (01 S196).
                 ColumnLayout {
                     objectName: "searchFirstOpen"
-                    visible: !_root.typed && !_root.listening
+                    visible: !_root.typed && !_root.listening && _list.count === 0
                     anchors.centerIn: parent
                     width: Math.min(parent.width - Style.dp(40), Style.dp(520))
                     spacing: Style.dp(8)
@@ -583,24 +627,6 @@ ApplicationWindow {
                                 objectName: "searchExample:" + modelData
                                 text: modelData
                                 font.family: Style.monoFont
-                                focusPolicy: Qt.NoFocus
-                                onClicked: { _model.text = modelData; _root.focusBox() }
-                            }
-                        }
-                    }
-                    Label {
-                        text: "Recent searches"
-                        color: Style.fgMuted
-                        visible: (_model.recent || []).length > 0
-                    }
-                    Flow {
-                        Layout.fillWidth: true
-                        spacing: Style.dp(6)
-                        Repeater {
-                            model: _model.recent || []
-                            delegate: Button {
-                                required property string modelData
-                                text: modelData
                                 focusPolicy: Qt.NoFocus
                                 onClicked: { _model.text = modelData; _root.focusBox() }
                             }
@@ -738,7 +764,8 @@ ApplicationWindow {
         }
     }
 
-    // The suggestion list (setting, off by default) under the box.
+    // The drop-down under the box: recent searches (box empty) or the
+    // suggestion list (setting, off by default) while typing.
     Popup {
         id: _suggest
         objectName: "searchSuggestions"
@@ -749,12 +776,12 @@ ApplicationWindow {
         focus: false
         closePolicy: Popup.CloseOnPressOutsideParent
         visible: _box.activeFocus && !_root._suggestDismissed && !_root.listening
-                 && _root.suggestionList.length > 0
+                 && _root.dropList.length > 0
         background: Rectangle { color: Style.menuBg; border.color: Style.menuLine }
         contentItem: ColumnLayout {
             spacing: 0
             Repeater {
-                model: _root.suggestionList
+                model: _root.dropList
                 delegate: Rectangle {
                     required property var modelData
                     required property int index
@@ -775,6 +802,34 @@ ApplicationWindow {
                         hoverEnabled: true
                         onClicked: _root.takeSuggestion(parent.modelData)
                     }
+                }
+            }
+            Rectangle {
+                objectName: "searchClearRecent"
+                visible: _root.showingRecent
+                Layout.fillWidth: true
+                implicitHeight: _clearText.implicitHeight + Style.dp(6)
+                readonly property bool lit: _root._suggestAt === _root.dropList.length
+                                            || _clearMouse.containsMouse
+                color: lit ? Style.menuHover : Style.clear
+                Rectangle {
+                    anchors.top: parent.top
+                    width: parent.width
+                    height: Style.dp(1)
+                    color: Style.menuLine
+                }
+                Label {
+                    id: _clearText
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: Style.dp(8)
+                    text: "Clear recent searches"
+                    color: Style.menuTextSoft
+                }
+                MouseArea {
+                    id: _clearMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: _root.clearRecent()
                 }
             }
         }

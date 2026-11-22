@@ -58,6 +58,9 @@ ACTIVITY_GAP_S = 0.5
 # A power-off (the timer's or a keep-off re-send) is never sent sooner than
 # this after the last one.
 POWER_OFF_GAP_S = 1.0
+# S40: after Turn displays off now powers the displays off, movement and
+# program input are ignored for this long (presses still wake).
+TURN_OFF_QUIET_S = 2.0
 # S21: the wait for the devices to be switched off before the power-off is
 # Settings.devices_wait_s (at most; default 10, 1-60); the listener thread
 # polls the disabler's probe this often.
@@ -1577,6 +1580,10 @@ class ScreenSaverMode:
         # counted input it was started after.
         self._test_at = 0.0
         self._test_input_at = 0.0
+        # S40, Turn displays off now: (the last press when it started, end
+        # of the quiet time: 0 = until the power-off is sent). Only presses
+        # count meanwhile; None = the normal rule (any counted input).
+        self._quiet: tuple[float, float] | None = None
         self._after_input: Callable[[], None] | None = None
         self._hooked = False  # before_power_off ran, after_input not yet
         # Wake PC (S28-S31): None until set_wake_devices() is called.
@@ -1767,6 +1774,7 @@ class ScreenSaverMode:
         if self._test_at:
             self._test_at = 0.0
             _trace("Test now: cancelled")
+        self._quiet = None
         self._running = False
         if self._timer is not None:
             try:
@@ -1911,8 +1919,9 @@ class ScreenSaverMode:
         if self._test_at and self._clock.last_press() != self._test_input_at:
             self._test_at = 0.0
             _trace("Test now: cancelled")
-        if last != self._period.input_at:
+        if self._counted_since(self._period.input_at):
             # Input: a new idle period (S6), the countdowns start again.
+            self._quiet = None
             # Traced only for the first input after an action, not per input.
             after_action = self._period.saver.fired or self._period.off.fired
             if after_action:
@@ -2115,6 +2124,21 @@ class ScreenSaverMode:
         p.saver.fired = True
         return True
 
+    def _counted_since(self, input_at: float) -> bool:
+        """Counted input since input_at (any thread). After Turn displays
+        off now (S40), until the displays are off and TURN_OFF_QUIET_S
+        after, only a press counts: movement and program input don't."""
+        last = self._clock.last_input()
+        if last == input_at:
+            return False
+        quiet = self._quiet
+        if quiet is None:
+            return True
+        press_at, until = quiet
+        if self._clock.last_press() != press_at:
+            return True
+        return bool(until) and last > until
+
     def on_power_wait_timer(self) -> float | None:
         """The device-wait poll timer fired (the listener thread's window
         procedure; tests call it). Returns the seconds until the next poll,
@@ -2131,7 +2155,7 @@ class ScreenSaverMode:
         if wait is None:
             return None
         pending, started, input_at = wait
-        if self._clock.last_input() != input_at:
+        if self._counted_since(input_at):
             return None  # counted input: the tick cancels it
         try:
             busy = bool(pending())
@@ -2173,6 +2197,9 @@ class ScreenSaverMode:
             self._retry_at = 0.0
             self._wakes = 0
             self._off_sent = (now, clock.now())
+            quiet = self._quiet
+            if quiet is not None and not quiet[1]:
+                self._quiet = (quiet[0], now + TURN_OFF_QUIET_S)
         try:
             self._api.power_off_displays()
             _log().info("Screen Saver Mode: displays powered off")
@@ -2218,7 +2245,10 @@ class ScreenSaverMode:
             return
         self._test_at = 0.0
         _trace("Turn displays off now: sequence started")
-        self._run_sequence()
+        # S40: the movement after the menu click must not cancel it.
+        self._quiet = (self._clock.last_press(), 0.0)
+        if not self._run_sequence():
+            self._quiet = None
         self._drain_events()
         self._update_status()
 
@@ -2237,7 +2267,7 @@ class ScreenSaverMode:
                 return
             # Counted input since keep-off started: the tick ends it; never
             # power off the displays a person just woke.
-            if not self._keeping_off or self._clock.last_input() != self._keep_input_at:
+            if not self._keeping_off or self._counted_since(self._keep_input_at):
                 return
             if now - self._last_power_off < self.POWER_OFF_GAP_S:
                 if self._retry_at:
@@ -2289,7 +2319,7 @@ class ScreenSaverMode:
             if (
                 not self._keeping_off
                 or not self._display_on
-                or self._clock.last_input() != self._keep_input_at
+                or self._counted_since(self._keep_input_at)
             ):
                 self._retry_at = 0.0
                 return None

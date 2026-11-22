@@ -118,6 +118,10 @@ function commandList() {
         { id: "tools.search", text: "Search…", group: "Tools › Mapping", shortcut: "Ctrl+Shift+F",
           keywords: "search find index type key keys action name profile profiles uses where used vjoy xbox osc mouse mode device listen",
           run: function() { openSearch(null) } },
+        // Health (01 S197, D-01-HEALTH): bindings with a problem, why, and the fix.
+        { id: "tools.health", text: "Health…", group: "Tools › Mapping",
+          keywords: "health problems broken missing not found used twice no bindings not plugged unplugged vjoy check fix",
+          run: function() { openTool("DialogHealth.qml") } },
         // The OSC Monitor (D-09-OSC-MONITOR, 09 S138): the OSC page with
         // its Monitor shown.
         { id: "tools.oscMonitor", text: "OSC Monitor", group: "Tools",

@@ -308,12 +308,10 @@ _REQUIRED = {
     "targets": tuple,
     "target_keys": tuple,
     "role": str,
-    "not_found": bool,
-    "why": str,
-    "used_twice": bool,
     "binding_index": int,
     "path": tuple,
     "kinds": frozenset,
+    "references": tuple,
 }
 
 
@@ -321,7 +319,7 @@ def test_searchrow_has_the_contract_fields() -> None:
     from gremlin import search_index
 
     names = {f.name for f in dataclasses.fields(search_index.SearchRow)}
-    missing = (set(_REQUIRED) | {"plugged", "input_id"}) - names
+    missing = (set(_REQUIRED) | {"input_id"}) - names
     assert not missing, f"SearchRow lacks {sorted(missing)}"
 
 
@@ -337,7 +335,6 @@ def _check_row(row: object) -> None:
         if want is not None:
             assert isinstance(value, want), f"SearchRow.{f.name}={value!r}"
     assert row.source in ("profile", "open", "library") or row.source  # type: ignore[attr-defined]
-    assert row.plugged is None or isinstance(row.plugged, bool)  # type: ignore[attr-defined]
     assert all(isinstance(t, str) for t in row.targets)  # type: ignore[attr-defined]
     assert all(isinstance(t, tuple) and t for t in row.target_keys)  # type: ignore[attr-defined]
     assert all(isinstance(k, str) for k in row.kinds)  # type: ignore[attr-defined]
@@ -395,11 +392,10 @@ def open_profile(home: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> object:
 
 
 def _index(folder: pathlib.Path) -> Iterator[object]:
-    """A SearchIndex on this profiles folder (every device plugged in),
-    stopped afterwards."""
+    """A SearchIndex on this profiles folder, stopped afterwards."""
     from gremlin import search_index
 
-    index = search_index.SearchIndex(folder=folder, plugged=lambda g, n: True)
+    index = search_index.SearchIndex(folder=folder)
     try:
         yield index
     finally:

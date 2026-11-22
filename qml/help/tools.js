@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Help chapter: Tools (viewers, calibration, device information, History,
-// Auto Mapping Tool, HidHide, Drivers, Input Tester, Search, Screen Saver
+// Auto Mapping Tool, HidHide, Drivers, Input Tester, Search, Health, Screen Saver
 // Mode, Live Log Reader). Device Mapping Editor and Device Library have
 // chapters of their own. Written to claude/plans/help-style-guide.md: each
 // topic opens with what it's for, then "How to", "What you see" and "Good to
@@ -661,11 +661,15 @@ function topics() {
                 + "</ol>"
                 + "<h4>What you see</h4>"
                 + "<ul>"
-                + "<li>The box. You don't need the whole word: the letters you type, in order, are enough (<b>gr tog</b> finds \"Gear toggle\").</li>"
-                + "<li>Exact matches and matches at the start of a word come first. The matching letters are highlighted.</li>"
-                + "<li><b>Listen</b>: press a stick control or a key, or send an OSC message, and Search looks for it.<ul>"
+                + "<li><b>Listen</b>, the first button, left of the box: press a stick control or a key, or send an OSC message, and Search looks for it.<ul>"
                 + "<li>Search shows <b>Heard: …</b>. <b>Esc</b> stops listening.</li>"
                 + "<li>OSC is heard only while <b>Listen for OSC messages</b> is on.</li>"
+                + "</ul></li>"
+                + "<li>The box. You don't need the whole word: the letters you type, in order, are enough (<b>gr tog</b> finds \"Gear toggle\").</li>"
+                + "<li>Exact matches and matches at the start of a word come first. The matching letters are highlighted.</li>"
+                + "<li>Your recent searches open in the drop-down under the empty box when you click into it.<ul>"
+                + "<li>Use <b>Up</b> and <b>Down</b> to pick one, and <b>Enter</b> to search it again.</li>"
+                + "<li><b>Clear recent searches</b>, at the end of the list, empties it.</li>"
                 + "</ul></li>"
                 + "<li>Prefixes look in one place only: <b>key:</b>, <b>vjoy:</b>, <b>xbox:</b>, <b>osc:</b>, <b>mouse:</b>, <b>mode:</b>, <b>profile:</b>, <b>device:</b> or <b>action:</b>.<ul>"
                 + "<li>Put a name with spaces in quotes, for example <b>device:\"T.16000M\"</b>.</li>"
@@ -674,54 +678,50 @@ function topics() {
                 + "<li>Three buttons beside the box, off at first: <b>Aa</b> (Match case), <b>ab</b> (Whole word) and <b>.*</b> (Regular expression).<ul>"
                 + "<li>Letters-in-order matching is off while Regular expression is on.</li>"
                 + "</ul></li>"
-                + "<li><b>Look in</b>: <b>All profiles</b>, <b>This profile only</b> or <b>Device Library</b>.</li>"
-                + "<li><b>Show</b>: <b>Keys</b>, <b>Actions</b>, <b>Names</b>, <b>vJoy</b>, <b>Xbox</b> or <b>OSC</b>, each with its number of results.</li>"
-                + "<li><b>Health</b>: shows only results with a problem tag, or with <b>No bindings</b>.</li>"
-                + "<li><b>Recent</b>: your last 10 searches. Click one to search it again.</li>"
+                + "<li><b>Suggestion list while typing</b>, under the search bar beside the status line, is off at first. Turn it on to see suggestions under the box.</li>"
+                + "<li><b>Look in</b>, in the sidebar: <b>All profiles</b>, <b>This profile only</b> or <b>Device Library</b>.</li>"
+                + "<li><b>Show</b>, in the sidebar: <b>Keys</b>, <b>Actions</b>, <b>Names</b>, <b>vJoy</b>, <b>Xbox</b> or <b>OSC</b>, each with its number of results.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
+                + "<li>Before you type, Search shows a short welcome with example searches. It goes as soon as you type or results show.</li>"
                 + "<li>Search looks in the open profile too, with its unsaved changes, marked <b>(open)</b>. It also looks in the Device Library's saved setups.</li>"
                 + "<li>Search changes a binding only when you choose <b>Remove binding…</b> or <b>Change target…</b>. See <a href=\"topic:tools-search-fix\">Fix a binding from Search</a>.</li>"
+                + "<li>To find problems, such as outputs that aren't there, use <b>Health</b>. See <a href=\"topic:tools-health\">Find problems with Health</a>.</li>"
                 + "<li>It also opens from <b>Tools › Mapping › Search…</b> <a href=\"show:menu/Tools/Mapping/Search…\">Show me ›</a>.</li>"
                 + "<li>Right-click a row, a vJoy Viewer chip, an Xbox Output View row or a mode in Manage Modes, and choose <b>Find uses…</b>.</li>"
                 + "<li>Right-click a Home card and choose <b>Search this device</b>. Search opens with the text filled in.</li>"
                 + "<li>Keys: <b>Up</b> and <b>Down</b> move through the results. <b>Esc</b> clears the box, and <b>Esc</b> again closes Search.</li>"
-                + "<li>A list of suggestions under the box is off at first. Turn on <b>Suggestion list while typing</b> in the Search window to use it.</li>"
                 + "<li>Search remembers its size and position, your last search, <b>Look in</b>, the filters and the three buttons.</li>"
                 + "<li>The <b>Find</b> bar on a page only filters that page. Search looks through all your profiles.</li>"
                 + "<li>Reading the results: see <a href=\"topic:tools-search-results\">Read Search results</a>.</li>"
                 + "</ul>",
-            related: ["tools-search-results", "tools-search-fix", "tools-history", "tools-viewers"]
+            related: ["tools-search-results", "tools-search-fix", "tools-health", "tools-history", "tools-viewers"]
         },
         {
             id: "tools-search-results",
             section: "Search",
             title: "Read Search results",
-            body: "<p>Search groups its results by profile, then by device. Tags on a result point out problems, such as two inputs sending to the same output.</p>"
+            body: "<p>Search groups its results by profile, then by device. Each line shows the input, the mode and the action.</p>"
                 + "<h4>What you see</h4>"
                 + "<ul>"
                 + "<li>Each group heading has a count, such as \"3 uses\". Click a heading to fold it; <b>Fold all</b> and <b>Unfold all</b> do every group.</li>"
                 + "<li>Click the <b>Input</b>, <b>Mode</b> or <b>Action</b> column heading to sort by it.</li>"
-                + "<li>The pane on the right shows the selected result in full: its actions and the modes it comes through.<ul>"
+                + "<li>The <b>Input</b> and <b>Mode</b> columns keep the same width, so every line lines up with the headings.</li>"
+                + "<li>An action's text shows in full. In a narrow window it is cut in the middle, so the number at the end stays.</li>"
+                + "<li>The <b>Details</b> pane on the right shows the selected result in full: its actions and the modes it comes through.<ul>"
+                + "<li>With nothing selected, it says \"Pick a result to see it here.\"</li>"
                 + "<li>Under <b>Notes</b>, any text you typed into the action.</li>"
-                + "<li>For <b>Used twice</b>, the other inputs.</li>"
                 + "<li>Close the pane with its ×. Search remembers whether it is open.</li>"
                 + "</ul></li>"
                 + "<li>Right-click a result for <b>Open</b>, <b>Open in Device Mapping Editor</b>, <b>Copy as text</b> and <b>Search for this target</b>.<ul>"
                 + "<li>The menu and the pane also have <b>Remove binding…</b> and <b>Change target…</b>. See <a href=\"topic:tools-search-fix\">Fix a binding from Search</a>.</li>"
                 + "</ul></li>"
+                + "<li><b>Inherited from &lt;mode&gt;</b> on a line means the binding is set in that mode and used here, because this mode inherits it.</li>"
                 + "</ul>"
-                + "<table><tr><th>Tag</th><th>What it means</th></tr>"
-                + "<tr><td><b>Used twice</b></td><td>Two or more inputs send to the same output in the same mode of the same profile.</td></tr>"
-                + "<tr><td><b>[binding output not found]</b></td><td>The output isn't there: the device is missing or off, or doesn't have that button or axis.</td></tr>"
-                + "<tr><td><b>Not plugged in</b></td><td>That device isn't connected now.</td></tr>"
-                + "<tr><td><b>Inherited from &lt;mode&gt;</b></td><td>The binding is set in that mode and used here, because this mode inherits it.</td></tr>"
-                + "</table>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>A Send OSC whose target is gone, or whose OSC output is Off, also shows <b>[binding output not found]</b>.</li>"
-                + "<li>An inherited binding is listed in every mode that uses it, and <b>Used twice</b> counts it too.</li>"
+                + "<li>An inherited binding is listed in every mode that uses it.</li>"
                 + "<li>A result in another profile asks you to save the open profile first, if it has unsaved changes. Then that profile opens.</li>"
                 + "<li>A Device Library result opens the Device Library on that setup.</li>"
                 + "<li>For a device with no input module, Search offers <b>Open Device Mapping Editor</b> instead. Search stays open.</li>"
@@ -733,8 +733,9 @@ function topics() {
                 + "<li>A profile it can't read is listed with the reason. The others are still searched.</li>"
                 + "</ul></li>"
                 + "<li>Changes you make, saved or not, show up in the results.</li>"
+                + "<li>Search shows no problem marks. Health does: see <a href=\"topic:tools-health\">Find problems with Health</a>.</li>"
                 + "</ul>",
-            related: ["tools-search", "tools-search-fix"]
+            related: ["tools-search", "tools-search-fix", "tools-health"]
         },
         {
             id: "tools-search-fix",
@@ -748,22 +749,57 @@ function topics() {
                 + "<li>To send it somewhere else, choose <b>Change target…</b>. Pick the vJoy device and input, then confirm.</li>"
                 + "<li>Save the profile to keep the change.</li>"
                 + "</ol>"
-                + "<h4>When the device isn't plugged in</h4>"
-                + "<ol>"
-                + "<li>Search the device's name or its output. Its results carry the <b>Not plugged in</b> tag.</li>"
-                + "<li>Choose <b>Remove binding…</b> or <b>Change target…</b> on the result.</li>"
-                + "<li>Save the profile.</li>"
-                + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
+                + "<li>For a device that isn't plugged in, search its name or its output, then use the same two choices.</li>"
                 + "<li><b>Change target…</b> is there for <b>Map to vJoy</b> actions only. Its lists show only outputs that can be sent.</li>"
                 + "<li><b>Undo</b> (<b>Ctrl+Z</b>) in the Search window takes back your Search changes, until you save or close the profile.</li>"
-                + "<li>A fix marks the profile as changed. Search and the problem counts update at once.</li>"
+                + "<li>A fix marks the profile as changed. Search and Health update at once.</li>"
                 + "<li>While the profile runs, a box says the binding can't be changed. Choose <b>Stop</b> first.</li>"
                 + "<li><b>Open</b> on a device that isn't plugged in can't show its page. A message says so and points to these two choices.</li>"
                 + "<li>Plug the device in to edit its bindings on its own page.</li>"
+                + "<li>To fix many problems at once, use Health. See <a href=\"topic:tools-health\">Find problems with Health</a>.</li>"
                 + "</ul>",
-            related: ["tools-search", "tools-search-results"]
+            related: ["tools-search", "tools-search-results", "tools-health"]
+        },
+        {
+            id: "tools-health",
+            section: "Health",
+            title: "Find problems with Health",
+            body: "<p><b>Health</b> lists the bindings that have a problem, such as an output that isn't there. It says why, and lets you fix them, one or many at a time.</p>"
+                + "<h4>How to</h4>"
+                + "<ol>"
+                + "<li>Choose <b>Health</b> on the toolbar, after Search <a href=\"show:toolbar/Health\">Show me ›</a>, or choose <b>Tools › Mapping › Health…</b> <a href=\"show:menu/Tools/Mapping/Health…\">Show me ›</a>. Health opens in a window of its own.</li>"
+                + "<li>In the sidebar, tick the checks you want to see.</li>"
+                + "<li>Click a line. The <b>Why</b> panel on the right says what is wrong and what you can do.</li>"
+                + "<li>Right-click the line and choose a fix, such as <b>Change target…</b>.</li>"
+                + "<li>Save the profile to keep the change.</li>"
+                + "</ol>"
+                + "<h4>What you see</h4>"
+                + "<table><tr><th>Check</th><th>What it means</th></tr>"
+                + "<tr><td><b>Binding output not found</b></td><td>The output isn't there: the device is missing or off, or doesn't have that button or axis.</td></tr>"
+                + "<tr><td><b>Used twice</b></td><td>Two or more inputs send to the same output in the same mode of the same profile.</td></tr>"
+                + "<tr><td><b>No bindings</b></td><td>Nothing is bound to the input in that mode.</td></tr>"
+                + "<tr><td><b>Not plugged in</b></td><td>That device isn't connected now.</td></tr>"
+                + "</table>"
+                + "<ul>"
+                + "<li>The toolbar button shows, in red, how many bindings in the open profile have an output that isn't found. With none, it is gray with no number.</li>"
+                + "<li><b>Look in</b>: <b>This profile only</b> (the default) or <b>All profiles</b>. Each check shows its count.</li>"
+                + "<li>Lines are grouped by profile, then device, with <b>Input</b>, <b>Mode</b> and <b>Action</b> columns, as in Search.</li>"
+                + "<li>A ⚠ in the action marks the problem. Point at it to see the reason. A device that isn't connected shows <b>Not plugged in</b>.</li>"
+                + "<li><b>Why</b>: the reason, and what you can do, with links such as <b>Tools › Drivers</b> <a href=\"open:tools.drivers\">Open ›</a>.</li>"
+                + "<li>The right-click menu: <b>Open</b>, <b>Change target…</b>, <b>Remove binding…</b> and <b>Copy as text</b>.</li>"
+                + "</ul>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li>To remove several bindings together, pick them with <b>Ctrl+click</b> or <b>Shift+click</b>, then right-click and choose <b>Remove binding…</b>. <b>Change target…</b> works on one line at a time.</li>"
+                + "<li><b>Undo</b> (<b>Ctrl+Z</b>) takes the whole change back, until you save or close the profile.</li>"
+                + "<li>While the profile runs, a box says the binding can't be changed. Choose <b>Stop</b> first.</li>"
+                + "<li>A fix updates Health and the toolbar count at once.</li>"
+                + "<li>The Device Bindings page keeps its own red ⚠ and its Find tick <b>Binding output not found</b>.</li>"
+                + "<li>For one binding, you can also fix it from Search. See <a href=\"topic:tools-search-fix\">Fix a binding from Search</a>.</li>"
+                + "</ul>",
+            related: ["tools-search-fix", "tools-search", "tools-drivers", "getting-started-nothing-reaches-vjoy"]
         },
         {
             id: "tools-screen-saver-mode",
@@ -807,7 +843,10 @@ function topics() {
                 + "<li>With no screen saver chosen in Windows, the <b>Screen saver</b> timer does nothing. <b>Power off displays</b> still works.</li>"
                 + "<li>A timer whose Windows time is never, with no time typed, does nothing either.</li>"
                 + "<li>Screen Saver Mode works only while Gremlin-Platforms is open, whether a profile runs or not, and also from the tray.</li>"
-                + "<li>The tray icon's menu has <b>Screen Saver Mode</b> (the same switch) and <b>Turn displays off now</b>.</li>"
+                + "<li>The tray icon's menu has <b>Screen Saver Mode</b> (the same switch) and <b>Turn displays off now</b>.<ul>"
+                + "<li>After <b>Turn displays off now</b>, moving the mouse doesn't stop it until the displays are off, and for 2 seconds after.</li>"
+                + "<li>A key press, a mouse click or the mouse wheel still stops it, or wakes the displays.</li>"
+                + "</ul></li>"
                 + "<li>If the keyboard and mouse can't be listened to, the window says so and nothing is done.</li>"
                 + "<li>Changes to these settings aren't kept in History. They go to the trace's <b>State</b> block (see <a href=\"topic:tools-trace\">Follow your controls with Trace</a>).</li>"
                 + "</ul>",

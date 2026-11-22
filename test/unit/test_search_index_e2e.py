@@ -25,8 +25,9 @@ the real SearchIndex and search_query:
 2. "gr tog" finds "Gremlin toggle" (fuzzy, in order).
 3. Regex on: "^Button [12]$" finds Buttons 1 and 2 only; off, it finds none.
 4. "key:F5" finds the key rows, not the "press F5" note.
-5. Alpha's Buttons 1 and 2 are tagged Used twice; Bravo's Button 2 is not.
-6. The Binding output not found filter shows Alpha's Button 4 only.
+5. Alpha's Buttons 1 and 2 and Bravo's Button 2 are found, with no Used
+   twice mark: Search has no health part (01 S196; Health has it, S197).
+6. There is no Binding output not found filter in Search.
 7. Listen: a stick press fills the box; an OSC message fills it too.
 8. Opening a Bravo result asks to save the open profile (answered
    Discard), loads Bravo and shows the row's input.
@@ -100,6 +101,9 @@ def _get(row: dict, *names: str) -> Any:  # noqa: ANN401
     return None
 
 
+HEALTH = {"usedTwice", "notFound", "noBindings", "notPlugged"}
+
+
 def _brief(row: dict) -> dict:
     """What the checks read of one result row."""
     return {
@@ -110,8 +114,11 @@ def _brief(row: dict) -> dict:
         "input": str(_get(row, "inputLabel", "input_label") or ""),
         "text": str(_get(row, "text") or ""),
         "targets": [str(t) for t in (_get(row, "targets") or [])],
-        "usedTwice": bool(_get(row, "usedTwice", "used_twice")),
-        "notFound": bool(_get(row, "notFound", "not_found")),
+        # Health marks the row carries (none: they are Health's, 01 S196).
+        "health": sorted(
+            {k for k in ("usedTwice", "notFound", "why", "notPlugged") if k in row}
+            | {t for t in (_get(row, "tags") or []) if t in HEALTH}
+        ),
         "inheritedFrom": str(_get(row, "inheritedFrom", "inherited_from") or ""),
         "tags": [str(t) for t in (_get(row, "tags") or [])],
     }
@@ -193,9 +200,9 @@ def _part_used_twice(j: Journey, model: Any) -> None:  # noqa: ANN401
 def _part_not_found(j: Journey, model: Any) -> None:  # noqa: ANN401
     _search(j, model, "")
     j.out["6:none"] = _results(model)
+    j.out["6:filters"] = [str(f.get("name")) for f in model.property("filters") or []]
     model.setFilter("notFound", True)
     j.settle()
-    j.out["6:all"] = len(_index(model).rows())
     j.out["6:rows"] = _results(model)
     model.clearFilters()
     j.settle()
@@ -541,22 +548,19 @@ def test_key_prefix_finds_keys_not_words(run: dict) -> None:
     assert len(keyed) < len(plain), (keyed, plain)
 
 
-def test_two_inputs_sending_the_same_button_are_used_twice(run: dict) -> None:
+def test_two_inputs_sending_the_same_button_show_no_health_mark(run: dict) -> None:
     rows = _step(run, "5:rows")
-    alpha = {r["input"]: r["usedTwice"] for r in rows if r["profile"] == "Alpha"}
-    assert alpha.get("Button 1") is True and alpha.get("Button 2") is True, rows
-    bravo = [r for r in rows if r["profile"] == "Bravo"]
-    assert bravo and not any(r["usedTwice"] for r in bravo), rows
+    alpha = {r["input"] for r in rows if r["profile"] == "Alpha"}
+    assert {"Button 1", "Button 2"} <= alpha, rows
+    assert [r for r in rows if r["profile"] == "Bravo"], rows
+    assert not any(r["health"] for r in rows), rows
 
 
-def test_binding_output_not_found_filter(run: dict) -> None:
-    rows = _step(run, "6:rows")
-    assert _step(run, "6:all") > len(rows), "the filter left every row"
-    assert rows, "the filter found nothing"
-    assert all(r["notFound"] for r in rows), rows
-    assert {(r["profile"], r["input"]) for r in rows if r["source"] == "profile"} == {
-        ("Alpha", "Button 4")
-    }, rows
+def test_search_has_no_binding_output_not_found_filter(run: dict) -> None:
+    assert "notFound" not in _step(run, "6:filters")
+    assert not HEALTH & set(_step(run, "6:filters"))
+    # Asking for it does nothing: an empty box still lists nothing.
+    assert _step(run, "6:rows") == []
 
 
 def test_listen_fills_the_box_from_a_stick_and_osc(run: dict) -> None:
@@ -627,14 +631,15 @@ def test_a_child_mode_that_binds_the_input_itself_inherits_nothing(
     assert _at(_step(run, "11:own")) == {("Ground", "Button 9", "")}
 
 
-def test_used_twice_counts_an_inherited_binding(run: dict) -> None:
+def test_an_inherited_binding_is_found_with_no_health_mark(run: dict) -> None:
     rows = [r for r in _step(run, "12:rows") if r["profile"] == "Charlie"]
-    seen = {(r["mode"], r["input"], r["inheritedFrom"]): r["usedTwice"] for r in rows}
+    seen = {(r["mode"], r["input"], r["inheritedFrom"]) for r in rows}
     assert seen == {
-        ("Default", "Button 1", ""): False,
-        ("Ground", "Button 1", "Default"): True,
-        ("Ground", "Button 2", ""): True,
+        ("Default", "Button 1", ""),
+        ("Ground", "Button 1", "Default"),
+        ("Ground", "Button 2", ""),
     }, rows
+    assert not any(r["health"] for r in rows), rows
 
 
 def test_no_program_errors(run: dict) -> None:

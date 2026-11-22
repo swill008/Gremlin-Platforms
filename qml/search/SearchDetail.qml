@@ -100,9 +100,15 @@ Rectangle {
         }
 
         Body {
+            objectName: "searchDetailEmpty"
             visible: !_detail.row
             text: "Pick a result to see it here."
             color: Style.fgMuted
+        }
+        // Nothing picked: the title stays at the top (01 S196).
+        Item {
+            visible: !_detail.row
+            Layout.fillHeight: true
         }
 
         ScrollView {
@@ -166,22 +172,6 @@ Rectangle {
                         return typeof chain === "string" ? chain
                              : Array.prototype.join.call(chain || [], " › ")
                     }
-                }
-                Heading {
-                    text: "Used twice with"
-                    visible: _clash.text.length > 0
-                }
-                Body {
-                    id: _clash
-                    objectName: "searchDetailClash"
-                    visible: text.length > 0
-                    color: Style.warn
-                    text: _detail.listText(_detail.g("clashPartners", []))
-                }
-                Body {
-                    visible: text.length > 0
-                    color: Style.danger
-                    text: _detail.f("notFound", false) ? String(_detail.f("why", "")) : ""
                 }
             }
         }

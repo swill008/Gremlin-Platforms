@@ -92,7 +92,7 @@ function topics() {
                 + "<li>A right click opens the <b>tray menu</b>:<ul>"
                 + "<li><b>Show Gremlin-Platforms</b> or <b>Hide Gremlin-Platforms</b>: brings the window back or hides it.</li>"
                 + "<li><b>Screen Saver Mode</b>: turns Screen Saver Mode on or off. See <a href=\"topic:tools-screen-saver-mode\">Let the screen rest with Screen Saver Mode</a>.</li>"
-                + "<li><b>Turn displays off now</b>: turns your monitors off at once.</li>"
+                + "<li><b>Turn displays off now</b>: turns your monitors off at once. Moving the mouse doesn't stop it until the displays are off, and for 2 seconds after.</li>"
                 + "<li><b>Run Profile</b> or <b>Stop Profile</b>: runs or stops the profile.</li>"
                 + "<li><b>Start with Windows</b>: a tick item. See <a href=\"topic:options-profile-start-with-windows\">Start the program with Windows</a>.</li>"
                 + "<li><b>Exit Gremlin-Platforms</b>: quits the program.</li>"

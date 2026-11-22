@@ -66,6 +66,7 @@ function topics() {
                 + "<li>Hover the warning to see which ones: the first 10, then \"… and n more\".</li>"
                 + "<li>To fix them, open the device's page and pick another output in each action.</li>"
                 + "<li>Tick <b>Binding output not found</b> in the page's Find bar to list them.</li>"
+                + "<li>To see them across devices and fix several at once, use Health. See <a href=\"topic:tools-health\">Find problems with Health</a>.</li>"
                 + "</ul></li>"
                 + "</ul>",
             related: ["home-devices-home", "home-devices-input-modules", "home-devices-damaged-file", "device-bindings-actions-output-view"]

@@ -120,10 +120,26 @@ def find_item(item: QtQuick.QQuickItem, name: str) -> QtQuick.QQuickItem | None:
     return None
 
 
+def scroll_into_view(item: QtQuick.QQuickItem) -> None:
+    """Scrolls the nearest Flickable so item shows (a long topic puts its
+    Related topics below the fold), as a reader would before clicking."""
+    view = item.parentItem()
+    while view is not None and view.property("contentY") is None:
+        view = view.parentItem()
+    if view is None:
+        return
+    top = item.mapToItem(view, QtCore.QPointF(0, 0)).y()
+    if 0 <= top and top + item.height() <= view.height():
+        return
+    view.setProperty("contentY", view.property("contentY") + top - view.height() / 3)
+    wait_until(lambda: False, 200)
+
+
 def click_object(window: QtQuick.QQuickWindow, name: str) -> bool:
     item = find_item(window.contentItem(), name)
     if item is None or not item.isVisible():
         return False
+    scroll_into_view(item)
     centre = item.mapToScene(QtCore.QPointF(item.width() / 2, item.height() / 2))
     QtTest.QTest.mouseClick(
         window, QtCore.Qt.MouseButton.LeftButton,

@@ -36,7 +36,6 @@ class SearchRow:
     source_path: str
     device_guid: str
     device_name: str
-    plugged: bool | None  # None: a Device Library row
     mode: str
     input_type: int
     input_id: object
@@ -48,9 +47,6 @@ class SearchRow:
     targets: tuple[str, ...]  # display text of each target
     target_keys: tuple[tuple, ...]  # gremlin.references target shapes
     role: str
-    not_found: bool
-    why: str
-    used_twice: bool
     binding_index: int
     path: tuple[str, ...]
     kinds: frozenset[str]
@@ -59,6 +55,9 @@ class SearchRow:
     # The mode the binding is defined in, when this row is that binding seen
     # from a child mode that inherits it ("" for the binding's own mode).
     inherited_from: str = ""
+    # What the action declared it uses (its references(), with the
+    # reference's own not-found and reason); gremlin.health reads them.
+    references: tuple[refs.Reference, ...] = ()
 
 
 Lister = Callable[[], Iterable[SearchRow]]
@@ -126,6 +125,14 @@ def _display(target: tuple, fallback: str) -> str:
         return fallback
 
 
+def _plain(text: str) -> str:
+    """Bindings text without the can't-send mark: the index keeps plain
+    facts; only Health shows what can't be sent (01 S197)."""
+    from gremlin.modules.wiring import CANT_SEND
+
+    return str(text or "").replace(f"{CANT_SEND} ", "").replace(CANT_SEND, "")
+
+
 def _input_key(device_guid: str, input_type: int, input_id: object) -> tuple:
     return (ids.guid_key(device_guid), input_type, refs.id_key(input_id))
 
@@ -149,33 +156,20 @@ def profile_rows(
     source: str,
     source_name: str,
     source_path: str,
-    plugged: Callable[[str, str], bool | None] | None = None,
     device_name: str = "",
 ) -> list[SearchRow]:
-    """Every action of every binding in a profile as rows, "Used twice"
-    marked. gremlin.usages yields, per binding, each action's declared
-    uses followed by its uses-action, then the binding's reads-input and
-    one inherited use per child mode that runs it (usages._inheriting, as
+    """Every action of every binding in a profile as rows. gremlin.usages
+    yields, per binding, each action's declared uses followed by its
+    uses-action, then the binding's reads-input and one inherited use per
+    child mode that runs it (usages._inheriting, as
     event_handler.build_event_lookup resolves it): those rows again, seen
     in the child mode."""
     custom = _custom_names(profile)
     rows: list[SearchRow] = []
     pending: list[usages.Ref] = []
     binding: list[tuple[usages.Usage, list[usages.Ref]]] = []
-    known: dict[str, bool | None] = {}
-    sends: list[tuple[int, tuple]] = []
     # Where the last binding's rows start (its inherited copies follow).
     last = [0, 0]
-
-    def plugged_of(guid: str, name: str) -> bool | None:
-        if plugged is None:
-            return None
-        if guid not in known:
-            try:
-                known[guid] = plugged(guid, name)
-            except Exception:  # noqa: BLE001 - no device list: not plugged
-                known[guid] = False
-        return known[guid]
 
     def emit(text: str) -> None:
         last[0] = len(rows)
@@ -195,7 +189,6 @@ def profile_rows(
                     source_path=source_path,
                     device_guid=action.device_guid,
                     device_name=name,
-                    plugged=plugged_of(action.device_guid, name),
                     mode=action.mode,
                     input_type=action.input_type,
                     input_id=action.input_id,
@@ -203,31 +196,33 @@ def profile_rows(
                     custom_name=cname,
                     action_tag=action.action_tag,
                     action_name=action.path[-1] if action.path else action.action_tag,
-                    text=text,
+                    text=_plain(text),
                     targets=tuple(
-                        _display(ref.target, ref.usage.text) for ref in declared
+                        _plain(_display(ref.target, ref.usage.text))
+                        for ref in declared
                     ),
                     target_keys=keys,
                     role=first.role if first else action.role,
-                    not_found=any(ref.usage.not_found for ref in declared),
-                    why=next((r.usage.why for r in declared if r.usage.why), ""),
-                    used_twice=False,
                     binding_index=action.binding_index,
                     path=action.path,
                     kinds=_kinds(action.device_guid, cname, keys),
                     notes=action.texts,
+                    references=tuple(
+                        refs.Reference(
+                            ref.usage.role,
+                            ref.target,
+                            ref.usage.text,
+                            ref.usage.not_found,
+                            why=ref.usage.why,
+                        )
+                        for ref in declared
+                    ),
                 )
-            )
-            sends.extend(
-                (len(rows) - 1, ref.target)
-                for ref in declared
-                if ref.usage.role == "sends-output"
             )
         binding.clear()
         last[1] = len(rows)
 
     def inherit(child: str) -> None:
-        sent = [(i, t) for i, t in sends if last[0] <= i < last[1]]
         for index in range(last[0], last[1]):
             row = rows[index]
             cname = custom.get(
@@ -243,7 +238,6 @@ def profile_rows(
                     kinds=_kinds(row.device_guid, cname, row.target_keys),
                 )
             )
-            sends.extend((len(rows) - 1, t) for i, t in sent if i == index)
 
     for ref in usages.iter_usages(profile):
         role = ref.usage.role
@@ -261,49 +255,7 @@ def profile_rows(
             inherit(str(ref.target[1]))
         elif role not in _BINDING_ROLES:
             pending.append(ref)
-    return _mark_used_twice(rows, sends)
-
-
-def _mark_used_twice(
-    rows: list[SearchRow], sends: list[tuple[int, tuple]]
-) -> list[SearchRow]:
-    """Used twice: the same output in the same mode of the same source
-    sent by 2+ different inputs."""
-    inputs: dict[tuple, set[tuple]] = {}
-    for index, target in sends:
-        row = rows[index]
-        key = (row.source_path, row.mode, target)
-        inputs.setdefault(key, set()).add(
-            _input_key(row.device_guid, row.input_type, row.input_id)
-        )
-    clash = {key for key, found in inputs.items() if len(found) > 1}
-    marked = {
-        index
-        for index, target in sends
-        if (rows[index].source_path, rows[index].mode, target) in clash
-    }
-    return [
-        replace(r, used_twice=True) if i in marked else r for i, r in enumerate(rows)
-    ]
-
-
-def mark_used_twice(rows: Iterable[SearchRow]) -> list[SearchRow]:
-    """Marks "Used twice" on rows from a registered source: its sends-output
-    rows' targets."""
-    rows = list(rows)
-    sends = [
-        (i, key)
-        for i, row in enumerate(rows)
-        if row.role == "sends-output"
-        for key in row.target_keys
-    ]
-    return _mark_used_twice(rows, sends)
-
-
-def _default_plugged(guid: str, name: str) -> bool:
-    from gremlin.modules import hardware
-
-    return hardware.plugged_in(guid, name)
+    return rows
 
 
 def _default_folder() -> Path:
@@ -376,12 +328,11 @@ class SearchIndex:
         self,
         folder: Path | Callable[[], Path] | None = None,
         on_change: Callable[[], None] | None = None,
-        plugged: Callable[[str, str], bool | None] | None = None,
         library: bool = True,
     ) -> None:
         self._folder = folder if folder is not None else _default_folder
         self._on_change = on_change
-        self._plugged = plugged or _default_plugged
+        self._listeners: list[Callable[[], None]] = []
         self._lock = threading.Lock()
         self._sources: dict[str, Lister] = {}
         # Rows by part: "file:<path key>", "open", "source:<name>".
@@ -411,6 +362,18 @@ class SearchIndex:
         """callback() after the rows change; it may be called on a program
         thread, so a Qt caller queues it to the main thread."""
         self._on_change = callback
+
+    def add_listener(self, callback: Callable[[], None]) -> None:
+        """Another callback() after the rows change (gremlin.health); like
+        set_on_change's, it may run on a program thread."""
+        with self._lock:
+            if callback not in self._listeners:
+                self._listeners.append(callback)
+
+    def remove_listener(self, callback: Callable[[], None]) -> None:
+        with self._lock:
+            if callback in self._listeners:
+                self._listeners.remove(callback)
 
     # --- reading -----------------------------------------------------------
 
@@ -477,9 +440,7 @@ class SearchIndex:
             key = refs.path_key(fpath) if fpath else ""
             name = Path(str(fpath)).stem if fpath else "Untitled"
             try:
-                rows = profile_rows(
-                    profile, "open", name, str(fpath or ""), self._plugged
-                )
+                rows = profile_rows(profile, "open", name, str(fpath or ""))
             except Exception:  # noqa: BLE001 - one bad piece hides nothing else
                 syslog.exception("Search: the open profile could not be indexed")
         with self._lock:
@@ -509,6 +470,34 @@ class SearchIndex:
             self._assemble()
         self._notify()
 
+    def refresh_sources(self) -> threading.Thread | None:
+        """The registered sources (the Device Library) read again on a
+        program thread (returned, so a caller may join it): a Search or
+        Health window opening sees setups saved since the index was built.
+        None while a build runs (it reads them itself)."""
+        with self._lock:
+            if self._state == "building":
+                return None
+            generation = self._generation
+            sources = dict(self._sources)
+        return threads.start(
+            "Search index sources", self._read_sources, generation, sources
+        )
+
+    def _read_sources(self, generation: int, sources: dict[str, Lister]) -> None:
+        for name, lister in sources.items():
+            try:
+                rows = list(lister())
+            except Exception:  # noqa: BLE001 - one source hides nothing else
+                syslog.exception(f"Search: source {name} failed")
+                continue
+            with self._lock:
+                if generation != self._generation:
+                    return
+                self._parts[f"source:{name}"] = rows
+                self._assemble()
+        self._notify()
+
     def _run(
         self, generation: int, sources: dict[str, Lister], stop: threading.Event
     ) -> None:
@@ -531,7 +520,7 @@ class SearchIndex:
                 if stop.is_set():
                     return
                 try:
-                    rows = mark_used_twice(lister())
+                    rows = list(lister())
                     problem = None
                 except Exception as exc:  # noqa: BLE001 - one source hides nothing else
                     syslog.exception(f"Search: source {name} failed")
@@ -549,7 +538,7 @@ class SearchIndex:
         if isinstance(read, str):
             return [], (str(path), read)
         try:
-            rows = profile_rows(read, "profile", path.stem, str(path), self._plugged)
+            rows = profile_rows(read, "profile", path.stem, str(path))
         except Exception as exc:  # noqa: BLE001 - one bad file hides nothing else
             syslog.exception(f"Search: {path.name} could not be indexed")
             return [], (str(path), str(exc) or type(exc).__name__)
@@ -585,13 +574,15 @@ class SearchIndex:
         self._snapshot = tuple(found)
 
     def _notify(self) -> None:
-        callback = self._on_change
-        if callback is None:
-            return
-        try:
-            callback()
-        except Exception:  # noqa: BLE001 - a listener's error stays its own
-            syslog.exception("Search: change listener failed")
+        with self._lock:
+            listeners = [self._on_change, *self._listeners]
+        for callback in listeners:
+            if callback is None:
+                continue
+            try:
+                callback()
+            except Exception:  # noqa: BLE001 - a listener's error stays its own
+                syslog.exception("Search: change listener failed")
 
 
 # The program's one index (default_index), made on first use.
@@ -611,7 +602,45 @@ def default_index() -> SearchIndex:
         index = _default
     if made:
         index.build()
+        _follow_program(index)
     return index
+
+
+# Keeps the open profile's rows current while no Search window is open (the
+# toolbar's Health count reads them from start-up, 01 S197).
+_follow_timer: Any = None
+
+
+def _follow_program(index: SearchIndex) -> None:
+    """The open profile's rows rebuilt (debounced, on the main thread) after
+    each profile, binding, action, mode or can't-send notice."""
+    global _follow_timer
+    try:
+        from PySide6 import QtCore
+
+        from gremlin import shared_state
+        from gremlin.signal import signal
+
+        app = QtCore.QCoreApplication.instance()
+        if app is None or QtCore.QThread.currentThread() is not app.thread():
+            return
+        timer = QtCore.QTimer(app)
+        timer.setSingleShot(True)
+        timer.setInterval(300)
+        timer.timeout.connect(
+            lambda: index.rebuild_open(shared_state.current_profile)
+        )
+        for notice in (
+            signal.profileChanged,
+            signal.bindingsChanged,
+            signal.actionsChanged,
+            signal.modesChanged,
+            signal.cantSendChanged,
+        ):
+            notice.connect(timer.start)
+        _follow_timer = timer
+    except Exception:  # noqa: BLE001 - Search still rebuilds when it opens
+        syslog.exception("Search: the index could not follow the open profile")
 
 
 def note_saved(path: Path | str) -> None:
