@@ -1352,3 +1352,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-22 | Health picture check: SHOT (Opus agent) + lead fixes (⚠ font, column widths, Help test scroll) | fix | 2-3 min | 4 min | 09:46-09:50 |
 | 2026-11-22 | CI 1 for ad34934d (failed: 4 tests) | ci | ~23 min | 21 min | 09:51-10:12 |
 | 2026-11-22 | CI fixes: LIBFIX + SSMTEST (Opus agents) + lead (symbol font in Style) | fix | 3-8 min | 4 min | 10:25-10:29 |
+| 2026-11-22 | CI 2 for 95f6f1ab (passed) | ci | ~23 min | 23 min | 10:29-10:52 |
+| 2026-11-22 | Release workflow 1.1.1 (publish) | release | no data | 4 min | 10:52-10:56 |
