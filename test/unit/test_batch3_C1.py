@@ -47,7 +47,12 @@ def _book(qapp: QtCore.QCoreApplication) -> None:
 def test_options_help_names_every_section_and_group() -> None:
     from gremlin.ui import option
 
-    text = _topic("Options")
+    # The Options topic names the sections and links one topic per section;
+    # the groups are named there (the options-profile chapter).
+    text = "\n".join(
+        t["title"] + "\n" + help_book.text(t["body"])
+        for t in help_book.chapter_topics("options-profile")
+    )
     missing = []
     for section, groups in option._LAYOUT:
         if section not in text:
@@ -58,12 +63,18 @@ def test_options_help_names_every_section_and_group() -> None:
     assert missing == []
 
 
-# | GL-205, GL-135: Device change behavior shows Stop; HidHide's start
-# | switch is only pointed to.
+# | GL-205, GL-135: Device change behavior shows Stop (not Disable), with
+# | Reload the default (joystick_gremlin.py register_config_options); HidHide's
+# | start switch is only pointed to.
 
 def test_help_says_stop_for_device_change_behavior() -> None:
     assert "Reload, Ignore, or Disable" not in _GUIDE
-    assert _GUIDE.count("Stop, Ignore, or Reload") == 2  # Run and status, Options
+    assert "Stop, Ignore, or Reload" in _topic("Run and stop the profile")
+    general = _topic("General options")
+    for words in ("Stop: the profile stops", "Ignore: the profile keeps running",
+                  "Reload (the default)"):
+        assert words in general, words
+    assert "Disable" not in general
     assert "Turn HidHide on at start" not in _GUIDE
     assert re.search(
         "Automatically Start in Tools [→›] Device Setup [→›] HidHide",
@@ -85,13 +96,14 @@ def test_device_information_says_device_id() -> None:
 
 def test_help_says_mouse_buttons_cant_fire_actions() -> None:
     assert "never reads the mouse" in _topic("Map to Mouse")
-    assert "never an input of its own" in _topic("Macro")
+    assert "a mouse button is never an input" in _topic("Macro")
 
 
 # | GL-163 note: a macro's Joystick step goes through the input module.
 
 def test_macro_help_says_joystick_steps_follow_claims() -> None:
-    claims = "only does something for controls the stick's input module claims"
+    # "Ticked in Module Setup" is the input module's claim (glossary).
+    claims = "It only works for controls ticked in the stick's Module Setup"
     assert claims in _topic("Macro")
 
 
@@ -108,6 +120,27 @@ def test_text_to_speech_help_names_keyboard_keys() -> None:
 # | GL-212, GL-146/147: Home lists every kind of card; the card menu help
 # | matches what each card leaves out.
 
+def _cards_left_out() -> dict[str, set[str]]:
+    """{card: menu items it leaves out}, from the Card menus topic's table
+    (Card | Left out), with "the stick items" spelled out from the topic's
+    own sentence ("The stick items are A, B and C.")."""
+    body = help_book.find("Card menus")["body"]
+    text = help_book.text(body)
+    match = re.search(r"The stick items are (.+?)\.(?:\s|$)", text)
+    assert match, "the Card menus topic names the stick items"
+    sticks = {i.strip() for i in re.split(r", | and ", match.group(1).rstrip("."))}
+    rows = {}
+    for cards, items in re.findall(
+        r"<tr><td>([^<]+)</td><td>([^<]+)</td></tr>", body
+    ):
+        named = {re.sub(r"\s*\(.*\)", "", i).strip() for i in items.split(", ")}
+        if "the stick items" in named:
+            named = (named - {"the stick items"}) | sticks
+        for card in cards.split(", "):
+            rows[card.strip()] = named
+    return rows
+
+
 def test_home_help_lists_every_card_and_what_each_leaves_out() -> None:
     # Home and its card menus (one subject each in the book).
     home = (
@@ -116,15 +149,13 @@ def test_home_help_lists_every_card_and_what_each_leaves_out() -> None:
     )
     for card in ("Keyboard", "OSC", "Logical Device", "vJoy", "Xbox"):
         assert card in home, card
-    assert (
-        "vJoy cards have no Calibration, Copy Setup to Another Stick…, Swap with "
-        "Another Stick…, Change vJoy Output… or Delete Device"
-    ) in home
-    assert (
-        "The Logical Device card has no Module Setup, Auto Mapping Tool, Calibration, "
-        "Device Information, Copy Setup to Another Stick…, Swap with Another "
-        "Stick… or Change vJoy Output…"
-    ) in home
+    left_out = _cards_left_out()
+    stick_items = {"Copy Setup to Another Stick…", "Swap with Another Stick…",
+                   "Change vJoy Output…"}
+    assert stick_items | {"Calibration", "Delete Device"} <= left_out["vJoy"]
+    assert stick_items | {
+        "Module Setup", "Auto Mapping Tool", "Calibration", "Device Information",
+    } <= left_out["Logical Device"]
     assert "Swap Device…" not in home
     assert "unsaved changes" in home  # Delete Device leaves the profile unsaved
     card = _read("qml/StatusCard.qml")
@@ -139,7 +170,8 @@ def test_help_says_the_mode_box_switches_the_running_mode() -> None:
     # Written once, under Modes (01 S128); Run links to it.
     modes = "".join(t["body"] for t in help_book.chapter_topics("modes"))
     assert "switches the running profile to it" in modes
-    assert "Undo Delete Mode" in modes
+    # Undo Delete Mode is the Manage Modes Undo button (04 S46a).
+    assert "<b>Undo</b> button in <b>Manage Modes</b> brings back the mode" in modes
 
 
 # | Batch 2: Run asks about an open edit; the Keyboard page has OK/Cancel/Undo.
@@ -147,7 +179,9 @@ def test_help_says_the_mode_box_switches_the_running_mode() -> None:
 def test_help_covers_run_asking_and_the_keyboard_draft() -> None:
     run = _topic("Run and stop the profile", "Run and status")
     assert "Run asks first" in run and "Stop never asks" in run
-    adding = (_topic("Add an action to an input") + _topic("Set up keyboard keys"))
+    # Set up keyboard keys links its Undo to the Device Bindings page's topic.
+    adding = (_topic("Add an action to an input") + _topic("Set up keyboard keys")
+              + _topic("Undo a change on the Device Bindings page"))
     for word in ("Add Key", "OK", "Cancel", "Undo", "Redo"):
         assert word in adding, word
 
@@ -170,8 +204,8 @@ def test_device_mapping_editor_help_on_clear_background_and_save() -> None:
     assert "Clear Photo" not in _GUIDE
     assert "only written by Save" not in _GUIDE
     options = _topic("Device Map Options")
-    assert "written to the module file only by Save" in options
-    assert "kept with the device's map at once" in options
+    assert "Waiting for Save (Cancel takes it back): the map" in options
+    assert "Kept at once, even while editing" in options
     assert "one undo puts the old layout back" in _topic(
         "Copy a device map from another device"
     ).casefold()
@@ -184,8 +218,8 @@ def test_history_help_says_when_a_restore_shows() -> None:
         "Restore an earlier version"
     )
     assert "and is itself a new change in the History" not in history
-    assert "recorded at that Save Profile" in history
-    assert "not a change in the History" in history
+    assert "History records the restore when you save the profile" in history
+    assert "A restore adds no new row" in history
     glossary = _read("claude/glossary.md")
     assert "It is itself a saved change (a new History entry)." not in glossary
     assert "next Save Profile" in glossary

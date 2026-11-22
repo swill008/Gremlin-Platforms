@@ -220,6 +220,12 @@ var
   VJoySetupPlanned: Boolean;
   VJoySetupState, VJoySetupMessage: String;
   VJoySetupRestart: Boolean;
+  { D-01-VJOY-UPDATE-KEEPS: the vJoy update's result "lost" (devices to
+    put back) and "added" (ids), and Repair Now's vjoy_restore result. }
+  VJoyUpdateLost: TVJoyDevices;
+  VJoyUpdateAdded: TArrayOfInteger;
+  VJoyRestoreState, VJoyRestoreMessage: String;
+  VJoyRestoreRestart: Boolean;
   VJoyPresetBox: TNewComboBox;
   VJoyCurrentText, VJoyWarningText, VJoyShowingText, VJoyHint: TNewStaticText;
   { The device rows (answer 2a): one set of controls per possible device,
@@ -694,7 +700,33 @@ const
   HookMouseData = 20;
   { JobDrivers' entry for the vjoy_setup job (it has no row of its own). }
   VJoySetupJob = -1;
+  { JobDrivers' entry for Repair Now's vjoy_restore job (D-01-VJOY-UPDATE-KEEPS). }
+  VJoyRestoreJob = -2;
   VJoyCaptureFile = 'vjoyconfig_output.txt';
+  RestoreJobFileName = 'vjoy_restore_jobs.json';
+  RestoreResultsFileName = 'vjoy_restore_results.json';
+  { 01 S187, D-01-VJOY-UPDATE-KEEPS: drivers.update_info_text, lost_text and
+    added_text, in pieces around the device names. }
+  VJoyUpdateInfoTitle = 'vJoy update and your devices';
+  VJoyUpdateInfoHead = 'Updating vJoy can lose vJoy devices that were set up ' +
+    'with older vJoy tools. Gremlin-Platforms has noted your ';
+  VJoyUpdateInfoTail = ' and checks them after the update. If one is missing ' +
+    'or different, you''ll be asked whether to repair it.';
+  VJoyUpdateUnreadHead = 'vJoy''s devices couldn''t be read before the update, ' +
+    'so they can''t be checked afterwards. Check them in Tools ';
+  VJoyUpdateUnreadTail = ' Drivers after the update.';
+  VJoyLostTitle = 'The vJoy update lost a device';
+  VJoyLostHead = 'After updating vJoy, ';
+  VJoyLostOne = ' is missing. It was probably set up with an older vJoy tool ' +
+    'that the new vJoy doesn''t read. Gremlin-Platforms can put it back ' +
+    'exactly as it was.';
+  VJoyLostMany = ' are missing. They were probably set up with an older vJoy ' +
+    'tool that the new vJoy doesn''t read. Gremlin-Platforms can put them ' +
+    'back exactly as they were.';
+  VJoyRepairNow = 'Repair Now';
+  VJoyRepairLater = 'Repair Later';
+  VJoyAddedOne = ' was added by the vJoy update';
+  VJoyAddedMany = ' were added by the vJoy update';
 
 procedure SetDriver(I: Integer; const Key, Name, Bundled, BundledFile, Repo,
   AssetPrefix, AssetSuffix: String);
@@ -1694,6 +1726,85 @@ begin
   end;
 end;
 
+{ "vJoy 1", "vJoy 1 and vJoy 3", "vJoy 1, vJoy 2 and vJoy 4". }
+function VJoyNamesJoined(const Names: TArrayOfString): String;
+var
+  K, N: Integer;
+begin
+  Result := '';
+  N := GetArrayLength(Names);
+  for K := 0 to N - 1 do
+  begin
+    if K = 0 then
+      Result := Names[K]
+    else if K = N - 1 then
+      Result := Result + ' and ' + Names[K]
+    else
+      Result := Result + ', ' + Names[K];
+  end;
+end;
+
+{ drivers.update_info_text: the information box before a vJoy update. }
+function VJoyUpdateInfoText(const List: TVJoyDevices): String;
+var
+  K: Integer;
+  Names: String;
+begin
+  if GetArrayLength(List) = 0 then
+  begin
+    Result := VJoyUpdateUnreadHead + #$203A + VJoyUpdateUnreadTail;
+    Exit;
+  end;
+  Names := '';
+  for K := 0 to GetArrayLength(List) - 1 do
+  begin
+    if K > 0 then
+      Names := Names + ', ';
+    Names := Names + 'vJoy ' + IntToStr(List[K].Id);
+  end;
+  Result := VJoyUpdateInfoHead + CountText(GetArrayLength(List), 'vJoy device',
+    'vJoy devices') + ' (' + Names + ')' + VJoyUpdateInfoTail;
+end;
+
+{ drivers.lost_text: "After updating vJoy, vJoy 4 (8 axes, 32 buttons,
+  0 hats) is missing. ..." }
+function VJoyLostText(const List: TVJoyDevices): String;
+var
+  K: Integer;
+  Names: TArrayOfString;
+begin
+  SetArrayLength(Names, GetArrayLength(List));
+  for K := 0 to GetArrayLength(List) - 1 do
+    Names[K] := 'vJoy ' + IntToStr(List[K].Id) + ' (' +
+      CountText(AxesCountOf(List[K].Axes), 'axis', 'axes') + ', ' +
+      CountText(List[K].Buttons, 'button', 'buttons') + ', ' +
+      CountText(List[K].Hats, 'hat', 'hats') + ')';
+  Result := VJoyLostHead + VJoyNamesJoined(Names);
+  if GetArrayLength(List) = 1 then
+    Result := Result + VJoyLostOne
+  else
+    Result := Result + VJoyLostMany;
+end;
+
+{ drivers.added_text: "vJoy 1 was added by the vJoy update"; '' for none. }
+function VJoyAddedText(const Ids: TArrayOfInteger): String;
+var
+  K: Integer;
+  Names: TArrayOfString;
+begin
+  Result := '';
+  if GetArrayLength(Ids) = 0 then
+    Exit;
+  SetArrayLength(Names, GetArrayLength(Ids));
+  for K := 0 to GetArrayLength(Ids) - 1 do
+    Names[K] := 'vJoy ' + IntToStr(Ids[K]);
+  Result := VJoyNamesJoined(Names);
+  if GetArrayLength(Ids) = 1 then
+    Result := Result + VJoyAddedOne
+  else
+    Result := Result + VJoyAddedMany;
+end;
+
 function VJoyCurrentLine: String;
 begin
   if Drivers[DriverIndex('vjoy')].State = 'missing' then
@@ -2668,11 +2779,28 @@ begin
   Result := ExpandConstant('{app}\drivers\') + Drivers[I].BundledFile;
 end;
 
+(* The job file's devices: {"id", "axes", "buttons", "hats"}, comma-joined. *)
+function VJoyDevicesJson(const List: TVJoyDevices): String;
+var
+  K: Integer;
+begin
+  Result := '';
+  for K := 0 to GetArrayLength(List) - 1 do
+  begin
+    if K > 0 then
+      Result := Result + ', ';
+    Result := Result + '{"id": ' + IntToStr(List[K].Id) +
+      ', "axes": ' + AxesJson(List[K].Axes) +
+      ', "buttons": ' + IntToStr(List[K].Buttons) +
+      ', "hats": ' + IntToStr(List[K].Hats) + '}';
+  end;
+end;
+
 (* One job: {"op", "driver", "files": [download first, bundled second],
    "devices": []}. A remove lists no file. *)
 function JobJson(I: Integer): String;
 var
-  Files: String;
+  Files, Devices: String;
 begin
   Files := '';
   if Drivers[I].Op <> 'remove' then
@@ -2683,29 +2811,30 @@ begin
     Files := Files + '{"path": "' + JsonEscape(BundledPath(I)) +
       '", "kind": "bundled"}';
   end;
+  { D-01-VJOY-UPDATE-KEEPS: a vJoy update carries the devices read before
+    it (none = they couldn't be read: no check afterwards). }
+  Devices := '';
+  if (Drivers[I].Key = 'vjoy') and (Drivers[I].Op = 'update') then
+    Devices := VJoyDevicesJson(VJoyCurrent);
   Result := '{"op": "' + Drivers[I].Op + '", "driver": "' + Drivers[I].Key +
-    '", "files": [' + Files + '], "devices": []}';
+    '", "files": [' + Files + '], "devices": [' + Devices + ']}';
 end;
 
 (* The vJoy device job (06 S185, 12 S25b): {"op": "vjoy_setup", "driver":
    "vjoy", "files": [], "devices": [{"id", "axes", "buttons", "hats"}]}. *)
 function VJoySetupJobJson: String;
-var
-  K: Integer;
-  Devices: String;
 begin
-  Devices := '';
-  for K := 0 to GetArrayLength(VJoyChosen) - 1 do
-  begin
-    if K > 0 then
-      Devices := Devices + ', ';
-    Devices := Devices + '{"id": ' + IntToStr(VJoyChosen[K].Id) +
-      ', "axes": ' + AxesJson(VJoyChosen[K].Axes) +
-      ', "buttons": ' + IntToStr(VJoyChosen[K].Buttons) +
-      ', "hats": ' + IntToStr(VJoyChosen[K].Hats) + '}';
-  end;
   Result := '{"op": "vjoy_setup", "driver": "vjoy", "files": [], "devices": [' +
-    Devices + ']}';
+    VJoyDevicesJson(VJoyChosen) + ']}';
+end;
+
+(* Repair Now (D-01-VJOY-UPDATE-KEEPS): {"op": "vjoy_restore", "driver":
+   "vjoy", "files": [], "devices": [the lost ones]}; the helper sets up
+   exactly those and deletes no other device. *)
+function VJoyRestoreJobJson: String;
+begin
+  Result := '{"op": "vjoy_restore", "driver": "vjoy", "files": [], "devices": [' +
+    VJoyDevicesJson(VJoyUpdateLost) + ']}';
 end;
 
 { Writes the job file (UTF-8, no BOM: Python's json reads it) and lists the
@@ -2759,6 +2888,8 @@ function JobState(J: Integer): String;
 begin
   if JobDrivers[J] = VJoySetupJob then
     Result := VJoySetupState
+  else if JobDrivers[J] = VJoyRestoreJob then
+    Result := VJoyRestoreState
   else
     Result := Drivers[JobDrivers[J]].ResultState;
 end;
@@ -2767,6 +2898,8 @@ function JobRestart(J: Integer): Boolean;
 begin
   if JobDrivers[J] = VJoySetupJob then
     Result := VJoySetupRestart
+  else if JobDrivers[J] = VJoyRestoreJob then
+    Result := VJoyRestoreRestart
   else
     Result := Drivers[JobDrivers[J]].ResultRestart;
 end;
@@ -2782,12 +2915,96 @@ begin
     VJoySetupMessage := Message;
     VJoySetupRestart := Restart;
   end
+  else if I = VJoyRestoreJob then
+  begin
+    VJoyRestoreState := State;
+    VJoyRestoreMessage := Message;
+    VJoyRestoreRestart := Restart;
+  end
   else
   begin
     Drivers[I].ResultState := State;
     Drivers[I].ResultMessage := Message;
     Drivers[I].ResultRestart := Restart;
   end;
+end;
+
+(* The numbers of the array "Key" in S: "added": [1, 3]. *)
+procedure JsonIntArray(const S, Key: String; var Ids: TArrayOfInteger);
+var
+  P, Q, N: Integer;
+  Items, Item: String;
+begin
+  SetArrayLength(Ids, 0);
+  P := FindFrom('"' + Key + '"', S, 1);
+  if P = 0 then
+    Exit;
+  P := FindFrom('[', S, P);
+  Q := FindFrom(']', S, P);
+  if (P = 0) or (Q = 0) then
+    Exit;
+  Items := Copy(S, P + 1, Q - P - 1) + ',';
+  N := 0;
+  while Pos(',', Items) > 0 do
+  begin
+    Item := Trim(Copy(Items, 1, Pos(',', Items) - 1));
+    Delete(Items, 1, Pos(',', Items));
+    if StrToIntDef(Item, -1) < 0 then
+      Continue;
+    SetArrayLength(Ids, N + 1);
+    Ids[N] := StrToInt(Item);
+    N := N + 1;
+  end;
+end;
+
+(* A device's "axes": ["x", "sl0"] in S[From..UpTo] as the bit mask. *)
+function AxesFromJson(const S: String; From, UpTo: Integer): Integer;
+var
+  P, Q, K: Integer;
+  Names: String;
+begin
+  Result := 0;
+  P := FindFrom('"axes"', S, From);
+  if (P = 0) or (P > UpTo) then
+    Exit;
+  P := FindFrom('[', S, P);
+  Q := FindFrom(']', S, P);
+  if (P = 0) or (Q = 0) or (Q > UpTo) then
+    Exit;
+  Names := Copy(S, P, Q - P + 1);
+  for K := 0 to 7 do
+    if Pos('"' + AxisName(K) + '"', Names) > 0 then
+      Result := Result or (1 shl K);
+end;
+
+(* D-01-VJOY-UPDATE-KEEPS: the last vJoy job's (update or vjoy_setup) result object Job:
+   "lost": [{"id", "axes", "buttons", "hats"}] and "added": [ids]. *)
+procedure ReadVJoyUpdateCheck(const Job: String);
+var
+  Starts, Ends: TArrayOfInteger;
+  N, K: Integer;
+begin
+  SetArrayLength(VJoyUpdateLost, 0);
+  N := JsonArrayObjects(Job, 'lost', Starts, Ends);
+  for K := 0 to N - 1 do
+    AddVJoyDevice(VJoyUpdateLost,
+      StrToIntDef(JsonValue(Job, 'id', Starts[K], Ends[K]), 0),
+      AxesFromJson(Job, Starts[K], Ends[K]),
+      StrToIntDef(JsonValue(Job, 'buttons', Starts[K], Ends[K]), 0),
+      StrToIntDef(JsonValue(Job, 'hats', Starts[K], Ends[K]), 0));
+  JsonIntArray(Job, 'added', VJoyUpdateAdded);
+end;
+
+{ The job J is a vJoy job whose result can carry lost/added: the vJoy
+  driver's update, or the vjoy_setup job. The helper reports them on the last
+  vJoy job of the run, so the last such result read wins. }
+function IsVJoyJob(J: Integer): Boolean;
+begin
+  Result := JobDrivers[J] = VJoySetupJob;
+  if Result or (JobDrivers[J] < 0) then
+    Exit;
+  Result := (Drivers[JobDrivers[J]].Key = 'vjoy') and
+    (Drivers[JobDrivers[J]].Op = 'update');
 end;
 
 { Reads the helper's results file into the jobs; False while it is
@@ -2811,6 +3028,11 @@ begin
     SetJobResult(J, JsonValue(Text, 'state', Starts[J], Ends[J]),
       JsonValue(Text, 'message', Starts[J], Ends[J]),
       JsonValue(Text, 'restart', Starts[J], Ends[J]) = 'true');
+  SetArrayLength(VJoyUpdateLost, 0);
+  SetArrayLength(VJoyUpdateAdded, 0);
+  for J := 0 to N - 1 do
+    if IsVJoyJob(J) then
+      ReadVJoyUpdateCheck(Copy(Text, Starts[J], Ends[J] - Starts[J] + 1));
   AllDone := JsonValue(Text, 'finished', 1, Length(Text)) = 'true';
   Result := True;
 end;
@@ -2820,6 +3042,8 @@ function JobProgressText(I: Integer): String;
 begin
   if I = VJoySetupJob then
     Result := 'Setting up the vJoy devices' + #$2026
+  else if I = VJoyRestoreJob then
+    Result := 'Putting back the vJoy devices' + #$2026
   else if Drivers[I].Op = 'remove' then
     Result := 'Removing HidHide ' + Drivers[I].Installed + #$2026
   else
@@ -2919,6 +3143,10 @@ begin
   end
   else
     Result := Result + 'not installed';
+  { D-01-VJOY-UPDATE-KEEPS: devices that came only with the update. }
+  if (Drivers[I].Key = 'vjoy') and (Drivers[I].Op = 'update') and
+    (GetArrayLength(VJoyUpdateAdded) > 0) then
+    Result := Result + '; ' + VJoyAddedText(VJoyUpdateAdded);
 end;
 
 { The vJoy device job's line for setup's last page. }
@@ -2994,53 +3222,134 @@ begin
     ErrorCode := DLLGetLastError;
 end;
 
+{ 01 S190: one elevated start of Gremlin Device Helper for the jobs in
+  JobFile (JobDrivers lists them), with the progress page until its results
+  file says "finished". }
+procedure RunHelperJobs(const JobFile, ResultsFile: String);
+var
+  Params: String;
+  ErrorCode, J: Integer;
+  Process: Longint;
+begin
+  for J := 0 to GetArrayLength(JobDrivers) - 1 do
+    SetJobResult(J, 'waiting', '', False);
+  Params := '--jobs ' + AddQuotes(JobFile) + ' --results ' +
+    AddQuotes(ResultsFile);
+  DriverProgressPage.SetText(
+    'Windows asks for administrator permission' + #$2026, '');
+  { The driver jobs show real per-job progress: the normal bar. }
+  DriverProgressPage.ProgressBar.Style := npbstNormal;
+  DriverProgressPage.SetProgress(0, GetArrayLength(JobDrivers));
+  DriverProgressPage.Show;
+  try
+    Log('Starting Gremlin Device Helper ' + Params);
+    if StartElevated(ExpandConstant('{app}\{#HelperExeName}'), Params,
+      ExpandConstant('{app}'), SW_HIDE, Process, ErrorCode) then
+    begin
+      if Process <> 0 then
+        CloseHandle(Process);
+      WaitForHelper(ResultsFile);
+    end
+    else if ErrorCode = UacRefusedCode then
+      FailOpenJobs('Administrator permission was not given.')
+    else
+      FailOpenJobs('Gremlin Device Helper could not start: ' +
+        SysErrorMessage(ErrorCode));
+  finally
+    DriverProgressPage.Hide;
+  end;
+end;
+
+{ Repair Now's result, for its box and setup's last page. }
+function VJoyRestoreResultLine: String;
+begin
+  Result := 'vJoy repair: ';
+  if VJoyRestoreMessage <> '' then
+    Result := Result + VJoyRestoreMessage
+  else if VJoyRestoreState = 'done' then
+    Result := Result + 'the lost vJoy devices were put back'
+  else
+    Result := Result + 'the lost vJoy devices were not put back';
+end;
+
+(* D-01-VJOY-UPDATE-KEEPS, Repair Now: the helper again (the same elevated
+   way) with one vjoy_restore job for the lost devices; its result shows in
+   a box and on the last page. Repair Later does nothing more: the helper
+   already remembered them (vjoy_lost.json) for Tools > Drivers. *)
+procedure RunVJoyRestore;
+var
+  JobFile, ResultsFile: String;
+  Lines: TArrayOfString;
+begin
+  JobFile := ExpandConstant('{tmp}\' + RestoreJobFileName);
+  ResultsFile := ExpandConstant('{tmp}\' + RestoreResultsFileName);
+  DeleteFile(ResultsFile);
+  SetArrayLength(JobDrivers, 1);
+  JobDrivers[0] := VJoyRestoreJob;
+  SetArrayLength(Lines, 1);
+  Lines[0] := '{"version": 1, "jobs": [' + VJoyRestoreJobJson + ']}';
+  Log('vJoy devices to put back: ' + VJoyLayoutText(VJoyUpdateLost));
+  if SaveStringsToUTF8FileWithoutBOM(JobFile, Lines, False) then
+    RunHelperJobs(JobFile, ResultsFile)
+  else
+  begin
+    Log('Could not write the vJoy repair job file ' + JobFile);
+    SetJobResult(0, 'failed', 'Setup could not write the repair job.', False);
+  end;
+  if VJoyRestoreRestart then
+    DriversNeedRestart := True;
+  if DriverSummary <> '' then
+    DriverSummary := DriverSummary + #13#10;
+  DriverSummary := DriverSummary + VJoyRestoreResultLine;
+  if VJoyRestoreState = 'done' then
+    MsgBox(VJoyRestoreResultLine, mbInformation, MB_OK)
+  else
+    MsgBox(VJoyRestoreResultLine, mbError, MB_OK);
+end;
+
+{ After the vJoy update: "The vJoy update lost a device" with Repair Now /
+  Repair Later (TaskDialogMsgBox's own button captions). }
+procedure AskVJoyRepair;
+begin
+  if WizardSilent or (GetArrayLength(VJoyUpdateLost) = 0) then
+    Exit;
+  Log('The vJoy update lost: ' + VJoyLayoutText(VJoyUpdateLost));
+  if TaskDialogMsgBox(VJoyLostTitle, VJoyLostText(VJoyUpdateLost),
+    mbError, MB_YESNO, [VJoyRepairNow, VJoyRepairLater], 0) = IDYES then
+  begin
+    try
+      RunVJoyRestore;
+    except
+      Log('vJoy repair failed: ' + GetExceptionMessage);
+    end;
+  end
+  else
+    Log('vJoy repair left for later (Tools > Drivers).');
+end;
+
 { 01 S190, S191: after the files are copied, one elevated start of Gremlin
   Device Helper for every ticked driver; a failure never stops Gremlin's own
   install. }
 procedure RunDriverJobs;
 var
-  JobFile, ResultsFile, Params: String;
-  ErrorCode, J, ResultCode: Integer;
-  Process: Longint;
+  JobFile, ResultsFile: String;
+  ResultCode: Integer;
 begin
   if not DriverJobsPlanned then
     Exit;
+  SetArrayLength(VJoyUpdateLost, 0);
+  SetArrayLength(VJoyUpdateAdded, 0);
   try
     JobFile := ExpandConstant('{tmp}\' + JobFileName);
     ResultsFile := ExpandConstant('{tmp}\' + ResultsFileName);
     DeleteFile(ResultsFile);
     if WriteJobFile(JobFile) then
     begin
-      for J := 0 to GetArrayLength(JobDrivers) - 1 do
-        SetJobResult(J, 'waiting', '', False);
-      Params := '--jobs ' + AddQuotes(JobFile) + ' --results ' +
-        AddQuotes(ResultsFile);
-      DriverProgressPage.SetText(
-        'Windows asks for administrator permission' + #$2026, '');
-      { The driver jobs show real per-job progress: the normal bar. }
-      DriverProgressPage.ProgressBar.Style := npbstNormal;
-      DriverProgressPage.SetProgress(0, GetArrayLength(JobDrivers));
-      DriverProgressPage.Show;
-      try
-        Log('Starting Gremlin Device Helper ' + Params);
-        if StartElevated(ExpandConstant('{app}\{#HelperExeName}'), Params,
-          ExpandConstant('{app}'), SW_HIDE, Process, ErrorCode) then
-        begin
-          if Process <> 0 then
-            CloseHandle(Process);
-          WaitForHelper(ResultsFile);
-        end
-        else if ErrorCode = UacRefusedCode then
-          FailOpenJobs('Administrator permission was not given.')
-        else
-          FailOpenJobs('Gremlin Device Helper could not start: ' +
-            SysErrorMessage(ErrorCode));
-      finally
-        DriverProgressPage.Hide;
-      end;
+      RunHelperJobs(JobFile, ResultsFile);
       BuildDriverSummary;
       if HidHideRemoved then
         WriteHidHidePending(DriverIndex('hidhide'));
+      AskVJoyRepair;
     end;
   except
     Log('Driver step failed: ' + GetExceptionMessage);
@@ -3480,6 +3789,14 @@ begin
           Exit;
         end;
     DriversPageDone;
+    { D-01-VJOY-UPDATE-KEEPS: a vJoy update (not a fresh install) says first
+      that the devices are noted and checked afterwards (OK only). }
+    if Drivers[DriverIndex('vjoy')].Op = 'update' then
+    begin
+      Log('vJoy devices before the update: ' + VJoyLayoutText(VJoyCurrent));
+      TaskDialogMsgBox(VJoyUpdateInfoTitle, VJoyUpdateInfoText(VJoyCurrent),
+        mbInformation, MB_OK, [], 0);
+    end;
   end
   else if CurPageID = wpReady then
   begin

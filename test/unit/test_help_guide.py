@@ -15,6 +15,7 @@ from PySide6 import QtCore
 
 from test.unit import help_book
 from test.unit.help_book import ROOT as _ROOT
+from test.unit.test_help_style import strip_axis_names
 
 _CHAPTERS = [
     "getting-started", "home-devices", "device-bindings-actions",
@@ -119,6 +120,8 @@ def test_no_words_the_house_style_rules_out() -> None:
         title = topic["title"]
         body = help_book.text(_KEY_COMBO.sub("<b></b>", topic["body"]))
         for where, text in (("title", title), ("body", body)):
+            # The vJoy tick boxes' "S1 and S2" (style guide Decision 1).
+            text = strip_axis_names(text)[0]
             for match in _FORBIDDEN.finditer(text):
                 found.append(f"{topic['id']} {where}: {match.group(0)!r}")
             # "I" only in a Common questions title (the reader's own words).
@@ -128,6 +131,16 @@ def test_no_words_the_house_style_rules_out() -> None:
             if "!" in text.replace("!=", ""):
                 found.append(f"{topic['id']} {where}: '!'")
     assert found == []
+
+
+def test_the_slider_names_are_the_only_spec_like_words_allowed() -> None:
+    """Help may say once that Slider 1 and Slider 2 read S1 and S2 (style
+    guide Decision 1); spec numbers stay out."""
+    allowed = "The tick boxes for Slider 1 and Slider 2 read S1 and S2."
+    assert not _FORBIDDEN.search(strip_axis_names(allowed)[0])
+    for bad in ("See S187.", "S1 is new.", "Rows S1 and S2 differ.", "Q11",
+                "D-01-TRACE"):
+        assert _FORBIDDEN.search(strip_axis_names(bad)[0]), bad
 
 
 def test_menu_paths_in_the_guide_exist() -> None:

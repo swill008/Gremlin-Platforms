@@ -33,8 +33,8 @@ ApplicationWindow {
     // window is open (Main's start prompt and Home's Finish update set it).
     property bool finishHidHideOnOpen: false
     property bool _finishing: false
-    // What the open prompt is for: "apply", "run", "inuse", "alike" or
-    // "restart".
+    // What the open prompt is for: "apply", "run", "info", "inuse",
+    // "alike", "restart" or "lost".
     property string _promptMode: "apply"
 
     // "Restart later" hides the restart buttons until the next Apply.
@@ -98,7 +98,7 @@ ApplicationWindow {
                 return
             _win._waitingInUse = false
             _stopTimer.stop()
-            _win._askInUse()
+            _win._askInfo()
         }
     }
 
@@ -131,6 +131,25 @@ ApplicationWindow {
         }
     }
 
+    // After the results (06 S185): the vJoy update lost devices, so the
+    // model's text and Repair Now / Repair Later.
+    Connections {
+        target: _drv
+        function onFinished() {
+            if (_win._finishing)
+                return
+            var lost = String(_drv.lostText())
+            if (lost.length === 0)
+                return
+            _win._promptMode = "lost"
+            _prompt.title = "The vJoy update lost a device"
+            _prompt.body = lost
+            _prompt.okText = "Repair Now"
+            _prompt.cancelText = "Repair Later"
+            _prompt.open()
+        }
+    }
+
     // Apply: the prompt says what will happen and when; OK runs it.
     function startApply() {
         _note = ""
@@ -158,6 +177,21 @@ ApplicationWindow {
             _prompt.cancelText = "No"
             _prompt.title = "Run is on"
             _prompt.body = "Run stops while the vJoy devices change. Continue?"
+            _prompt.open()
+            return
+        }
+        _askInfo()
+    }
+
+    // Before a vJoy update (06 S185): the information box, OK only.
+    function _askInfo() {
+        var info = String(_drv.updateInfo())
+        if (info.length > 0) {
+            _promptMode = "info"
+            _prompt.okText = "OK"
+            _prompt.cancelText = ""
+            _prompt.title = "vJoy update and your devices"
+            _prompt.body = info
             _prompt.open()
             return
         }
@@ -226,6 +260,15 @@ ApplicationWindow {
                 Qt.callLater(_win._stopRunThenAsk)
                 return
             }
+            if (_win._promptMode === "lost") {
+                _win._restartDismissed = false
+                Qt.callLater(_win._repairNow)
+                return
+            }
+            if (_win._promptMode === "info") {
+                Qt.callLater(_win._askInUse)
+                return
+            }
             if (_win._promptMode === "inuse") {
                 Qt.callLater(_win._askAlike)
                 return
@@ -237,6 +280,15 @@ ApplicationWindow {
             // The box reopens once this one has closed.
             Qt.callLater(_win._applyOrAsk)
         }
+        onRejected: {
+            if (_win._promptMode === "lost")
+                _drv.repairLater()
+        }
+    }
+
+    function _repairNow() {
+        if (!_drv.repairNow())
+            _note = "Nothing was started."
     }
 
     // The page fits the window: the device list grows until there is no
@@ -568,6 +620,62 @@ ApplicationWindow {
                                                     ToolTip.visible: hovered
                                                     ToolTip.text: "Remove vJoy " + _dev.modelData.id
                                                     onClicked: _drv.removeDevice(_dev.index)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Devices the vJoy update lost (06 S185), as
+                                // they were, each with its own Repair.
+                                Repeater {
+                                    model: _drv.vjoyLost
+                                    delegate: Rectangle {
+                                        id: _lostRow
+                                        required property var modelData
+                                        required property int index
+                                        objectName: "vjoyLostRow_" + index
+                                        width: _rowsColumn.width
+                                        height: _lostLine.implicitHeight + Style.dp(8)
+                                        color: Style.bgPage
+
+                                        RowLayout {
+                                            id: _lostLine
+                                            x: Style.dp(6)
+                                            width: parent.width - Style.dp(12)
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: Style.dp(8)
+
+                                            Label {
+                                                objectName: "vjoyLostName_" + _lostRow.index
+                                                Layout.preferredWidth: _win._nameW
+                                                text: "vJoy " + _lostRow.modelData.id
+                                                color: Style.warn
+                                                font.bold: true
+                                            }
+                                            Label {
+                                                objectName: "vjoyLostSummary_" + _lostRow.index
+                                                Layout.fillWidth: true
+                                                wrapMode: Text.Wrap
+                                                text: _lostRow.modelData.summary
+                                                color: Style.fgMuted
+                                                font.pixelSize: Style.dp(12)
+                                            }
+                                            Label {
+                                                objectName: "vjoyLostMark_" + _lostRow.index
+                                                text: "lost in the vJoy update"
+                                                color: Style.warn
+                                                font.pixelSize: Style.dp(12)
+                                            }
+                                            Button {
+                                                objectName: "vjoyLostRepair_" + _lostRow.index
+                                                text: "Repair"
+                                                enabled: !_drv.busy
+                                                onClicked: {
+                                                    _win._note = ""
+                                                    _win._restartDismissed = false
+                                                    if (!_drv.repairDevice(_lostRow.modelData.id))
+                                                        _win._note = "Nothing was started."
                                                 }
                                             }
                                         }

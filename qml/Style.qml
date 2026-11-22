@@ -37,6 +37,7 @@ Item {
         danger: "#DC2626", dangerHover: "#B91C1C",
         dangerText: "#F87171", dangerTextSoft: "#FCA5A5", dangerFill: "#7F1D1D",
         info: "#3B82F6", infoText: "#60A5FA", live: "#38BDF8",
+        link: "#7C9BFF",
         infoFill: "#1E3A5F", infoFillDeep: "#0F2744",
         alert: "#F97316", noteFill: "#8A7A2A", noteLine: "#C4B44A",
         gold: "#FFD21E", goldDeep: "#C79A14", goldFill: "#1FFFD21E",
@@ -63,6 +64,7 @@ Item {
         danger: "#DC2626", dangerHover: "#B91C1C",
         dangerText: "#991B1B", dangerTextSoft: "#7F1D1D", dangerFill: "#BCA0A0",
         info: "#1E40AF", infoText: "#1E40AF", live: "#075985",
+        link: "#1A2B6E",
         infoFill: "#9CAABE", infoFillDeep: "#A6AFBD",
         alert: "#9A3412", noteFill: "#B8B085", noteLine: "#8A6D05",
         gold: "#A16207", goldDeep: "#854D0E", goldFill: "#26CA8A04",
@@ -95,6 +97,9 @@ Item {
     readonly property color fgSoft: _scheme.fgSoft
     readonly property color fgMuted: _scheme.fgMuted
     readonly property color fgDisabled: _scheme.fgDisabled
+    // Link text (Help): over 4.5:1 on bgPage in both modes; the accent is
+    // too dark on the dark page.
+    readonly property color link: _scheme.link
     // A row's binding boxes (05 S142): code-style target text on a dark
     // chip with a thin border.
     readonly property color bindingText: _scheme.bindingText

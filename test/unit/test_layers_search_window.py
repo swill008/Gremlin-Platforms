@@ -97,7 +97,7 @@ def test_help_describes_the_search(qapp: QtCore.QCoreApplication) -> None:
         "All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures"
         " · Text · Tables",
         "No layers match",
-        "when the Device Mapping Editor closes",
+        "It clears when the window closes",
     ):
         assert words in body, words
     # The old single-choice kind buttons are gone.

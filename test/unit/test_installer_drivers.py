@@ -279,7 +279,9 @@ def test_vjoy_and_hidhide_ask_github_and_download_with_progress() -> None:
 # -- 12 S25: the job file -----------------------------------------------------------
 
 
-def _job_json(op: str, key: str, download: str, bundled: str) -> str:
+def _job_json(
+    op: str, key: str, download: str, bundled: str, devices_json: str = ""
+) -> str:
     routine = _routine(_code(), "function JobJson(")
     files_parts = _assignments(routine, "Files")
     assert len(files_parts) == 3, files_parts  # '', download, bundled
@@ -297,6 +299,7 @@ def _job_json(op: str, key: str, download: str, bundled: str) -> str:
         env["Files"] = files
         files = _eval(files_parts[2], env)
     env["Files"] = files
+    env["Devices"] = devices_json
     (result,) = _assignments(routine, "Result")
     return _eval(result, env)
 
@@ -361,11 +364,16 @@ def test_one_elevated_helper_start_with_jobs_and_results() -> None:
     assert _define("HelperExeName") == "Gremlin Device Helper.exe"
     spec = (_ROOT / "joystick_gremlin.spec").read_text(encoding="utf-8")
     assert 'helper_name = "Gremlin Device Helper"' in spec
-    run = _routine(_code(), "procedure RunDriverJobs;")
+    run = _routine(_code(), "procedure RunHelperJobs(")
     assert "ShellExec(" not in _code()
     assert run.count("StartElevated(") == 1
     start = "StartElevated(ExpandConstant('{app}\\{#HelperExeName}'), Params,"
     assert start in run
+    # RunDriverJobs and Repair Now both start the helper this one way.
+    assert _code().count(start) == 1
+    assert "RunHelperJobs(JobFile, ResultsFile);" in _routine(
+        _code(), "procedure RunDriverJobs;"
+    )
     assert "Params := '--jobs ' + AddQuotes(JobFile) + ' --results ' +" in run
     assert "AddQuotes(ResultsFile);" in run
     assert "WaitForHelper(ResultsFile)" in run
@@ -403,7 +411,7 @@ def test_the_prompt_opens_in_front_of_setup() -> None:
     assert "ErrorCode := DLLGetLastError;" in start
     assert int(_const_int_hex("SeeMaskNoCloseProcess"), 16) == 0x40
     # The refused prompt (1223) still has its own result in both places.
-    run = _routine(code, "procedure RunDriverJobs;")
+    run = _routine(code, "procedure RunHelperJobs(")
     assert "else if ErrorCode = UacRefusedCode then" in run
     assert "else if ErrorCode = UacRefusedCode then" in _runtime_install()
 
@@ -436,7 +444,9 @@ def test_the_results_file_fields_match_drivers_py(tmp_path: pathlib.Path) -> Non
     )
     data = json.loads(path.read_text(encoding="utf-8"))
     assert set(data) == {"version", "finished", "jobs"}
-    assert set(data["jobs"][0]) == {"state", "message", "restart", "used"}
+    assert set(data["jobs"][0]) == {
+        "state", "message", "restart", "used", "lost", "added"
+    }
     # The script's reader keeps to ASCII \u escapes, which json writes by default.
     assert path.read_text(encoding="utf-8").isascii()
 
@@ -447,9 +457,10 @@ def test_the_results_file_fields_match_drivers_py(tmp_path: pathlib.Path) -> Non
 def test_a_driver_failure_never_stops_the_install() -> None:
     code = _code()
     run = _routine(code, "procedure RunDriverJobs;")
-    assert run.index("try") < run.index("StartElevated(")
+    assert run.index("try") < run.index("RunHelperJobs(")
     assert "except" in run and "GetExceptionMessage" in run
-    assert "FailOpenJobs('Administrator permission was not given.')" in run
+    helper = _routine(code, "procedure RunHelperJobs(")
+    assert "FailOpenJobs('Administrator permission was not given.')" in helper
     step = _routine(code, "procedure CurStepChanged(")
     assert step.index("Finished := True;") < step.index("RunDriverJobs;")
     click = _routine(code, "function NextButtonClick(")
@@ -602,6 +613,10 @@ def test_the_code_section_is_well_formed() -> None:
         "DetectDrivers", "CheckLatest", "DownloadNewerDrivers", "DriversPageDone",
         "WriteJobFile", "ReadDriverResults", "WaitForHelper", "WriteHidHidePending",
         "BuildDriverSummary", "RunDriverJobs", "CharAt", "JsonValue",
+        "VJoyDevicesJson", "VJoyNamesJoined", "VJoyUpdateInfoText", "VJoyLostText",
+        "VJoyAddedText", "VJoyRestoreJobJson", "JsonIntArray", "AxesFromJson",
+        "ReadVJoyUpdateCheck", "IsVJoyJob", "RunHelperJobs",
+        "VJoyRestoreResultLine", "RunVJoyRestore", "AskVJoyRepair",
         "RuntimeInstalled", "RuntimeFileTrusted", "RuntimeCodeResult",
         "SetRuntimeText", "InstallRuntime", "CountText", "StartElevated",
         "RuntimeSignedByMicrosoft", "RuntimeInstalledVersion", "UrlSha256",
@@ -932,25 +947,37 @@ def test_vjoy_setup_comes_after_the_vjoy_install_job() -> None:
     assert "Result := VJoySetupPlanned;" in planned
 
 
-def _vjoy_setup_json(devices: list[drivers.VJoyDevice]) -> str:
-    routine = _routine(_code(), "function VJoySetupJobJson:")
-    devices_parts = _assignments(routine, "Devices")
-    assert len(devices_parts) == 3, devices_parts  # '', ', ', one device
+def _devices_json(devices: list[drivers.VJoyDevice]) -> str:
+    """What VJoyDevicesJson(List) builds, from its own pieces."""
+    routine = _routine(_code(), "function VJoyDevicesJson(")
+    parts = _assignments(routine, "Result")
+    assert len(parts) == 3, parts  # '', ', ', one device
     text = ""
     for k, device in enumerate(devices):
         env = {
-            "Devices": text,
-            "IntToStr(VJoyChosen[K].Id)": str(device.id),
-            "AxesJson(VJoyChosen[K].Axes)": json.dumps(list(device.axes)),
-            "IntToStr(VJoyChosen[K].Buttons)": str(device.buttons),
-            "IntToStr(VJoyChosen[K].Hats)": str(device.hats),
+            "Result": text,
+            "IntToStr(List[K].Id)": str(device.id),
+            "AxesJson(List[K].Axes)": json.dumps(list(device.axes)),
+            "IntToStr(List[K].Buttons)": str(device.buttons),
+            "IntToStr(List[K].Hats)": str(device.hats),
         }
         if k > 0:
-            text = _eval(devices_parts[1], env)
-            env["Devices"] = text
-        text = _eval(devices_parts[2], env)
+            text = _eval(parts[1], env)
+            env["Result"] = text
+        text = _eval(parts[2], env)
+    return text
+
+
+def _vjoy_job_json(header: str, call: str, devices: list[drivers.VJoyDevice]) -> str:
+    routine = _routine(_code(), header)
     (result,) = _assignments(routine, "Result")
-    return _eval(result, {"Devices": text})
+    return _eval(result, {call: _devices_json(devices)})
+
+
+def _vjoy_setup_json(devices: list[drivers.VJoyDevice]) -> str:
+    return _vjoy_job_json(
+        "function VJoySetupJobJson:", "VJoyDevicesJson(VJoyChosen)", devices
+    )
 
 
 def test_the_vjoy_setup_job_is_one_the_helper_reads(tmp_path: pathlib.Path) -> None:
@@ -1242,7 +1269,7 @@ def test_the_runtime_bar_moves_and_the_driver_bar_is_normal() -> None:
     )
     # SetProgress each tick pumps the messages the marquee needs.
     assert "RuntimeProgressPage.SetProgress(Tick, RuntimeWaitTicks);" in body
-    jobs = _routine(_code(), "procedure RunDriverJobs;")
+    jobs = _routine(_code(), "procedure RunHelperJobs(")
     assert jobs.index("DriverProgressPage.ProgressBar.Style := npbstNormal;") < (
         jobs.index("DriverProgressPage.Show;")
     )
@@ -1797,3 +1824,255 @@ def test_the_add_rows_preview_names_the_next_device() -> None:
     assert preview([1, 3]) == "vJoy 2 \u00b7 127 buttons"
     assert preview([]) == "vJoy 1 \u00b7 128 buttons"
     assert _pascal_default_buttons(3) == drivers.default_buttons(3) == 126
+
+
+# -- 01 S187, D-01-VJOY-UPDATE-KEEPS: a vJoy update keeps the devices ---------------
+
+
+def _const_text(name: str) -> str:
+    """A string const, one line or a '+' chain over several."""
+    found = re.search(rf"^  {name} = ('.*?');$", _code(), re.M | re.S)
+    assert found, f"const {name} missing"
+    return _pascal_string(found.group(1))
+
+
+def _joined(names: list[str]) -> str:
+    """VJoyNamesJoined, as written (checked below)."""
+    out = ""
+    for k, name in enumerate(names):
+        if k == 0:
+            out = name
+        elif k == len(names) - 1:
+            out += " and " + name
+        else:
+            out += ", " + name
+    return out
+
+
+def _count(n: int, one: str, many: str) -> str:
+    return f"1 {one}" if n == 1 else f"{n} {many}"
+
+
+def _devices(*ids: int) -> list[drivers.VJoyDevice]:
+    return [
+        drivers.VJoyDevice(i, axes=drivers.VJOY_AXES[: 9 - i], buttons=32, hats=i % 2)
+        for i in ids
+    ]
+
+
+def test_the_names_join_like_drivers_py() -> None:
+    body = _routine(_code(), "function VJoyNamesJoined(")
+    assert "if K = 0 then\n      Result := Names[K]" in body
+    assert "else if K = N - 1 then\n      Result := Result + ' and ' + Names[K]" in body
+    assert "Result := Result + ', ' + Names[K];" in body
+    for n in range(1, 5):
+        names = [f"vJoy {i}" for i in range(1, n + 1)]
+        assert _joined(names) == drivers._join(names)
+
+
+def _info_text(devices: list[drivers.VJoyDevice]) -> str:
+    if not devices:
+        return (
+            _const_text("VJoyUpdateUnreadHead") + "\u203a"
+            + _const_text("VJoyUpdateUnreadTail")
+        )
+    names = ", ".join(f"vJoy {d.id}" for d in devices)
+    return (
+        _const_text("VJoyUpdateInfoHead")
+        + _count(len(devices), "vJoy device", "vJoy devices")
+        + f" ({names})" + _const_text("VJoyUpdateInfoTail")
+    )
+
+
+def test_the_update_info_box_says_what_drivers_py_says() -> None:
+    body = _routine(_code(), "function VJoyUpdateInfoText(")
+    results = _assignments(body, "Result")
+    assert results == [
+        "VJoyUpdateUnreadHead + #$203A + VJoyUpdateUnreadTail",
+        "VJoyUpdateInfoHead + CountText(GetArrayLength(List), 'vJoy device', "
+        "'vJoy devices') + ' (' + Names + ')' + VJoyUpdateInfoTail",
+    ]
+    assert "if GetArrayLength(List) = 0 then" in body
+    assert "Names := Names + ', ';" in body
+    assert "Names := Names + 'vJoy ' + IntToStr(List[K].Id);" in body
+    for devices in (_devices(1), _devices(1, 2), _devices(1, 3, 4, 16), []):
+        assert _info_text(devices) == drivers.update_info_text(devices)
+    assert _const_text("VJoyUpdateInfoTitle") == "vJoy update and your devices"
+
+
+def test_the_info_box_shows_before_a_vjoy_update_only() -> None:
+    nxt = _routine(_code(), "function NextButtonClick(")
+    done = nxt.index("DriversPageDone;")
+    ask = nxt.index("if Drivers[DriverIndex('vjoy')].Op = 'update' then")
+    box = nxt.index(
+        "TaskDialogMsgBox(VJoyUpdateInfoTitle, VJoyUpdateInfoText(VJoyCurrent),\n"
+        "        mbInformation, MB_OK, [], 0);"
+    )
+    assert nxt.index("if WizardSilent then\n    Exit;") < done < ask < box
+    # Logged before the update (the helper logs them again itself).
+    logged = "Log('vJoy devices before the update: ' + VJoyLayoutText(VJoyCurrent));"
+    assert logged in nxt
+
+
+def test_the_vjoy_update_job_carries_the_devices(tmp_path: pathlib.Path) -> None:
+    body = _routine(_code(), "function JobJson(")
+    assert "if (Drivers[I].Key = 'vjoy') and (Drivers[I].Op = 'update') then" in body
+    assert "Devices := VJoyDevicesJson(VJoyCurrent);" in body
+    bundled = r"C:\A B\drivers\vJoySetup_v2.2.2.0_Win10_Win11.exe"
+    before = _devices(1, 2, 4)
+    for devices in (before, []):
+        text = _job_file([
+            _job_json("update", "vjoy", "", bundled, _devices_json(devices)),
+        ])
+        path = tmp_path / "jobs.json"
+        path.write_text(text, encoding="utf-8")
+        (job,) = drivers.read_jobs(path)
+        assert (job.op, job.driver) == ("update", "vjoy")
+        assert job.devices == devices
+
+
+def _lost_text(devices: list[drivers.VJoyDevice]) -> str:
+    names = [
+        f"vJoy {d.id} ({_count(len(d.axes), 'axis', 'axes')}, "
+        f"{_count(d.buttons, 'button', 'buttons')}, {_count(d.hats, 'hat', 'hats')})"
+        for d in devices
+    ]
+    tail = _const_text("VJoyLostOne" if len(devices) == 1 else "VJoyLostMany")
+    return _const_text("VJoyLostHead") + _joined(names) + tail
+
+
+def test_the_lost_box_says_what_drivers_py_says() -> None:
+    body = _routine(_code(), "function VJoyLostText(")
+    assert "CountText(AxesCountOf(List[K].Axes), 'axis', 'axes') + ', ' +" in body
+    assert "CountText(List[K].Buttons, 'button', 'buttons') + ', ' +" in body
+    assert "CountText(List[K].Hats, 'hat', 'hats') + ')';" in body
+    assert "Result := VJoyLostHead + VJoyNamesJoined(Names);" in body
+    one = "if GetArrayLength(List) = 1 then\n    Result := Result + VJoyLostOne"
+    assert one in body
+    assert "Result := Result + VJoyLostMany;" in body
+    four = drivers.VJoyDevice(4, axes=drivers.VJOY_AXES, buttons=32, hats=0)
+    for devices in ([four], _devices(2, 4), _devices(1, 2, 7)):
+        assert _lost_text(devices) == drivers.lost_text(devices)
+    assert "vJoy 4 (8 axes, 32 buttons, 0 hats) is missing." in _lost_text([four])
+
+
+def test_the_results_line_names_the_added_devices() -> None:
+    body = _routine(_code(), "function VJoyAddedText(")
+    assert "Names[K] := 'vJoy ' + IntToStr(Ids[K]);" in body
+    assert "Result := VJoyNamesJoined(Names);" in body
+    for ids in ([1], [1, 3], [1, 2, 5]):
+        tail = _const_text("VJoyAddedOne" if len(ids) == 1 else "VJoyAddedMany")
+        assert _joined([f"vJoy {i}" for i in ids]) + tail == drivers.added_text(ids)
+    line = _routine(_code(), "function DriverResultLine(")
+    assert "(GetArrayLength(VJoyUpdateAdded) > 0) then" in line
+    assert "Result := Result + '; ' + VJoyAddedText(VJoyUpdateAdded);" in line
+
+
+def test_the_vjoy_update_result_lost_and_added_are_read(
+    tmp_path: pathlib.Path,
+) -> None:
+    code = _code()
+    read = _routine(code, "function ReadDriverResults(")
+    assert "if IsVJoyJob(J) then" in read
+    # The last vJoy job's result wins: reset once, then each vJoy job reads.
+    assert read.index("SetArrayLength(VJoyUpdateLost, 0);") < read.index(
+        "if IsVJoyJob(J) then"
+    )
+    vjob = _routine(code, "function IsVJoyJob(")
+    assert "JobDrivers[J] = VJoySetupJob" in vjob
+    assert "Op = 'update'" in vjob
+    job = "ReadVJoyUpdateCheck(Copy(Text, Starts[J], Ends[J] - Starts[J] + 1));"
+    assert job in read
+    check = _routine(code, "procedure ReadVJoyUpdateCheck(")
+    for key in ("'lost'", "'id'", "'buttons'", "'hats'", "'added'"):
+        assert key in check
+    assert "AxesFromJson(Job, Starts[K], Ends[K])" in check
+    assert "Pos('\"' + AxisName(K) + '\"', Names) > 0" in _routine(
+        code, "function AxesFromJson("
+    )
+    # What the helper writes there: plain device dicts and a list of ids.
+    path = tmp_path / "results.json"
+    lost = _devices(2)
+    drivers.write_results(
+        path, [drivers.JobResult("done", "", False, "bundled", lost, [1])], True
+    )
+    job = json.loads(path.read_text(encoding="utf-8"))["jobs"][0]
+    assert [set(d) for d in job["lost"]] == [{"id", "axes", "buttons", "hats"}]
+    assert job["added"] == [1]
+
+
+def test_the_lost_box_has_repair_now_and_repair_later() -> None:
+    assert _const_text("VJoyLostTitle") == "The vJoy update lost a device"
+    assert _const_text("VJoyRepairNow") == "Repair Now"
+    assert _const_text("VJoyRepairLater") == "Repair Later"
+    ask = _routine(_code(), "procedure AskVJoyRepair;")
+    assert "if WizardSilent or (GetArrayLength(VJoyUpdateLost) = 0) then" in ask
+    assert (
+        "if TaskDialogMsgBox(VJoyLostTitle, VJoyLostText(VJoyUpdateLost),\n"
+        "    mbError, MB_YESNO, [VJoyRepairNow, VJoyRepairLater], 0) = IDYES then"
+    ) in ask
+    # Repair Now runs the restore; Repair Later only logs.
+    assert ask.index("RunVJoyRestore;") < ask.index("else\n    Log(")
+    run = _routine(_code(), "procedure RunDriverJobs;")
+    assert run.index("BuildDriverSummary;") < run.index("AskVJoyRepair;")
+
+
+def test_repair_now_runs_the_helper_with_one_vjoy_restore_job(
+    tmp_path: pathlib.Path,
+) -> None:
+    body = _routine(_code(), "procedure RunVJoyRestore;")
+    assert "JobFile := ExpandConstant('{tmp}\\' + RestoreJobFileName);" in body
+    assert "ResultsFile := ExpandConstant('{tmp}\\' + RestoreResultsFileName);" in body
+    assert "SetArrayLength(JobDrivers, 1);\n  JobDrivers[0] := VJoyRestoreJob;" in body
+    assert "SaveStringsToUTF8FileWithoutBOM(JobFile, Lines, False)" in body
+    assert "RunHelperJobs(JobFile, ResultsFile)" in body
+    assert "MsgBox(VJoyRestoreResultLine, mbInformation, MB_OK)" in body
+    assert "DriverSummary := DriverSummary + VJoyRestoreResultLine;" in body
+    (line,) = _assignments(body, "Lines[0]")
+    lost = _devices(2, 4)
+    restore = _vjoy_job_json(
+        "function VJoyRestoreJobJson:", "VJoyDevicesJson(VJoyUpdateLost)", lost
+    )
+    text = _eval(line, {"VJoyRestoreJobJson": restore})
+    path = tmp_path / "restore.json"
+    path.write_text(text, encoding="utf-8")
+    (job,) = drivers.read_jobs(path)
+    assert (job.op, job.driver, job.files) == ("vjoy_restore", "vjoy", [])
+    assert job.devices == lost
+    # The restore job has its own progress text and result slot.
+    code = _code()
+    progress = _routine(code, "function JobProgressText(")
+    assert "else if I = VJoyRestoreJob then" in progress
+    assert "Result := VJoyRestoreState" in _routine(code, "function JobState(")
+    assert "VJoyRestoreState := State;" in _routine(code, "procedure SetJobResult(")
+
+
+def test_lost_is_taken_from_the_last_vjoy_result(tmp_path: pathlib.Path) -> None:
+    """Update + vjoy_setup: the vjoy_setup result's lost/added decide the box."""
+
+    def last(results: list[tuple[str, list, list]]) -> tuple[list, list]:
+        lost, added = [], []
+        for op, lo, ad in results:
+            if op in ("update", "vjoy_setup"):
+                lost, added = lo, ad  # ReadVJoyUpdateCheck resets, then fills
+        return lost, added
+
+    path = tmp_path / "results.json"
+    dev = _devices(2)
+    drivers.write_results(
+        path,
+        [
+            drivers.JobResult("done", "", False, "bundled", [], []),
+            drivers.JobResult("done", "", False, "bundled", dev, [1]),
+        ],
+        True,
+    )
+    jobs = json.loads(path.read_text(encoding="utf-8"))["jobs"]
+    assert last([("update", j["lost"], j["added"]) for j in jobs[:1]]) == ([], [])
+    lost, added = last(
+        [("update", jobs[0]["lost"], jobs[0]["added"]),
+         ("vjoy_setup", jobs[1]["lost"], jobs[1]["added"])]
+    )
+    assert lost == jobs[1]["lost"] and lost and added == [1]
+    # An empty vjoy_setup result after a lost update clears it: no box.
+    assert last([("update", jobs[1]["lost"], [1]), ("vjoy_setup", [], [])]) == ([], [])

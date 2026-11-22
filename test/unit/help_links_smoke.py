@@ -145,7 +145,8 @@ _ANCHOR = re.compile(r'<a\b[^>]*\bhref\s*=\s*"([^"]*)"[^>]*>(.*?)</a>', re.I | r
 
 def link_point(text: str, nth: int = 0) -> QtCore.QPoint:
     """The scene point in the middle of the nth link text in the body."""
-    plain = str(ev(body, "getText(0, length)"))
+    # Link spaces are no-break spaces (one line per link): same length.
+    plain = str(ev(body, "getText(0, length)")).replace(" ", " ")
     at = -1
     for _ in range(nth + 1):
         at = plain.index(text, at + 1)

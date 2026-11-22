@@ -35,9 +35,7 @@ HIDHIDE_ENTRY = drivers.UNINSTALL + "\\" + HIDHIDE_CODE
 
 def report_axes(axes: tuple[str, ...]) -> str:
     """vJoyConfig -t's Axes line: 16 tokens, "-" where an axis is missing."""
-    tokens = [
-        a.title() if a in axes else "-" for a in drivers.VJOY_AXES
-    ]
+    tokens = [a.title() if a in axes else "-" for a in drivers.VJOY_AXES]
     return " ".join(tokens + ["-"] * 8)
 
 
@@ -54,6 +52,10 @@ class World:
         self.axis_args: list[list[str]] = []  # the names after -a, per set call
         self.report_override: str | None = None  # verbatim "Axes:" line of -t
         self.busy: set[int] = set()  # devices another program holds (-t: BUSY)
+        # What installing vJoy 2.2.2.0 does to the devices (a real update
+        # loses devices set up by old vJoy tools and adds a default vJoy 1).
+        self.after_vjoy_install: Callable[[], None] | None = None
+        self.drop_set_devices: set[int] = set()  # -f for these ids never sticks
 
     # -- the registry --------------------------------------------------------
 
@@ -93,6 +95,8 @@ class World:
             code = self.exit_codes.get("vjoy", 0)
             if code in (0, 8):
                 self.install_vjoy("2.2.2.0")
+                if self.after_vjoy_install is not None:
+                    self.after_vjoy_install()
             return code, ""
         if exe == drivers.DRIVERS["vigembus"].bundled_file.lower():
             code = self.exit_codes.get("vigembus", 0)
@@ -147,6 +151,8 @@ class World:
                     break
                 axes.append(token)
         self.axis_args.append(list(axes))
+        if device_id in self.drop_set_devices:
+            return 0, ""
         buttons = int(args[args.index("-b") + 1])
         hats = int(args[args.index("-p") + 1])
         self.devices[device_id] = drivers.VJoyDevice(
@@ -172,6 +178,7 @@ class HelperLauncher:
         self.thread: threading.Thread | None = None
         self.exit_code: int | None = None
         self.jobs_seen: list[drivers.Job] = []
+        self.results_seen: list[list[drivers.JobResult]] = []
 
     def __call__(self, file: str, parameters: str) -> HelperLauncher:
         assert file.endswith("Gremlin Device Helper.exe")
@@ -180,13 +187,16 @@ class HelperLauncher:
         self.params.append(parameters)
         self.jobs_seen.extend(drivers.read_jobs(parts[1]))
 
-        def run_job(job: drivers.Job, runner: Callable) -> drivers.JobResult:
-            return driver_jobs.run_job(job, runner, reg=self.world.reg)
+        def run_job(
+            job: drivers.Job, runner: Callable, **kw: object
+        ) -> drivers.JobResult:
+            return driver_jobs.run_job(job, runner, reg=self.world.reg, **kw)  # pyright: ignore[reportArgumentType]
 
         def work() -> None:
             self.exit_code = gremlin_device_helper.main(
                 argv, run_job=run_job, job_runner=self.world.run
             )
+            self.results_seen.append(drivers.read_results(parts[3])[0])
 
         self.thread = threading.Thread(target=work, name="e2e-helper")
         self.thread.start()
@@ -758,7 +768,6 @@ def test_job_file_with_the_runtime_driver_is_refused_and_runs_nothing(
     assert not results.exists()
 
 
-
 # --- batch 2: devices in use, the last axis, S1/S2 labels (06 S185) ---------
 
 
@@ -884,3 +893,286 @@ def test_labels_are_s1_s2_but_vjoyconfig_gets_sl0_sl1(
     assert [d.axes for j in launcher.jobs_seen for d in j.devices] == [
         ("x", "sl0", "sl1")
     ]
+
+
+# -- a vJoy update keeps the devices (01 S187, 06 S185, 12 S25b) --------------
+
+
+def _old_vjoy_update_loses_device_2(world: World) -> None:
+    """The test-machine reproduction: vJoy 2.1.9 with vJoy 2 (X Y Z, 32
+    buttons, 0 hats) is updated; 2.2.2.0 drops it and adds a default vJoy 1."""
+    world.install_vjoy("2.1.9.1")
+    world.install_vigembus("1.22.0")
+    world.install_hidhide("1.5.230")
+    world.devices[2] = drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0)
+
+    def update() -> None:
+        world.devices.clear()
+        world.devices[1] = drivers.VJoyDevice(1)
+
+    world.after_vjoy_install = update
+
+
+@pytest.fixture
+def profile() -> Path:
+    """The temp data folder test/conftest.py points the program at, so
+    vjoy_lost.json never lands in the real one."""
+    from gremlin import util
+
+    folder = Path(util.userprofile_path())
+    (folder / drivers.LOST_FILE).unlink(missing_ok=True)
+    return folder
+
+
+def _lost_file() -> Path:
+    return drivers.lost_path()
+
+
+def _ids(devices: list[drivers.VJoyDevice]) -> list[int]:
+    return [d.id for d in devices]
+
+
+def _update_vjoy(
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[DriversModel, HelperLauncher]:
+    _bundle(app, monkeypatch, "vjoy", b"vjoy installer bytes")
+    launcher = HelperLauncher(world)
+    model = _model(app, tmp_path, world, launcher, lost_reader=drivers.read_lost)
+    assert {r["key"]: r["state"] for r in model.rows}["vjoy"] == "older"
+    model.setTicked("vjoy", True)
+    _run(model)
+    return model, launcher
+
+
+def test_vjoy_update_that_loses_device_2_reports_lost_and_added(
+    qapp: object,
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    helper_log: None,
+    profile: Path,
+) -> None:
+    _old_vjoy_update_loses_device_2(world)
+    model, launcher = _update_vjoy(app, tmp_path, world, monkeypatch)
+
+    # The update job carried the devices read before the update.
+    update = [j for j in launcher.jobs_seen if j.op == "update"]
+    assert [_ids(list(j.devices)) for j in update] == [[2]]
+    assert world.ran_installer("vjoy")
+
+    row = _results(model)["vJoy"]
+    assert row["state"] == "done"
+    assert "vJoy 1 was added by the vJoy update" in row["message"]
+    result = launcher.results_seen[0][0]
+    assert result.lost == [drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0)]
+    assert result.added == [1]
+    assert model.lostText() == drivers.lost_text(result.lost)
+    assert _ids(world.vjoy_devices()) == [1]
+
+    # The lost device is remembered in vjoy_lost.json (temp profile).
+    lost_file = _lost_file()
+    assert lost_file.is_file() and lost_file.parent == profile
+    data = json.loads(lost_file.read_text(encoding="utf-8"))
+    assert data["version"] == 1 and [d["id"] for d in data["devices"]] == [2]
+    assert _ids(drivers.read_lost()) == [2]
+
+    # The real Tools > Drivers model shows it as a lost row with Repair.
+    assert [d["id"] for d in model.vjoyLost] == [2]
+    assert "vJoy 2 (3 axes, 32 buttons, 0 hats) is missing" in drivers.lost_text(
+        drivers.read_lost()
+    )
+
+
+def test_repair_puts_back_only_vjoy_2_and_deletes_nothing(
+    qapp: object,
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    helper_log: None,
+    profile: Path,
+) -> None:
+    _old_vjoy_update_loses_device_2(world)
+    model, launcher = _update_vjoy(app, tmp_path, world, monkeypatch)
+    calls_before = len(world.calls)
+
+    assert model.repairDevice(2)
+    assert model.busy
+    _pump(lambda: not model.busy)
+
+    restore = [j for j in launcher.jobs_seen if j.op == "vjoy_restore"]
+    assert [_ids(list(j.devices)) for j in restore] == [[2]]
+    assert _results(model)["vJoy devices"]["state"] == "done"
+    new_calls = world.calls[calls_before:]
+    # Only vJoy 2 is set up (-f), nothing deleted (-d), vJoy 1 untouched.
+    assert not any(c[1:2] == ["-d"] for c in new_calls)
+    sets = [c for c in new_calls if "-f" in c]
+    assert [c[1] for c in sets] == ["2"]
+    assert not any(c[1] == "1" for c in new_calls)
+    assert world.devices[2] == drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0)
+    assert _ids(world.vjoy_devices()) == [1, 2]
+
+    # The store is cleared and the model shows no lost row.
+    assert drivers.read_lost() == []
+    assert [d["id"] for d in model.vjoyLost] == []
+    if _lost_file().exists():
+        assert json.loads(_lost_file().read_text(encoding="utf-8"))["devices"] == []
+
+
+def test_vjoy_update_that_loses_nothing_leaves_no_lost_data_and_no_file(
+    qapp: object,
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    helper_log: None,
+    profile: Path,
+) -> None:
+    world.install_vjoy("2.1.9.1")
+    world.install_vigembus("1.22.0")
+    world.install_hidhide("1.5.230")
+    world.devices[1] = drivers.VJoyDevice(1)  # the update keeps it
+    model, launcher = _update_vjoy(app, tmp_path, world, monkeypatch)
+
+    row = _results(model)["vJoy"]
+    assert row["state"] == "done"
+    result = launcher.results_seen[0][0]
+    assert result.lost == [] and result.added == []
+    assert model.lostText() == ""
+    assert not _lost_file().exists()
+    assert drivers.read_lost() == []
+    assert [d["id"] for d in model.vjoyLost] == []
+
+
+# -- update + edited set-up in one run (06 S185, user 2026-11-22) -------------
+
+
+def _update_then_edit(
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    devices: int,
+    also_vjoy_1: bool = False,
+) -> tuple[DriversModel, HelperLauncher]:
+    """The test-machine run: vJoy 2 (X Y Z, 32, 0) exists, vJoy is updated
+    (which loses it) and the set-up lists `devices` devices."""
+    _old_vjoy_update_loses_device_2(world)
+    if also_vjoy_1:
+        world.devices[1] = drivers.VJoyDevice(1)
+    _bundle(app, monkeypatch, "vjoy", b"vjoy installer bytes")
+    launcher = HelperLauncher(world)
+    model = _model(
+        app,
+        tmp_path,
+        world,
+        launcher,
+        lost_reader=drivers.read_lost,
+        lost_pruner=drivers.prune_lost,
+    )
+    model.setTicked("vjoy", True)
+    model.setDeviceCount(devices)
+    assert len(model.vjoyDevices) == devices
+    _run(model)
+    ops = [j.op for j in launcher.jobs_seen]
+    assert ops == ["update", "vjoy_setup"], ops
+    return model, launcher
+
+
+def test_update_then_setup_listing_vjoy_2_loses_nothing(
+    qapp: object,
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    helper_log: None,
+    profile: Path,
+) -> None:
+    model, launcher = _update_then_edit(app, tmp_path, world, monkeypatch, 2)
+
+    results = launcher.results_seen[0]
+    assert [r.lost for r in results] == [[], []]
+    assert [r.added for r in results] == [[], []]
+    assert 2 in _ids(world.vjoy_devices())
+    assert world.devices[2] == drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0)
+    assert model.lostText() == ""
+    assert not _lost_file().exists()
+    assert drivers.read_lost() == []
+    assert [d["id"] for d in model.vjoyLost] == []
+
+
+def test_update_then_setup_not_listing_vjoy_2_is_not_lost(
+    qapp: object,
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    helper_log: None,
+    profile: Path,
+) -> None:
+    model, launcher = _update_then_edit(
+        app, tmp_path, world, monkeypatch, 1, also_vjoy_1=True
+    )
+
+    results = launcher.results_seen[0]
+    assert [r.lost for r in results] == [[], []]
+    assert _ids(world.vjoy_devices()) == [1]
+    assert model.lostText() == ""
+    assert not _lost_file().exists()
+    assert [d["id"] for d in model.vjoyLost] == []
+
+
+def test_update_then_setup_that_leaves_vjoy_2_missing_is_lost_on_last_result(
+    qapp: object,
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    helper_log: None,
+    profile: Path,
+) -> None:
+    world.drop_set_devices = {2}
+    model, launcher = _update_then_edit(app, tmp_path, world, monkeypatch, 2)
+
+    update, setup = launcher.results_seen[0]
+    assert update.lost == []  # only the last vJoy result carries it
+    assert [d.id for d in setup.lost] == [2]
+    assert 2 not in _ids(world.vjoy_devices())
+    assert [d["id"] for d in model.vjoyLost] == [2]
+    assert _ids(drivers.read_lost()) == [2]
+    assert model.lostText() == drivers.lost_text(setup.lost)
+
+
+def test_remembered_lost_device_present_again_is_pruned_when_model_reads(
+    qapp: object,
+    app: Path,
+    tmp_path: Path,
+    world: World,
+    helper_log: None,
+    profile: Path,
+) -> None:
+    _vjoy_ready(world)
+    world.devices[2] = drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0)
+    drivers.write_lost(
+        [
+            drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0),
+            drivers.VJoyDevice(3, ("x",), 8, 0),  # still missing: stays
+        ]
+    )
+    assert _ids(drivers.read_lost()) == [2, 3]
+
+    model = _model(
+        app,
+        tmp_path,
+        world,
+        HelperLauncher(world),
+        lost_reader=drivers.read_lost,
+        lost_pruner=drivers.prune_lost,
+    )
+
+    assert _ids(drivers.read_lost()) == [3]
+    assert [d["id"] for d in model.vjoyLost] == [3]

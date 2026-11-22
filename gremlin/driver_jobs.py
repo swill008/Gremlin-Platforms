@@ -5,9 +5,10 @@
 """Driver setup work: install, update, remove HidHide, set up vJoy devices,
 update the Microsoft Visual C++ Runtime.
 
-Spec: 12 S25 (changed), S25a, S25b. Used only by Gremlin Device Helper (the
-only part of Gremlin with administrator rights). No Qt and no imports from
-the rest of the program except gremlin.drivers.
+Spec: 12 S25 (changed), S25a, S25b (a vJoy update keeps the devices). Used
+only by Gremlin Device Helper (the only part of Gremlin with administrator
+rights). No Qt and no imports from the rest of the program except
+gremlin.drivers.
 
 Every command goes through a `runner(command, timeout) -> (exit code,
 output)`; the real one is blocked under pytest.
@@ -15,10 +16,12 @@ output)`; the real one is blocked under pytest.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import subprocess
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
 
 from gremlin import drivers
 from gremlin.drivers import (
@@ -35,14 +38,19 @@ from gremlin.drivers import (
 __all__ = [
     "RealRunnerBlocked",
     "Runner",
+    "VJoyRun",
     "current_vjoy_devices",
     "parse_report",
     "parse_status_list",
     "real_runner",
     "run_job",
+    "vjoy_restore",
     "vjoy_setup",
     "vjoyconfig_path",
 ]
+
+# Gremlin Device Helper's logger (logs\device_helper.log; never History).
+log = logging.getLogger("gremlin.device_helper")
 
 Runner = Callable[[list[str], float], tuple[int, str]]
 
@@ -169,6 +177,24 @@ def _remove(job: Job, runner: Runner, reg: Registry | None) -> JobResult:
     return JobResult(state, message, restart, "")
 
 
+@dataclass
+class VJoyRun:
+    """One helper run's vJoy check (12 S25b): an "update vjoy" followed by a
+    "vjoy_setup" in the same run defers its device check to that set-up, so
+    only devices still missing at the end are reported. One per run; never
+    shared between runs."""
+
+    jobs: list[Job] = field(default_factory=list)
+    # The deferred update's devices before it; None = nothing deferred.
+    before: list[VJoyDevice] | None = None
+
+    def setup_follows(self, job: Job) -> bool:
+        index = next((i for i, j in enumerate(self.jobs) if j is job), None)
+        return index is not None and any(
+            j.op == "vjoy_setup" for j in self.jobs[index + 1 :]
+        )
+
+
 def run_job(
     job: Job,
     runner: Runner,
@@ -177,21 +203,149 @@ def run_job(
     check_download: Callable = drivers.check_download,
     reg: Registry | None = None,
     log_dir: str | None = None,
+    vjoy_run: VJoyRun | None = None,
 ) -> JobResult:
-    """Runs one job; never raises except RealRunnerBlocked."""
+    """Runs one job; never raises except RealRunnerBlocked. `vjoy_run` (one
+    per helper run) carries an update's device check to a later vjoy_setup."""
     try:
-        if job.op in ("install", "update"):
+        if job.op == "update" and job.driver == "vjoy":
+            result = _update_vjoy(
+                job, runner, check_bundled, check_download, log_dir, reg, vjoy_run
+            )
+        elif job.op in ("install", "update"):
             return _install(job, runner, check_bundled, check_download, log_dir, reg)
-        if job.op == "remove":
+        elif job.op == "remove":
             return _remove(job, runner, reg)
-        if job.op == "vjoy_setup":
+        elif job.op == "vjoy_setup":
             ok, message, restart = vjoy_setup(job.devices, runner)
-            return JobResult("done" if ok else "failed", message, restart, "")
-        return JobResult("failed", f"unknown job {job.op!r}")
+            result = JobResult("done" if ok else "failed", message, restart, "")
+            _deferred_check(job, runner, result, vjoy_run)
+        elif job.op == "vjoy_restore":
+            ok, message, restart = vjoy_restore(job.devices, runner)
+            result = JobResult("done" if ok else "failed", message, restart, "")
+        else:
+            return JobResult("failed", f"unknown job {job.op!r}")
+        _prune(runner)
+        return result
     except RealRunnerBlocked:
         raise
     except Exception as error:  # noqa: BLE001 - reported, never a crash
         return JobResult("failed", f"{job.op} {job.driver}: {error}")
+
+
+def _listing(devices: list[VJoyDevice]) -> str:
+    if not devices:
+        return "none"
+    return "; ".join(f"vJoy {d.id}: {describe_device(d)}" for d in devices)
+
+
+def _update_vjoy(
+    job: Job,
+    runner: Runner,
+    check_bundled: Callable,
+    check_download: Callable,
+    log_dir: str | None,
+    reg: Registry | None,
+    vjoy_run: VJoyRun | None = None,
+) -> JobResult:
+    """The vJoy update with its device check (12 S25b): logs the devices
+    before and after, returns the lost and added ones and remembers the lost
+    ones in vjoy_lost.json. With a vjoy_setup later in the run the check
+    waits for it (_deferred_check). The check never fails the update."""
+    before = list(job.devices)  # what the user saw; [] = couldn't be read
+    try:
+        if before:
+            log.info("vJoy devices before the update: %s", _listing(before))
+        else:
+            log.info("vJoy devices before the update: couldn't be read")
+        log.info(
+            "vJoy devices before the update (vJoyConfig now): %s",
+            _listing(current_vjoy_devices(runner)),
+        )
+    except RealRunnerBlocked:
+        raise
+    except Exception:  # noqa: BLE001 - the check never fails the update
+        log.exception("vJoy devices before the update: logging failed")
+    result = _install(job, runner, check_bundled, check_download, log_dir, reg)
+    try:
+        after = current_vjoy_devices(runner)
+        log.info(
+            "vJoy devices after the update: %s",
+            _listing(after) if after else "couldn't be read",
+        )
+        deferred = vjoy_run is not None and vjoy_run.setup_follows(job)
+        if result.state == "done" and deferred and vjoy_run is not None:
+            vjoy_run.before = before
+            log.info("vJoy device check: after the device set-up")
+        # Nothing read after (vJoyConfig gone, or a restart pending) is no
+        # proof the devices are lost; the update always leaves one device.
+        elif result.state == "done" and before and after:
+            _report_check(result, before, after, "update")
+    except RealRunnerBlocked:
+        raise
+    except Exception:  # noqa: BLE001 - the check never fails the update
+        log.exception("vJoy devices after the update: check failed")
+    return result
+
+
+def _report_check(
+    result: JobResult,
+    before: list[VJoyDevice],
+    after: list[VJoyDevice],
+    where: str,
+    ignore: set[int] | None = None,
+) -> None:
+    """Compares, puts lost/added in the result and remembers the lost ones."""
+    lost, added = drivers.compare_devices(before, after)
+    if ignore:
+        added = [i for i in added if i not in ignore]
+    result.lost, result.added = lost, added
+    if lost:
+        log.warning("vJoy devices lost in the %s: %s", where, _listing(lost))
+        drivers.write_lost(lost)
+    if added:
+        log.info("vJoy devices added by the %s: %s", where, _ids(added))
+
+
+def _deferred_check(
+    job: Job, runner: Runner, result: JobResult, vjoy_run: VJoyRun | None
+) -> None:
+    """The update's check after the device set-up (12 S25b): before = the
+    update's devices the set-up still lists (others were removed on purpose),
+    in the layout the set-up asked for; after = what vJoy has now. Never
+    fails the job."""
+    if vjoy_run is None or vjoy_run.before is None:
+        return
+    if vjoy_run.setup_follows(job):  # a later set-up does the check
+        return
+    try:
+        wanted = {d.id: d for d in job.devices}
+        before = [wanted[d.id] for d in vjoy_run.before if d.id in wanted]
+        vjoy_run.before = None
+        after = current_vjoy_devices(runner)
+        log.info(
+            "vJoy devices after the update and device set-up: %s",
+            _listing(after) if after else "couldn't be read",
+        )
+        if before and after:
+            _report_check(result, before, after, "update", set(wanted))
+    except RealRunnerBlocked:
+        raise
+    except Exception:  # noqa: BLE001 - the check never fails the job
+        log.exception("vJoy devices after the device set-up: check failed")
+
+
+def _prune(runner: Runner) -> None:
+    """After every vJoy job: forget remembered lost devices present again
+    with the same layout (12 S25b). Reads vJoy only when something is
+    remembered; never fails the job."""
+    try:
+        if drivers.read_lost():
+            drivers.prune_lost(current_vjoy_devices(runner))
+    except RealRunnerBlocked:
+        raise
+    except Exception:  # noqa: BLE001 - the check never fails the job
+        log.exception("vjoy_lost.json: prune failed")
 
 
 # -- vJoy devices -------------------------------------------------------------
@@ -226,8 +380,30 @@ def describe_device(device: VJoyDevice) -> str:
     )
 
 
-def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str, bool]:
+def vjoy_restore(
+    devices: Iterable[VJoyDevice], runner: Runner
+) -> tuple[bool, str, bool]:
+    """Puts back exactly the devices a vJoy update lost (12 S25b): set up and
+    read back like vjoy_setup, never deletes another device; the restored ids
+    leave vjoy_lost.json on success."""
+    devices = list(devices)
+    ok, message, restart = vjoy_setup(devices, runner, delete_others=False)
+    if ok:
+        message = "vJoy repaired" + message[len("vJoy set up") :]
+        try:
+            drivers.clear_lost([d.id for d in devices])
+        except OSError as error:
+            log.warning("vjoy_lost.json could not be updated: %s", error)
+    return ok, message, restart
+
+
+def vjoy_setup(
+    devices: Iterable[VJoyDevice], runner: Runner, *, delete_others: bool = True
+) -> tuple[bool, str, bool]:
     """Sets the devices up, deletes the others, reads back; (ok, message, restart).
+
+    With delete_others False (vjoy_restore) no other device is listed or
+    deleted.
 
     vJoyConfig's exit code is 0 even on bad arguments, so only the read-back
     (`vJoyConfig -t <id>`) decides. The driver refreshes once: every set-up
@@ -244,8 +420,10 @@ def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str
         if problem:
             return False, f"vJoy: {problem}", False
     wanted = {d.id for d in devices}
-    _, listing = runner([exe, "-t"], VJOYCONFIG_TIMEOUT_S)
-    stale = sorted(i for i in parse_status_list(listing) if i not in wanted)
+    stale: list[int] = []
+    if delete_others:
+        _, listing = runner([exe, "-t"], VJOYCONFIG_TIMEOUT_S)
+        stale = sorted(i for i in parse_status_list(listing) if i not in wanted)
     last = len(devices) - 1
     for index, device in enumerate(devices):
         command = [exe, str(device.id), "-f"]

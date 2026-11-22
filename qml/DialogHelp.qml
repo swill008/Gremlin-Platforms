@@ -388,14 +388,36 @@ ApplicationWindow {
     readonly property var _shown: {
         if (!_current)
             return { html: "", total: 0 }
-        var css = "<style>a { color: " + String(Style.accent) + "; text-decoration: none; }"
-                + " h3 { margin-top: 14px; }</style>"
+        var css = "<style>a { color: " + String(Style.link) + "; text-decoration: none; }"
+                + " h4 { font-size: " + Math.round(Style.fontSize * 1.2) + "px;"
+                + " margin-top: " + Style.dp(18) + "px; margin-bottom: " + Style.dp(6) + "px;"
+                + " color: " + String(Style.fgStrong) + "; }"
+                + " li { margin-bottom: " + Style.dp(6) + "px; }"
+                + " table { border-collapse: collapse; margin-top: " + Style.dp(8) + "px;"
+                + " margin-bottom: " + Style.dp(8) + "px; }"
+                + " th { background-color: " + String(Style.bgRaised) + "; text-align: left;"
+                + " padding: " + Style.dp(4) + "px " + Style.dp(10) + "px; }"
+                + " td { padding: " + Style.dp(4) + "px " + Style.dp(10) + "px; }</style>"
         var body = HelpLinks.decorate(_current.body, _linkReasons, String(Style.fgDisabled))
         if (!_searching)
-            return { html: css + body, total: 0 }
+            return { html: css + _keepLinksWhole(body), total: 0 }
         var h = _highlight(body, _match)
-        return { html: css + h.html, total: h.total }
+        return { html: css + _keepLinksWhole(h.html), total: h.total }
     }
+
+    // "Show me ›" and "Open ›" stay on one line: the spaces in a short
+    // link ending in › become no-break spaces (text only, never tags).
+    function _keepLinksWhole(html) {
+        return String(html).replace(/(<a\s[^>]*>)([\s\S]*?)(<\/a>)/g, function(all, open, inner, close) {
+            var plain = inner.replace(/<[^>]*>/g, "")
+            if (plain.length > 24 || !/›\s*$/.test(plain))
+                return all
+            return open + inner.replace(/(^|>)([^<]*)/g, function(m, gt, text) {
+                return gt + text.replace(/ /g, "&nbsp;")
+            }) + close
+        })
+    }
+
     readonly property int _bodyTotal: _shown.total
 
     // Scrolls the body to the current match (or the top).
@@ -693,7 +715,7 @@ ApplicationWindow {
                                     bottomPadding: Style.dp(2)
                                     text: _row.modelData.text
                                     elide: Text.ElideRight
-                                    color: Style.accent
+                                    color: Style.link
                                     font.pixelSize: Style.dp(11)
                                     font.bold: true
                                     font.capitalization: Font.AllUppercase
@@ -789,7 +811,10 @@ ApplicationWindow {
                 Label {
                     objectName: "topicPlace"
                     Layout.fillWidth: true
-                    text: _win._current ? _win._current.chapter + "  ›  " + _win._current.section : ""
+                    // The section alone when it has the chapter's name.
+                    text: !_win._current ? ""
+                        : _win._current.section === _win._current.chapter ? _win._current.chapter
+                        : _win._current.chapter + "  ›  " + _win._current.section
                     color: Style.fgMuted
                     font.pixelSize: Style.dp(12)
                     elide: Text.ElideRight
@@ -831,17 +856,25 @@ ApplicationWindow {
                         contentWidth: width
                         contentHeight: _bodyColumn.implicitHeight
                         boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        // Shown while the topic goes on below, not only while scrolling.
+                        ScrollBar.vertical: ScrollBar {
+                            id: _bodyBar
+                            policy: _bodyFlick.contentHeight > _bodyFlick.height
+                                    ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
+                        }
 
                         ColumnLayout {
                             id: _bodyColumn
-                            width: _bodyFlick.width - Style.dp(10)
+                            // Clear of the scroll bar, which shows while the topic goes on.
+                            width: _bodyFlick.width - _bodyBar.width - Style.dp(6)
                             spacing: Style.dp(10)
 
                             TextEdit {
                                 id: _body
                                 objectName: "topicBody"
                                 Layout.fillWidth: true
+                                // About 75-80 characters a line (style guide 6).
+                                Layout.maximumWidth: Style.dp(650)
                                 readOnly: true
                                 selectByMouse: true
                                 activeFocusOnPress: false
@@ -850,7 +883,7 @@ ApplicationWindow {
                                 wrapMode: TextEdit.Wrap
                                 color: Style.fg
                                 selectionColor: Style.bgSelected
-                                font.pixelSize: Style.dp(14)
+                                font.pixelSize: Style.fontSize
                                 onLinkActivated: (link) => _win._openLink(link)
                                 HoverHandler {
                                     cursorShape: _body.hoveredLink.length ? Qt.PointingHandCursor : Qt.IBeamCursor
@@ -865,6 +898,7 @@ ApplicationWindow {
                             // Related topics, as links under the body.
                             Rectangle {
                                 Layout.fillWidth: true
+                                Layout.maximumWidth: Style.dp(650)
                                 Layout.topMargin: Style.dp(6)
                                 implicitHeight: 1
                                 color: Style.line
@@ -874,7 +908,7 @@ ApplicationWindow {
                                 visible: _related.count > 0
                                 text: qsTr("Related topics")
                                 color: Style.fgStrong
-                                font.pixelSize: Style.dp(14)
+                                font.pixelSize: Style.fontSize
                                 font.bold: true
                             }
                             Repeater {
@@ -895,8 +929,8 @@ ApplicationWindow {
                                     objectName: "relatedLink"
                                     Layout.leftMargin: Style.dp(4)
                                     text: modelData.title
-                                    color: Style.accent
-                                    font.pixelSize: Style.dp(14)
+                                    color: Style.link
+                                    font.pixelSize: Style.fontSize
                                     font.underline: _linkHover.hovered
                                     HoverHandler { id: _linkHover; cursorShape: Qt.PointingHandCursor }
                                     TapHandler { onTapped: _win.showTopic(_link.modelData.id) }

@@ -143,6 +143,9 @@ def test_link_that_cannot_be_shown_is_greyed_with_why(run: dict) -> None:
     html = _part(run, "html")
     assert re.search(r'<a href="show:menu/File/Exit" style="color:' + grey, html), html
     assert '<a href="open:tools.deviceLibrary">' in html, "a showable link is grey"
+    # Help style guide 6: "Show me ›" and "Open ›" never break across lines.
+    assert ">Show&nbsp;me&nbsp;›<" in html, html
+    assert '<a href="open:tools.deviceLibrary">Open&nbsp;›</a>' in html, html
     hover = _part(run, "hover_show")
     assert hover["reason"] == "Open a profile first."
     assert hover["tip"].get("visible")

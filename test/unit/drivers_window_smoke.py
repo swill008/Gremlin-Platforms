@@ -85,6 +85,11 @@ class FakeDrivers(QtCore.QObject):
         self._real.changed.connect(self.changed)
         self._real.inUseRead.connect(self.inUseRead)
         self._busy = False
+        # A vJoy update keeps the devices (06 S185): the info box text, the
+        # lost box text and the lost rows; the script sets them.
+        self.info = ""
+        self.lost = ""
+        self.lost_rows: list[dict] = []
 
     @QtCore.Property(list, notify=changed)
     def rows(self):
@@ -231,6 +236,33 @@ class FakeDrivers(QtCore.QObject):
     def apply(self):
         calls.append("apply")
         return True
+
+    @QtCore.Slot(result=str)
+    def updateInfo(self):
+        calls.append("updateInfo")
+        return self.info
+
+    @QtCore.Slot(result=str)
+    def lostText(self):
+        return self.lost
+
+    @QtCore.Slot(result=bool)
+    def repairNow(self):
+        calls.append("repairNow")
+        return True
+
+    @QtCore.Slot()
+    def repairLater(self):
+        calls.append("repairLater")
+
+    @QtCore.Slot(int, result=bool)
+    def repairDevice(self, vjoy_id):
+        calls.append(f"repairDevice {vjoy_id}")
+        return True
+
+    @QtCore.Property(list, notify=changed)
+    def vjoyLost(self):
+        return self.lost_rows
 
     @QtCore.Slot(result=bool)
     def finishHidHide(self):
@@ -595,6 +627,85 @@ out["runYesNext"] = prop(win, "driverPromptTitle", "text")
 out["runYesBackend"] = _backend.active
 click(win, "driverPromptCancel")
 settle(300)
+
+# A vJoy update keeps the devices (06 S185). The information box (OK only)
+# comes after the what-will-happen prompt, before the in-use box.
+_v2 = drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0)
+_v4 = drivers.VJoyDevice(4, drivers.VJOY_AXES, 32, 0)
+fake.info = drivers.update_info_text([_v2, _v4])
+calls.clear()
+click(win, "driversApply")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+out["infoOpen"] = bool(prompt.property("opened"))
+out["infoTitle"] = prop(win, "driverPromptTitle", "text")
+out["infoBody"] = prop(win, "driverPromptBody", "text")
+out["infoOk"] = prop(win, "driverPromptOk", "text")
+out["infoCancelVisible"] = prop(win, "driverPromptCancel", "visible")
+out["infoCallsBefore"] = list(calls)
+click(win, "driverPromptOk")
+settle(300)
+out["infoNext"] = prop(win, "driverPromptTitle", "text")
+out["infoCallsAfter"] = list(calls)
+click(win, "driverPromptCancel")
+settle(300)
+fake.info = ""
+calls.clear()
+click(win, "driversApply")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+out["noInfoNext"] = prop(win, "driverPromptTitle", "text")
+click(win, "driverPromptCancel")
+settle(300)
+
+# After the results: the update lost a device.
+fake.lost = drivers.lost_text([_v4])
+calls.clear()
+fake.finished.emit()
+settle(300)
+out["lostOpen"] = bool(prompt.property("opened"))
+out["lostTitle"] = prop(win, "driverPromptTitle", "text")
+out["lostBody"] = prop(win, "driverPromptBody", "text")
+out["lostButtons"] = [prop(win, "driverPromptOk", "text"),
+                      prop(win, "driverPromptCancel", "text")]
+click(win, "driverPromptOk")
+settle(300)
+out["lostNowCalls"] = list(calls)
+calls.clear()
+fake.finished.emit()
+settle(300)
+click(win, "driverPromptCancel")
+settle(300)
+out["lostLaterCalls"] = list(calls)
+fake.lost = ""
+calls.clear()
+fake.finished.emit()
+settle(300)
+out["nothingLostOpen"] = bool(prompt.property("opened"))
+out["nothingLostCalls"] = list(calls)
+
+# Remembered lost devices: rows marked "lost in the vJoy update", Repair.
+out["lostRowBefore"] = child(win, "vjoyLostRow_0") is not None
+fake.lost_rows = [{"id": 4, "axes": list(_v4.axes), "buttons": 32, "hats": 0,
+                   "summary": "8 axes (X-S2), 32 buttons, 0 hats"}]
+fake.changed.emit()
+settle(300)
+out["lostRowName"] = prop(win, "vjoyLostName_0", "text")
+out["lostRowSummary"] = prop(win, "vjoyLostSummary_0", "text")
+out["lostRowMark"] = prop(win, "vjoyLostMark_0", "text")
+out["lostRowMarkColor"] = prop(win, "vjoyLostMark_0", "color").name()
+out["styleWarn"] = _style.property("warn").name() if _style else None
+out["lostRowRepair"] = prop(win, "vjoyLostRepair_0", "text")
+calls.clear()
+click(win, "vjoyLostRepair_0")
+settle(300)
+out["lostRowCalls"] = list(calls)
+fake.lost_rows = []
+fake.changed.emit()
+settle(300)
+out["lostRowGone"] = not prop(win, "vjoyLostRow_0", "visible", False)
 
 # Step 2 through the window property.
 calls.clear()

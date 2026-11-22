@@ -50,7 +50,7 @@ Code (built 2026-10-08/09):
 - `qml/DialogLibrarySwap.qml` (251): Swap with Another Stick (S26-S29), warnings both ways. Headings are `SectionHeading`.
 - `qml/DialogLibraryOutput.qml` (298): Change vJoy Output (S30-S32), one row per vJoy the stick sends to.
 - `qml/DialogLibrarySettings.qml` (143): Device Library Settings (S36-S37): autosaves kept per stick, Copy/Swap default ticks, library folder (its chooser is a `FilePicker` that remembers the folder); shared headings.
-- `qml/DialogLibraryTidy.qml` (135): Tidy Library (S38): what it would remove; removes only what stays ticked. Remove… asks the shared question (`askRemove()`: "Remove N item(s) from the Library?", red Remove from Library, Enter cancels).
+- `qml/DialogLibraryTidy.qml` (135): Tidy Library (S38): what it would remove; removes only what stays ticked. Its Remove button removes what stays ticked; the Tidy box itself is the question, no second one follows (checked 2026-11-22 in the QML during the Help review; this line used to say Remove… asks `askRemove()`, which is the window's Remove from Library question, not Tidy's).
 - `qml/DeviceThumb.qml` (46; new 2026-10-12, D-NEXTLIST-1 item 4, S64, LIB): a device's small framed picture, 40 x 40 dp, decoded at 80 px, the device's icon glyph when it has none; the same frame as the HidHide window's rows. Used by the Library's device rows.
 - `qml/device_library_open.js` (27): opens the window on a device and dialog (Home, Tools, card menu); passes the row menus' Delete Device / Module Setup / Device Mapping Editor / Show on Home to `Main.qml libraryAction`.
 - Help: the Device Library chapter, `qml/help/device_library.js` (page 01 owns the Help book).

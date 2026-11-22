@@ -50,7 +50,6 @@ WAITING_TEXT = "Waiting for Gremlin Device Helper…"
 MAX_DEVICES = 16
 
 
-
 class Process(Protocol):
     """The started helper (device_disable's elevated process handle)."""
 
@@ -94,6 +93,33 @@ def _real_busy_reader() -> list[int]:
     from gremlin import driver_jobs
 
     return driver_jobs.busy_vjoy_devices(driver_jobs.real_runner)
+
+
+def _real_lost_reader() -> list[drivers.VJoyDevice]:
+    """Devices a vJoy update lost, remembered in vjoy_lost.json (06 S185)."""
+    return list(drivers.read_lost())
+
+
+def _real_lost_pruner(current: list[drivers.VJoyDevice]) -> None:
+    """Forgets remembered lost devices that are present again (06 S185)."""
+    drivers.prune_lost(current)
+
+
+def _as_device(item: object) -> drivers.VJoyDevice | None:
+    """A lost device from the results (a VJoyDevice or its dict)."""
+    if isinstance(item, drivers.VJoyDevice):
+        return item
+    if isinstance(item, dict):
+        try:
+            return drivers.VJoyDevice(
+                id=int(item["id"]),
+                axes=tuple(str(a) for a in item.get("axes", [])),
+                buttons=int(item.get("buttons", 0)),
+                hats=int(item.get("hats", 0)),
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+    return None
 
 
 def _info(key: str) -> drivers.DriverInfo:
@@ -164,6 +190,8 @@ class DriversModel(QtCore.QObject):
         results_reader: Callable[[Path], tuple[list, bool]] | None = None,
         vjoy_reader: Callable[[], list[drivers.VJoyDevice]] | None = None,
         busy_reader: Callable[[], list[int]] | None = None,
+        lost_reader: Callable[[], list[drivers.VJoyDevice]] | None = None,
+        lost_pruner: Callable[[list[drivers.VJoyDevice]], None] | None = None,
         background: Callable[..., None] | None = None,
         restarter: Callable[[], None] | None = None,
         monotonic: Callable[[], float] | None = None,
@@ -180,6 +208,13 @@ class DriversModel(QtCore.QObject):
         self._busy_reader = busy_reader or (
             _real_busy_reader if vjoy_reader is None else list
         )
+        # The same for the lost devices: a test's vjoy_reader means none.
+        self._lost_reader = lost_reader or (
+            _real_lost_reader if vjoy_reader is None else list
+        )
+        self._lost_pruner = lost_pruner or (
+            _real_lost_pruner if vjoy_reader is None else (lambda current: None)
+        )
         self._background = background or _real_background
         self._restarter = restarter or _real_restart
         self._monotonic = monotonic or clock.monotonic
@@ -190,6 +225,10 @@ class DriversModel(QtCore.QObject):
         self._devices = self._preset_devices(DEFAULT_PRESET)
         self._current: list[drivers.VJoyDevice] = []
         self._in_use: list[int] = []  # ids another program holds
+        # Lost in a vJoy update (06 S185): remembered ones (vjoy_lost.json)
+        # and the ones the last update's result named (the Repair box).
+        self._lost: list[drivers.VJoyDevice] = []
+        self._lost_now: list[drivers.VJoyDevice] = []
         # Gremlin-Platforms' own Run (the window binds backend.gremlinActive):
         # while it runs, vJoyConfig's busy ids include our own devices, so
         # none are shown or warned about; they are read again after Stop.
@@ -232,6 +271,7 @@ class DriversModel(QtCore.QObject):
                 )
         self._ticked = ticked
         self._read_pending()
+        self._read_lost()
         vjoy = self._status("vjoy")
         if vjoy is not None and vjoy.state != "missing":
             self._background("vJoy layout read", self._read_vjoy, self._got_current)
@@ -278,6 +318,15 @@ class DriversModel(QtCore.QObject):
         devices, busy = result or ([], [])
         self._current = list(devices or [])
         self._in_use = sorted(set(busy or []))
+        # Remembered lost devices vJoy has again leave the file before the
+        # lost rows are decided (06 S185).
+        try:
+            self._lost_pruner(list(self._current))
+        except (RealCallBlocked, drivers.RealRunnerBlocked):
+            raise
+        except Exception as exc:
+            _log.warning(f"vjoy_lost.json could not be pruned: {exc}")
+        self._read_lost()
         # What exists is shown as it is and changed only when edited (S185).
         if self._current and not self._user_edited:
             self._devices = [
@@ -285,6 +334,17 @@ class DriversModel(QtCore.QObject):
             ]
             self._preset = self._matching_preset()
         self.changed.emit()
+
+    def _read_lost(self) -> None:
+        try:
+            self._lost = [
+                d for d in (_as_device(x) for x in self._lost_reader() or []) if d
+            ]
+        except (RealCallBlocked, drivers.RealRunnerBlocked):
+            raise
+        except Exception as exc:
+            _log.warning(f"vjoy_lost.json could not be read: {exc}")
+            self._lost = []
 
     def _read_pending(self) -> None:
         app = self._app()
@@ -462,9 +522,16 @@ class DriversModel(QtCore.QObject):
             elif status.key == "hidhide":
                 jobs.append(drivers.Job("remove", "hidhide", [], []))
             else:
+                # A vJoy update carries the devices there now, so the helper
+                # can check them afterwards (06 S185); empty: not read.
+                before = (
+                    [drivers.VJoyDevice(**_device_map(d)) for d in self._current]
+                    if status.key == "vjoy"
+                    else []
+                )
                 jobs.append(
                     drivers.Job(
-                        "update", status.key, self._bundled(app, status.key), []
+                        "update", status.key, self._bundled(app, status.key), before
                     )
                 )
             if status.key == "vjoy":
@@ -497,6 +564,8 @@ class DriversModel(QtCore.QObject):
         if job.op == "remove":
             return f"Remove HidHide {old}"
         count = len(job.devices)
+        if job.op == "vjoy_restore":
+            return f"Put back {count} vJoy device{'s' if count != 1 else ''}"
         return f"Set up {count} vJoy device{'s' if count != 1 else ''}"
 
     def _progress_text(self, job: drivers.Job) -> str:
@@ -511,10 +580,12 @@ class DriversModel(QtCore.QObject):
             return f"Updating {info.name} to {info.bundled_version}…"
         if job.op == "remove":
             return f"Removing HidHide {status.installed if status else ''}…"
+        if job.op == "vjoy_restore":
+            return "Putting back the vJoy devices…"
         return "Setting up the vJoy devices…"
 
     def _result_name(self, job: drivers.Job) -> str:
-        if job.op == "vjoy_setup":
+        if job.op in ("vjoy_setup", "vjoy_restore"):
             return "vJoy devices"
         return _info(job.driver).name
 
@@ -550,6 +621,61 @@ class DriversModel(QtCore.QObject):
         if self._vjoy_edited() and self._current:
             lines.append(VJOY_WARNING)
         return "\n".join(lines)
+
+    @QtCore.Slot(result=str)
+    def updateInfo(self) -> str:
+        """The information box before a vJoy update (06 S185, OK only);
+        "" when Apply doesn't update vJoy."""
+        app = self._app() or Path(".")
+        updates = [
+            j for j in self._plan(app) if j.op == "update" and j.driver == "vjoy"
+        ]
+        if not updates:
+            return ""
+        return drivers.update_info_text(updates[0].devices)
+
+    @QtCore.Slot(result=str)
+    def lostText(self) -> str:
+        """The "The vJoy update lost a device" box's text after the results;
+        "" when the update lost nothing."""
+        return drivers.lost_text(self._lost_now) if self._lost_now else ""
+
+    @QtCore.Slot(result=bool)
+    def repairNow(self) -> bool:
+        """Repair Now: a second run with one vjoy_restore job putting back
+        exactly the devices the update lost."""
+        devices, self._lost_now = list(self._lost_now), []
+        return self._restore(devices)
+
+    @QtCore.Slot()
+    def repairLater(self) -> None:
+        """Repair Later: the helper has remembered them (vjoy_lost.json);
+        the list shows them with a Repair button."""
+        self._lost_now = []
+        _log.info("Repair of the vJoy devices lost in the update put off")
+
+    @QtCore.Slot(int, result=bool)
+    def repairDevice(self, vjoy_id: int) -> bool:
+        """A lost row's Repair: vjoy_restore for that one device."""
+        device = next((d for d in self._lost if d.id == int(vjoy_id)), None)
+        return self._restore([device]) if device is not None else False
+
+    def _restore(self, devices: list[drivers.VJoyDevice]) -> bool:
+        if self._busy or not devices:
+            return False
+        app = self._app()
+        if app is None:
+            self._set_progress(NO_APP_TEXT)
+            return False
+        self._hidhide_step = ""
+        self._hidhide_new = None
+        job = drivers.Job(
+            "vjoy_restore",
+            "vjoy",
+            [],
+            [drivers.VJoyDevice(**_device_map(d)) for d in devices],
+        )
+        return self._start(app, [job])
 
     @QtCore.Slot(result=str)
     def alikeWarning(self) -> str:
@@ -734,6 +860,7 @@ class DriversModel(QtCore.QObject):
         self._process = None
         rows = []
         restart = False
+        lost_now: list[drivers.VJoyDevice] = []
         for index, job in enumerate(self._jobs):
             result = results[index] if index < len(results) else None
             state = result.state if result else "failed"
@@ -742,6 +869,18 @@ class DriversModel(QtCore.QObject):
             message = (result.message if result else "") or problem
             if not message:
                 message = "Done." if state == "done" else "Failed."
+            if (
+                job.op in ("update", "vjoy_setup")
+                and job.driver == "vjoy"
+                and result is not None
+            ):
+                # The last vJoy job of the run carries lost/added (06 S185).
+                lost = [d for d in map(_as_device, getattr(result, "lost", [])) if d]
+                lost_now = lost
+                added = [int(i) for i in getattr(result, "added", []) or []]
+                if added:
+                    # A device only the update made is named, left alone.
+                    message = f"{message} {drivers.added_text(added)}."
             rows.append(
                 {"driver": self._result_name(job), "state": state, "message": message}
             )
@@ -749,6 +888,7 @@ class DriversModel(QtCore.QObject):
             if job.driver == "hidhide" and state == "done":
                 restart = self._hidhide_done(job) or restart
         self._results = rows
+        self._lost_now = lost_now
         self._restart_needed = restart
         self._busy = False
         self._progress = problem
@@ -827,6 +967,19 @@ class DriversModel(QtCore.QObject):
             for d in self._devices
         ]
 
+    def _get_lost(self) -> list:
+        """Remembered lost devices vJoy doesn't have now (as they were), for
+        the list's "lost in the vJoy update" rows."""
+        now = {(d.id, *_layout([d])[0]) for d in self._current}
+        return [
+            {
+                **_device_map(d),
+                "summary": self.deviceSummary(list(d.axes), d.buttons, d.hats),
+            }
+            for d in self._lost
+            if (d.id, *_layout([d])[0]) not in now
+        ]
+
     def _get_add_preview(self) -> str:
         """Grey text of the "+ Add device" row, e.g. "vJoy 3 · 126 buttons";
         empty at 16 devices (the row is gone)."""
@@ -891,6 +1044,7 @@ class DriversModel(QtCore.QObject):
     vjoyPreset = QtCore.Property(str, fget=_get_preset, notify=changed)
     vjoyDevices = QtCore.Property(list, fget=_get_devices, notify=changed)
     addPreview = QtCore.Property(str, fget=_get_add_preview, notify=changed)
+    vjoyLost = QtCore.Property(list, fget=_get_lost, notify=changed)
     vjoyAxes = QtCore.Property(list, fget=_get_axis_names, constant=True)
     vjoyCurrent = QtCore.Property(list, fget=_get_current, notify=changed)
     vjoyInUse = QtCore.Property(list, fget=_get_in_use, notify=changed)

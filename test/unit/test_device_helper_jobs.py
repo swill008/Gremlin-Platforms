@@ -52,6 +52,7 @@ class FakeStore:
 
         driver_jobs.run_job = blocked  # type: ignore[attr-defined]
         driver_jobs.real_runner = blocked  # type: ignore[attr-defined]
+        driver_jobs.VJoyRun = lambda jobs: None  # type: ignore[attr-defined]
         monkeypatch.setitem(sys.modules, "gremlin.drivers", drivers)
         monkeypatch.setitem(sys.modules, "gremlin.driver_jobs", driver_jobs)
         # `from gremlin import drivers` reads the package attribute first.
@@ -131,7 +132,7 @@ def test_results_go_waiting_running_done_in_order(
     store.install(monkeypatch)
     seen: list[str] = []
 
-    def run_job(job: FakeJob, runner: object) -> FakeResult:
+    def run_job(job: FakeJob, runner: object, **_kw: object) -> FakeResult:
         seen.append(job.driver)
         return FakeResult("done", restart=job.driver == "hidhide")
 
@@ -165,7 +166,7 @@ def test_a_job_that_raises_fails_and_later_jobs_still_run(
 
     sys.modules["gremlin.drivers"].write_results = write  # type: ignore[attr-defined]
 
-    def run_job(job: FakeJob, runner: object) -> FakeResult:
+    def run_job(job: FakeJob, runner: object, **_kw: object) -> FakeResult:
         if job.driver == "vjoy":
             raise RuntimeError("boom")
         return FakeResult("done")
@@ -236,7 +237,7 @@ def test_round_trip_with_the_real_job_files(tmp_path: Path) -> None:
     jobs_file, results_file = tmp_path / "jobs.json", tmp_path / "results.json"
     drivers.write_jobs(jobs_file, [drivers.Job("remove", "hidhide", [], [])])
 
-    def run_job(job: object, runner: object) -> object:
+    def run_job(job: object, runner: object, **_kw: object) -> object:
         return drivers.JobResult(state="done", message="ok")
 
     code = helper.main(
@@ -248,3 +249,31 @@ def test_round_trip_with_the_real_job_files(tmp_path: Path) -> None:
     assert code == 0 and finished
     assert [r.state for r in results] == ["done"]
     json.loads(results_file.read_text("utf-8"))
+
+
+def test_one_vjoy_run_is_shared_by_the_jobs_of_a_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """12 S25b: an update's device check waits for a later vjoy_setup, so the
+    run's jobs share one VJoyRun; a new run gets a new one."""
+    jobs = [FakeJob("update", "vjoy"), FakeJob("vjoy_setup", "vjoy")]
+    store = FakeStore(jobs)
+    store.install(monkeypatch)
+    import gremlin
+
+    seen: list[object] = []
+
+    class VJoyRun:
+        def __init__(self, run_jobs: list[FakeJob]) -> None:
+            self.jobs = run_jobs
+
+    def run_job(job: FakeJob, runner: object, **kwargs: object) -> FakeResult:
+        seen.append(kwargs["vjoy_run"])
+        return FakeResult(state="done")
+
+    gremlin.driver_jobs.VJoyRun = VJoyRun  # type: ignore[attr-defined]
+    gremlin.driver_jobs.run_job = run_job  # type: ignore[attr-defined]
+    for _ in range(2):
+        assert helper.run_jobs(tmp_path / "j", tmp_path / "r", None, object()) == 0
+    assert len(seen) == 4 and seen[0] is seen[1] and seen[2] is seen[3]
+    assert seen[0] is not seen[2] and seen[0].jobs is jobs  # type: ignore[attr-defined]

@@ -1307,3 +1307,29 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-22 | Windows' Startup Apps switch: TRAY2 (Sonnet agent) | feature | 3-8 min | 1 min | 05:24-05:25 |
 | 2026-11-22 | Windows' Startup Apps switch: DOCS5 (Sonnet agent) | docs | 3-8 min | 1 min | 05:24-05:25 |
 | 2026-11-22 | Build 1.1.1 (final) and start setup on the user's PC | build | ~2 min | 1 min | 05:26-05:27 |
+| 2026-11-22 | CI on b5e815bc (push) | ci | ~10 min | 23 min | 05:27-05:50 |
+| 2026-11-22 | Test machine: vJoy 2.1.9 + old-tool device, then the helper's vJoy update (reproduce device loss) | test machine | rough guess 15 min | 6 min | 05:55-06:01 |
+| 2026-11-22 | vJoy update keeps devices: HELPER (Opus agent) | feature | 3-8 min (up to 15) | 4 min | 06:18-06:22 |
+| 2026-11-22 | vJoy update keeps devices: UI (Opus agent) | feature | 3-8 min (up to 15) | 4 min | 06:18-06:22 |
+| 2026-11-22 | vJoy update keeps devices: SETUP (Opus agent) | feature | 3-8 min (up to 15) | 7 min | 06:18-06:25 |
+| 2026-11-22 | vJoy update keeps devices: E2E (Sonnet agent) | test | 3-8 min | 5 min | 06:18-06:23 |
+| 2026-11-22 | vJoy update keeps devices: DOCS (Sonnet agent) | docs | 3-8 min | 1 min | 06:18-06:19 |
+| 2026-11-22 | Lead checks + build with the vJoy update fix | build | ~3 min | 2 min | 06:25-06:27 |
+| 2026-11-22 | Test machine: vJoy 2.1.9 + old-tool vJoy 2 + new setup at sign-in, Remote Desktop | test machine | ~5 min | 3 min | 06:28-06:31 |
+| 2026-11-22 | Quick tests --changed (vJoy update fix) | test | ~9 min | 5 min | 06:28-06:33 |
+| 2026-11-22 | Follow-up: HELPER2 (Opus agent) | fix | 3-8 min | 4 min | 06:39-06:43 |
+| 2026-11-22 | Follow-up: UI2 (Sonnet agent) | fix | 3-8 min | 1 min | 06:39-06:40 |
+| 2026-11-22 | Follow-up: SETUP2 (Sonnet agent) | fix | 3-8 min | 2 min | 06:39-06:41 |
+| 2026-11-22 | Follow-up: E2E2 (Sonnet agent) | test | 3-8 min | 3 min | 06:39-06:42 |
+| 2026-11-22 | Rebuild + test machine reset (vJoy 2.1.9, old-tool vJoy 2, setup at sign-in; one rerun after a credential hiccup) | test machine | ~5 min | 5 min | 06:43-06:48 |
+| 2026-11-22 | Help review: H1-H7 wording + LOOK (8 Opus agents in parallel) | review | 5-10 min | 4 min | 06:58-07:02 |
+| 2026-11-22 | Help style guide + template draft (lead) | docs | rough guess 10 min | 1 min | 07:02-07:03 |
+| 2026-11-22 | Help: SAMPLE rewrite of getting_started.js (Opus agent) | docs | 3-8 min (up to 15) | 7 min | 07:05-07:12 |
+| 2026-11-22 | Help: LOOKFIX DialogHelp.qml look (Opus agent) | fix | 3-8 min | 6 min | 07:05-07:11 |
+| 2026-11-22 | Help: sample pictures (lead) | lead check | no timing data | 2 min | 07:13-07:15 |
+| 2026-11-22 | Help rewrite: P0-P9 page writers + CHECK (11 Opus agents in parallel, incl. follow-ups) | docs | ~10 min (up to 15) | 13 min | 07:17-07:30 |
+| 2026-11-22 | Help rewrite: lead fixes (S1/S2 line, grayed, spec names, glossary rows, Tidy map line, to-do 0n/0o) | lead | ~5 min | 6 min | 07:25-07:33 |
+| 2026-11-22 | Help fresh-reader test: FR1-FR6 (6 Opus agents) | review | 5-10 min | 2 min | 07:33-07:35 |
+| 2026-11-22 | Help fixes from fresh readers: F1-F8 (8 Opus agents) | docs | ~10 min | 7 min | 07:35-07:42 |
+| 2026-11-22 | Old Help-wording tests: PIN (Opus agent) + lead (Options groups, links, "I") | test | 3-8 min | 5 min | 07:43-07:48 |
+| 2026-11-22 | Quick tests --changed + pyright before the release commit | test | ~9 min | 10 min | 07:48-07:58 |

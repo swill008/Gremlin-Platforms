@@ -658,3 +658,128 @@ def test_in_use_warning_wording() -> None:
     assert drivers.in_use_warning([1, 2, 4]).startswith(
         "vJoy 1, vJoy 2 and vJoy 4 are in use by another program."
     )
+
+
+# -- a vJoy update keeps the devices (12 S25b) --------------------------------
+
+_V2 = VJoyDevice(2, ("x", "y", "z"), 32, 0)
+_V4 = VJoyDevice(4, drivers.VJOY_AXES, 32, 0)
+
+
+def test_compare_devices_missing_different_and_new() -> None:
+    before = [_V2, VJoyDevice(3, ("x",), 10, 1), _V4]
+    after = [
+        drivers.new_device(1),
+        VJoyDevice(3, ("x",), 10, 1),
+        VJoyDevice(4, ("x",), 32, 0),
+    ]
+    assert drivers.compare_devices(before, after) == ([_V2, _V4], [1])
+    assert drivers.compare_devices(before, before) == ([], [])
+
+
+def test_lost_store_write_read_clear(tmp_path: Path) -> None:
+    path = tmp_path / "vjoy_lost.json"
+    assert drivers.read_lost(path) == []
+    drivers.write_lost([_V4], path)
+    changed = VJoyDevice(4, ("x",), 8, 1)
+    drivers.write_lost([_V2, changed], path)  # replaces the older vJoy 4
+    assert drivers.read_lost(path) == [_V2, changed]
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["version"] == 1 and [d["id"] for d in data["devices"]] == [2, 4]
+    drivers.clear_lost([4], path)
+    assert drivers.read_lost(path) == [_V2]
+    drivers.clear_lost([2], path)
+    assert not path.exists()
+    path.write_text("{bad", encoding="utf-8")
+    assert drivers.read_lost(path) == []
+
+
+def test_lost_store_is_in_the_temp_data_folder() -> None:
+    from gremlin import util
+
+    assert drivers.lost_path() == Path(util.userprofile_path()) / "vjoy_lost.json"
+    assert drivers.data_dir() == Path(util.userprofile_path())
+
+
+def test_results_carry_lost_and_added(tmp_path: Path) -> None:
+    path = tmp_path / "results.json"
+    result = JobResult("done", "ok", False, "bundled", lost=[_V2], added=[1])
+    drivers.write_results(path, [result, JobResult("waiting")], finished=True)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["jobs"][0]["lost"] == [
+        {"id": 2, "axes": ["x", "y", "z"], "buttons": 32, "hats": 0}
+    ]
+    assert data["jobs"][0]["added"] == [1] and data["jobs"][1]["lost"] == []
+    results, finished = drivers.read_results(path)
+    assert finished and results[0].lost == [_V2] and results[0].added == [1]
+    # an older results file without the keys still reads
+    del data["jobs"][0]["lost"], data["jobs"][0]["added"]
+    path.write_text(json.dumps(data), encoding="utf-8")
+    assert drivers.read_results(path)[0][0].lost == []
+
+
+def test_read_jobs_accepts_vjoy_restore_and_update_devices(tmp_path: Path) -> None:
+    path = tmp_path / "jobs.json"
+    exe = tmp_path / "v.exe"
+    exe.write_bytes(b"x")
+    jobs = [
+        Job("update", "vjoy", [{"path": str(exe), "kind": "bundled"}], [_V2]),
+        Job("vjoy_restore", "vjoy", [], [_V2, _V4]),
+    ]
+    drivers.write_jobs(path, jobs)
+    assert drivers.read_jobs(path) == jobs
+
+
+@pytest.mark.parametrize(
+    "job",
+    [
+        {"op": "vjoy_restore", "driver": "vjoy", "devices": []},
+        {"op": "vjoy_restore", "driver": "hidhide", "devices": [{"id": 2}]},
+        {"op": "vjoy_wipe", "driver": "vjoy", "devices": [{"id": 2}]},
+        {"op": "vjoy_restore", "driver": "vcredist", "devices": [{"id": 2}]},
+    ],
+)
+def test_read_jobs_refuses_bad_restore_and_unknown(tmp_path: Path, job: dict) -> None:
+    path = tmp_path / "jobs.json"
+    path.write_text(json.dumps({"version": 1, "jobs": [job]}), encoding="utf-8")
+    with pytest.raises(ValueError):
+        drivers.read_jobs(path)
+
+
+def test_lost_text_exact_wording() -> None:
+    assert drivers.lost_text([]) == ""
+    assert drivers.lost_text([_V4]) == (
+        "After updating vJoy, vJoy 4 (8 axes, 32 buttons, 0 hats) is missing. "
+        "It was probably set up with an older vJoy tool that the new vJoy "
+        "doesn't read. Gremlin-Platforms can put it back exactly as it was."
+    )
+    assert drivers.lost_text([_V4, _V2]).startswith(
+        "After updating vJoy, vJoy 2 (3 axes, 32 buttons, 0 hats) and "
+        "vJoy 4 (8 axes, 32 buttons, 0 hats) are missing."
+    )
+    assert drivers.device_brief(VJoyDevice(1, ("x",), 1, 1)) == (
+        "vJoy 1 (1 axis, 1 button, 1 hat)"
+    )
+
+
+def test_added_text() -> None:
+    assert drivers.added_text([]) == ""
+    assert drivers.added_text([1]) == "vJoy 1 was added by the vJoy update"
+    assert (
+        drivers.added_text([3, 1]) == "vJoy 1 and vJoy 3 were added by the vJoy update"
+    )
+
+
+def test_update_info_text_both_versions() -> None:
+    devices = [VJoyDevice(3), VJoyDevice(1), VJoyDevice(2)]
+    assert drivers.update_info_text(devices) == (
+        "Updating vJoy can lose vJoy devices that were set up with older vJoy "
+        "tools. Gremlin-Platforms has noted your 3 vJoy devices (vJoy 1, vJoy 2, "
+        "vJoy 3) and checks them after the update. If one is missing or "
+        "different, you'll be asked whether to repair it."
+    )
+    assert "your 1 vJoy device (vJoy 2)" in drivers.update_info_text([_V2])
+    assert drivers.update_info_text([]) == (
+        "vJoy's devices couldn't be read before the update, so they can't be "
+        "checked afterwards. Check them in Tools › Drivers after the update."
+    )

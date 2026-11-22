@@ -168,8 +168,15 @@ def test_vigembus_success_runs_once(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("driver", ["vjoy", "hidhide"])
 def test_other_drivers_never_get_a_second_run(tmp_path: Path, driver: str) -> None:
-    result, runner = _vigembus_run(tmp_path, [(1604, "")], False, driver)
-    assert result.state == "failed" and len(runner.calls) == 1
+    exe = driver_jobs.vjoyconfig_path()
+
+    def answer(command: list[str]) -> tuple[int, str]:
+        # a vJoy update also reads its devices before and after (12 S25b)
+        return (0, "") if command[0] == exe else (1604, "")
+
+    result, runner = _vigembus_run(tmp_path, [answer] * 5, False, driver)
+    installer_runs = [c for c in runner.calls if c[0] != exe]
+    assert result.state == "failed" and len(installer_runs) == 1
 
 
 def test_download_used_first_when_its_check_passes(tmp_path: Path) -> None:
@@ -577,3 +584,294 @@ def test_busy_vjoy_devices() -> None:
     blocked = FakeRunner([lambda c: (_ for _ in ()).throw(RealRunnerBlocked("x"))])
     with pytest.raises(RealRunnerBlocked):
         driver_jobs.busy_vjoy_devices(blocked)
+
+
+# -- a vJoy update keeps the devices (12 S25b) --------------------------------
+
+
+class FakeVJoy:
+    """A stateful fake vJoyConfig plus installer: `devices` is what vJoy has;
+    running the installer replaces it with `after_update`."""
+
+    def __init__(
+        self,
+        devices: dict[int, VJoyDevice],
+        after_update: dict[int, VJoyDevice] | None = None,
+        install_code: int = 0,
+    ) -> None:
+        self.devices = dict(devices)
+        self.after_update = after_update
+        self.install_code = install_code
+        self.calls: list[list[str]] = []
+
+    def __call__(self, command: list[str], timeout: float) -> tuple[int, str]:
+        assert timeout > 0
+        self.calls.append(list(command))
+        if command[0] != driver_jobs.vjoyconfig_path():  # the installer
+            if self.after_update is not None:
+                self.devices = dict(self.after_update)
+            return self.install_code, ""
+        args = command[1:]
+        if args == ["-t"]:
+            return 0, "".join(
+                f"\nDevice {i}:\tStatus: "
+                + ("FREE" if i in self.devices else "MISSING")
+                for i in range(1, 17)
+            )
+        if args[0] == "-t":
+            d = self.devices.get(int(args[1]))
+            if d is None:
+                return 0, ""
+            axes = " ".join(
+                a.capitalize() if a in d.axes else "-" for a in drivers.VJOY_AXES
+            )
+            return 0, _report(d.id, axes=axes, buttons=d.buttons, cont=d.hats)
+        if args[0] == "-d":
+            for i in args[1:]:
+                self.devices.pop(int(i), None)
+            return 0, ""
+        device_id = int(args[0])
+        axes: list[str] = []
+        buttons = hats = 0
+        rest = [a for a in args[1:] if a not in ("-f", "-l")]
+        mode = ""
+        for token in rest:
+            if token in ("-a", "-b", "-p"):
+                mode = token
+            elif mode == "-a":
+                axes.append(token)
+            elif mode == "-b":
+                buttons = int(token)
+            elif mode == "-p":
+                hats = int(token)
+        self.devices[device_id] = VJoyDevice(device_id, tuple(axes), buttons, hats)
+        return 0, ""
+
+
+_V2 = VJoyDevice(2, ("x", "y", "z"), 32, 0)
+_V4 = VJoyDevice(4, drivers.VJOY_AXES, 32, 0)
+
+
+def _update(tmp_path: Path, before: list[VJoyDevice]) -> Job:
+    return Job("update", "vjoy", _files(tmp_path, "bundled"), before)
+
+
+def test_vjoy_update_lists_lost_and_added_and_logs(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    v3 = VJoyDevice(3, ("x",), 10, 1)
+    fake = FakeVJoy(
+        {2: _V2, 3: v3, 4: _V4},
+        # the reproduction: vJoy 2 gone, a default vJoy 1 appears; vJoy 4
+        # comes back with another layout; vJoy 3 unchanged
+        after_update={1: drivers.new_device(1), 3: v3, 4: VJoyDevice(4, ("x",), 8, 0)},
+    )
+    caplog.set_level("INFO", logger="gremlin.device_helper")
+    result = driver_jobs.run_job(
+        _update(tmp_path, [_V2, v3, _V4]), fake, check_bundled=_ok
+    )
+    assert result.state == "done", result.message
+    assert result.lost == [_V2, _V4]  # as they were before
+    assert result.added == [1]
+    text = caplog.text
+    assert (
+        "vJoy devices before the update: vJoy 2: 3 axes (X, Y, Z), 32 buttons" in text
+    )
+    assert "vJoy devices after the update: vJoy 1: 8 axes (X-S2), 128 buttons" in text
+    assert drivers.read_lost() == [_V2, _V4]
+    # the update itself set nothing up and deleted nothing
+    assert not any(c[1:2] == ["-d"] or "-f" in c for c in fake.calls)
+
+
+def test_vjoy_update_with_nothing_lost_writes_no_store(tmp_path: Path) -> None:
+    drivers.clear_lost([2, 4])
+    fake = FakeVJoy({2: _V2})
+    result = driver_jobs.run_job(_update(tmp_path, [_V2]), fake, check_bundled=_ok)
+    assert result.state == "done" and result.lost == [] and result.added == []
+    assert not drivers.lost_path().exists()
+
+
+def test_vjoy_update_with_empty_before_does_no_comparison(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    drivers.clear_lost([2])
+    caplog.set_level("INFO", logger="gremlin.device_helper")
+    fake = FakeVJoy({2: _V2}, after_update={1: drivers.new_device(1)})
+    result = driver_jobs.run_job(_update(tmp_path, []), fake, check_bundled=_ok)
+    assert result.state == "done" and result.lost == [] and result.added == []
+    assert "vJoy devices before the update: couldn't be read" in caplog.text
+    assert "vJoy devices after the update: vJoy 1" in caplog.text
+    assert drivers.read_lost() == []
+
+
+def test_vjoy_update_check_never_fails_the_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(*_: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(drivers, "write_lost", broken)
+    fake = FakeVJoy({2: _V2}, after_update={})
+    fake.after_update = {1: drivers.new_device(1)}
+    result = driver_jobs.run_job(_update(tmp_path, [_V2]), fake, check_bundled=_ok)
+    assert result.state == "done", result.message
+
+
+def test_vjoy_update_failed_or_unreadable_after_is_not_compared(
+    tmp_path: Path,
+) -> None:
+    drivers.clear_lost([2])
+    failed = FakeVJoy({2: _V2}, after_update={}, install_code=5)
+    result = driver_jobs.run_job(_update(tmp_path, [_V2]), failed, check_bundled=_ok)
+    assert result.state == "failed" and result.lost == []
+    empty = FakeVJoy({2: _V2}, after_update={})
+    result = driver_jobs.run_job(_update(tmp_path, [_V2]), empty, check_bundled=_ok)
+    assert result.state == "done" and result.lost == []
+    assert drivers.read_lost() == []
+
+
+def test_vjoy_restore_sets_up_only_the_listed_devices(tmp_path: Path) -> None:
+    drivers.clear_lost([1, 2, 3, 4])
+    drivers.write_lost([_V2, _V4])
+    fake = FakeVJoy({1: drivers.new_device(1), 3: VJoyDevice(3, ("x",), 5, 0)})
+    result = driver_jobs.run_job(Job("vjoy_restore", "vjoy", [], [_V2]), fake)
+    assert result.state == "done", result.message
+    assert result.message.startswith("vJoy repaired, 1 device (device 2: ")
+    assert sorted(fake.devices) == [1, 2, 3]  # nothing deleted
+    assert fake.devices[2] == _V2
+    exe = driver_jobs.vjoyconfig_path()
+    assert fake.calls[:2] == [
+        [exe, "2", "-f", "-a", "x", "y", "z", "-b", "32", "-p", "0"],
+        [exe, "-t", "2"],
+    ]
+    # then only reads (the prune, 12 S25b): nothing else set up or deleted
+    assert all(c[1] == "-t" for c in fake.calls[2:])
+    assert drivers.read_lost() == [_V4]  # only the restored id leaves
+
+
+def test_vjoy_restore_failure_keeps_the_store() -> None:
+    drivers.clear_lost([2, 4])
+    drivers.write_lost([_V2])
+
+    class Refuses(FakeVJoy):
+        def __call__(self, command: list[str], timeout: float) -> tuple[int, str]:
+            self.calls.append(list(command))
+            return 0, ""  # read-back finds nothing
+
+    result = driver_jobs.run_job(Job("vjoy_restore", "vjoy", [], [_V2]), Refuses({}))
+    assert result.state == "failed" and "not found" in result.message
+    assert drivers.read_lost() == [_V2]
+    drivers.clear_lost([2])
+
+
+# -- update + device set-up in one run: the check waits for the set-up --------
+
+
+class DropsVJoy2(FakeVJoy):
+    """vJoy keeps dropping device 2 whatever is set up."""
+
+    def __call__(self, command: list[str], timeout: float) -> tuple[int, str]:
+        out = super().__call__(command, timeout)
+        self.devices.pop(2, None)
+        return out
+
+
+def _run(jobs: list[Job], fake: FakeVJoy) -> list[drivers.JobResult]:
+    run = driver_jobs.VJoyRun(jobs)
+    return [
+        driver_jobs.run_job(job, fake, check_bundled=_ok, vjoy_run=run) for job in jobs
+    ]
+
+
+def test_update_then_setup_listing_the_device_reports_nothing_lost(
+    tmp_path: Path,
+) -> None:
+    drivers.clear_lost([1, 2, 3, 4])
+    v3 = drivers.new_device(3)
+    # the update drops vJoy 2; the set-up (vJoy 2 kept, vJoy 3 added) puts it back
+    fake = FakeVJoy({1: drivers.new_device(1), 2: _V2}, {1: drivers.new_device(1)})
+    jobs = [
+        _update(tmp_path, [drivers.new_device(1), _V2]),
+        Job("vjoy_setup", "vjoy", [], [drivers.new_device(1), _V2, v3]),
+    ]
+    update, setup = _run(jobs, fake)
+    assert update.state == "done" and setup.state == "done", setup.message
+    assert (update.lost, update.added) == ([], [])
+    assert (setup.lost, setup.added) == ([], [])  # vJoy 3 was asked for
+    assert drivers.read_lost() == []
+
+
+def test_a_device_the_setup_removes_is_not_lost(tmp_path: Path) -> None:
+    drivers.clear_lost([1, 2, 3, 4])
+    fake = FakeVJoy({1: drivers.new_device(1), 2: _V2}, {1: drivers.new_device(1)})
+    jobs = [
+        _update(tmp_path, [drivers.new_device(1), _V2]),
+        Job("vjoy_setup", "vjoy", [], [drivers.new_device(1)]),  # vJoy 2 removed
+    ]
+    update, setup = _run(jobs, fake)
+    assert setup.state == "done", setup.message
+    assert update.lost == [] and setup.lost == [] and setup.added == []
+    assert drivers.read_lost() == []
+
+
+def test_a_device_still_missing_after_the_setup_is_lost_on_the_setup_result(
+    tmp_path: Path,
+) -> None:
+    drivers.clear_lost([1, 2, 3, 4])
+    fake = DropsVJoy2({1: drivers.new_device(1), 2: _V2}, {1: drivers.new_device(1)})
+    jobs = [
+        _update(tmp_path, [drivers.new_device(1), _V2]),
+        Job("vjoy_setup", "vjoy", [], [drivers.new_device(1), _V2]),
+    ]
+    update, setup = _run(jobs, fake)
+    assert update.state == "done" and (update.lost, update.added) == ([], [])
+    assert setup.lost == [_V2] and setup.added == []
+    assert drivers.read_lost() == [_V2]
+    drivers.clear_lost([2])
+
+
+def test_update_alone_in_a_run_still_checks_at_once(tmp_path: Path) -> None:
+    drivers.clear_lost([1, 2, 3, 4])
+    fake = FakeVJoy({2: _V2}, {1: drivers.new_device(1)})
+    (update,) = _run([_update(tmp_path, [_V2])], fake)
+    assert update.lost == [_V2] and update.added == [1]
+    assert drivers.read_lost() == [_V2]
+    drivers.clear_lost([2])
+
+
+def test_every_vjoy_job_prunes_devices_present_again(tmp_path: Path) -> None:
+    drivers.clear_lost([1, 2, 3, 4])
+    other = VJoyDevice(4, ("x",), 8, 0)
+    drivers.write_lost([_V2, _V4])
+    # vJoy 2 is back as it was; vJoy 4 is back with another layout
+    fake = FakeVJoy({1: drivers.new_device(1), 2: _V2, 4: other})
+    result = driver_jobs.run_job(
+        Job("vjoy_setup", "vjoy", [], [drivers.new_device(1), _V2, other]), fake
+    )
+    assert result.state == "done", result.message
+    assert drivers.read_lost() == [_V4]
+    drivers.clear_lost([4])
+
+
+def test_prune_lost_keeps_a_different_layout(tmp_path: Path) -> None:
+    path = tmp_path / "lost.json"
+    drivers.write_lost([_V2, _V4], path)
+    drivers.prune_lost([_V2, VJoyDevice(4, ("x",), 8, 0)], path)
+    assert drivers.read_lost(path) == [_V4]
+    drivers.prune_lost([_V4], path)
+    assert not path.exists()
+
+
+def test_a_prune_that_fails_never_fails_the_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken(*_: object) -> None:
+        raise OSError("disk full")
+
+    drivers.clear_lost([1, 2, 3, 4])
+    drivers.write_lost([_V2])
+    monkeypatch.setattr(drivers, "prune_lost", broken)
+    fake = FakeVJoy({})
+    result = driver_jobs.run_job(Job("vjoy_setup", "vjoy", [], [_V2]), fake)
+    assert result.state == "done", result.message
+    drivers.clear_lost([2])

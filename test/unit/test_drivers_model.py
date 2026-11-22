@@ -161,7 +161,10 @@ def test_presets_and_custom_layout(qapp: object, app: Path, tmp_path: Path) -> N
     model.setDevice(2, ["x", "bogus", "SL1"], 500, -1)
     assert model.vjoyPreset == "Custom"
     assert _plain(model.vjoyDevices)[2] == {
-        "id": 3, "axes": ["x", "sl1"], "buttons": 128, "hats": 0
+        "id": 3,
+        "axes": ["x", "sl1"],
+        "buttons": 128,
+        "hats": 0,
     }
     model.setDeviceCount(40)
     assert len(model.vjoyDevices) == 16
@@ -182,7 +185,14 @@ def test_set_axis_unticks_one_axis_and_the_job_lists_the_rest(
     )
     # The short names from the one table; the job keeps vJoyConfig's names.
     assert [a["label"] for a in model.vjoyAxes] == [
-        "X", "Y", "Z", "Rx", "Ry", "Rz", "S1", "S2"
+        "X",
+        "Y",
+        "Z",
+        "Rx",
+        "Ry",
+        "Rz",
+        "S1",
+        "S2",
     ]
     assert [a["label"] for a in model.vjoyAxes] == list(drivers.VJOY_AXIS_LABELS)
     assert [a["name"] for a in model.vjoyAxes] == list(drivers.VJOY_AXES)
@@ -693,7 +703,11 @@ def _busy_model(
 ) -> DriversModel:
     current = [drivers.new_device(1), drivers.new_device(2)]
     return _model(
-        app, tmp_path, VJOY_SAME, current=current, busy_reader=lambda: list(busy),
+        app,
+        tmp_path,
+        VJOY_SAME,
+        current=current,
+        busy_reader=lambda: list(busy),
         **kw,
     )
 
@@ -825,3 +839,236 @@ def test_add_device_takes_lowest_free_id_and_preview(
     assert model.addPreview == ""
     model.addDevice()
     assert len(model.vjoyDevices) == 16
+
+
+# -- a vJoy update keeps the devices (06 S185, D-01-VJOY-UPDATE-KEEPS) --------
+
+VJOY_OLDER = [_status("vjoy", "2.1.9.1", "older")]
+V2 = drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0)
+V4 = drivers.VJoyDevice(4, drivers.VJOY_AXES, 32, 0)
+
+
+def _update_model(
+    app: Path, tmp_path: Path, launcher: Launcher, **kw: object
+) -> DriversModel:
+    kw.setdefault("current", [V2, V4])
+    model = _model(app, tmp_path, VJOY_OLDER, launcher=launcher, **kw)  # type: ignore[arg-type]
+    model.setTicked("vjoy", True)
+    return model
+
+
+def _run_update(
+    qapp: object, model: DriversModel, launcher: Launcher, result: drivers.JobResult
+) -> None:
+    done: list[bool] = []
+    model.finished.connect(lambda: done.append(True))
+    assert model.apply()
+    _, results = _job_path(launcher)
+    drivers.write_results(results, [result], True)
+    _pump(qapp, lambda: bool(done))
+
+
+def test_the_vjoy_update_job_carries_the_devices_and_the_info_box_names_them(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    launcher = Launcher()
+    model = _update_model(app, tmp_path, launcher, results_reader=lambda p: ([], False))
+    assert model.updateInfo() == drivers.update_info_text([V2, V4])
+    assert "your 2 vJoy devices (vJoy 2, vJoy 4)" in model.updateInfo()
+    assert model.apply()
+    jobs = drivers.read_jobs(_job_path(launcher)[0])
+    assert [(j.op, j.driver) for j in jobs] == [("update", "vjoy")]
+    assert jobs[0].devices == [V2, V4]
+    model._timer.stop()
+
+
+def test_devices_not_read_give_the_other_info_text(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    model = _update_model(app, tmp_path, Launcher(), current=[])
+    assert model.updateInfo() == drivers.update_info_text([])
+    assert model.updateInfo().startswith("vJoy's devices couldn't be read")
+
+
+def test_no_info_box_without_a_vjoy_update(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    model = _model(app, tmp_path, ALL_MISSING)  # a fresh install
+    assert model.updateInfo() == ""
+    model = _update_model(app, tmp_path, Launcher())
+    model.setTicked("vjoy", False)
+    assert model.updateInfo() == ""
+
+
+def test_lost_devices_ask_repair_now_which_puts_back_exactly_those(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    launcher = Launcher()
+    model = _update_model(app, tmp_path, launcher)
+    _run_update(
+        qapp,
+        model,
+        launcher,
+        drivers.JobResult("done", "vJoy is updated.", lost=[V4], added=[1]),
+    )
+    assert model.lostText() == drivers.lost_text([V4])
+    assert model.results[0]["message"] == (
+        "vJoy is updated. vJoy 1 was added by the vJoy update."
+    )
+    assert model.repairNow()
+    assert len(launcher.calls) == 2
+    jobs = drivers.read_jobs(_job_path(launcher)[0])
+    assert [(j.op, j.driver, j.devices) for j in jobs] == [
+        ("vjoy_restore", "vjoy", [V4])
+    ]
+    assert model.lostText() == ""
+    model._timer.stop()
+
+
+def test_repair_later_writes_nothing(qapp: object, app: Path, tmp_path: Path) -> None:
+    launcher = Launcher()
+    model = _update_model(app, tmp_path, launcher)
+    _run_update(
+        qapp, model, launcher, drivers.JobResult("done", lost=[V2, V4], added=[])
+    )
+    assert model.lostText() == drivers.lost_text([V2, V4])
+    before = sorted(tmp_path.glob("gremlin-driver-jobs-*"))
+    model.repairLater()
+    assert model.lostText() == ""
+    assert len(launcher.calls) == 1
+    assert sorted(tmp_path.glob("gremlin-driver-jobs-*")) == before
+    assert not model.repairNow()  # nothing left to put back
+
+
+def test_nothing_lost_shows_nothing(qapp: object, app: Path, tmp_path: Path) -> None:
+    launcher = Launcher()
+    model = _update_model(app, tmp_path, launcher)
+    _run_update(qapp, model, launcher, drivers.JobResult("done", "vJoy is updated."))
+    assert model.lostText() == ""
+    assert model.vjoyLost == []
+    assert model.results[0]["message"] == "vJoy is updated."
+
+
+def test_lost_box_reads_the_vjoy_setup_result_of_an_update_and_set_up_run(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    launcher = Launcher()
+    model = _update_model(app, tmp_path, launcher)
+    model.addDevice()
+    done: list[bool] = []
+    model.finished.connect(lambda: done.append(True))
+    assert model.apply()
+    jobs = drivers.read_jobs(_job_path(launcher)[0])
+    assert [j.op for j in jobs] == ["update", "vjoy_setup"]
+    _, results = _job_path(launcher)
+    drivers.write_results(
+        results,
+        [
+            drivers.JobResult("done", "vJoy is updated."),
+            drivers.JobResult("done", "Set up.", lost=[V4], added=[]),
+        ],
+        True,
+    )
+    _pump(qapp, lambda: bool(done))
+    assert model.lostText() == drivers.lost_text([V4])
+    model._timer.stop()
+
+
+def test_update_and_set_up_run_reporting_none_shows_no_lost_box(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    launcher = Launcher()
+    model = _update_model(app, tmp_path, launcher)
+    model.addDevice()
+    done: list[bool] = []
+    model.finished.connect(lambda: done.append(True))
+    assert model.apply()
+    _, results = _job_path(launcher)
+    drivers.write_results(
+        results,
+        [
+            drivers.JobResult("done", "vJoy is updated."),
+            drivers.JobResult("done", "Set up.", lost=[], added=[]),
+        ],
+        True,
+    )
+    _pump(qapp, lambda: bool(done))
+    assert model.lostText() == ""
+    model._timer.stop()
+
+
+def test_reading_the_current_devices_prunes_the_remembered_lost_ones(
+    app: Path, tmp_path: Path
+) -> None:
+    calls: list[list[drivers.VJoyDevice]] = []
+    remembered = [V2]
+    model = _model(
+        app,
+        tmp_path,
+        [_status("vjoy", "2.2.2.0", "same")],
+        current=[V2],
+        lost_reader=lambda: list(remembered),
+        lost_pruner=lambda cur: (calls.append(cur), remembered.clear()),
+    )
+    assert calls == [[V2]]
+    assert model.vjoyLost == []
+    model._timer.stop()
+
+
+def test_remembered_lost_devices_show_as_rows_with_repair(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    launcher = Launcher()
+    v1 = drivers.new_device(1)
+    model = _model(
+        app,
+        tmp_path,
+        [_status("vjoy", "2.2.2.0", "same")],
+        current=[v1],
+        launcher=launcher,
+        # vJoy 1 is back as it was: not a lost row; vJoy 2 is.
+        lost_reader=lambda: [v1, V2],
+    )
+    assert model.vjoyLost == [
+        {
+            "id": 2,
+            "axes": ["x", "y", "z"],
+            "buttons": 32,
+            "hats": 0,
+            "summary": model.deviceSummary(["x", "y", "z"], 32, 0),
+        }
+    ]
+    # The editable list is what vJoy has now; the lost row isn't in it.
+    assert [d["id"] for d in model.vjoyDevices] == [1]
+    assert not model.repairDevice(9)
+    assert model.repairDevice(2)
+    jobs = drivers.read_jobs(_job_path(launcher)[0])
+    assert [(j.op, j.devices) for j in jobs] == [("vjoy_restore", [V2])]
+    assert not model.repairDevice(2)  # busy: one run at a time
+    model._timer.stop()
+
+
+def test_a_restore_reads_as_putting_back(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    launcher = Launcher()
+    model = _model(
+        app,
+        tmp_path,
+        [_status("vjoy", "2.2.2.0", "same")],
+        launcher=launcher,
+        lost_reader=lambda: [V2],
+    )
+    done: list[bool] = []
+    model.finished.connect(lambda: done.append(True))
+    assert model.repairDevice(2)
+    _, results = _job_path(launcher)
+    drivers.write_results(results, [drivers.JobResult("running")], False)
+    _pump(qapp, lambda: model.progress == "Putting back the vJoy devices…")
+    drivers.write_results(
+        results, [drivers.JobResult("done", "1 device put back.")], True
+    )
+    _pump(qapp, lambda: bool(done))
+    assert model.results == [
+        {"driver": "vJoy devices", "state": "done", "message": "1 device put back."}
+    ]

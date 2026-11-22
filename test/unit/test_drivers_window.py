@@ -217,6 +217,53 @@ def test_own_run_is_stopped_first_and_not_called_in_use(run: dict) -> None:
     assert run["runYesNext"] == "Devices in use"
 
 
+def test_info_box_before_a_vjoy_update(run: dict) -> None:
+    """06 S185: after the what-will-happen prompt, OK only, the model's
+    text; OK goes on to the in-use box; no text, no box."""
+    from gremlin import drivers
+
+    v2 = drivers.VJoyDevice(2, ("x", "y", "z"), 32, 0)
+    v4 = drivers.VJoyDevice(4, drivers.VJOY_AXES, 32, 0)
+    assert run["infoOpen"] is True
+    assert run["infoTitle"] == "vJoy update and your devices"
+    assert run["infoBody"] == drivers.update_info_text([v2, v4])
+    assert run["infoOk"] == "OK"
+    assert run["infoCancelVisible"] is False
+    assert "inUseWarning" not in run["infoCallsBefore"]
+    assert "apply" not in run["infoCallsAfter"]
+    after = run["infoCallsAfter"]
+    assert after.index("updateInfo") < after.index("inUseWarning")
+    assert run["infoNext"] == "Devices in use"
+    assert run["noInfoNext"] == "Devices in use"
+
+
+def test_lost_box_after_the_results(run: dict) -> None:
+    """Repair Now runs the repair; Repair Later only closes it; nothing lost,
+    no box."""
+    from gremlin import drivers
+
+    v4 = drivers.VJoyDevice(4, drivers.VJOY_AXES, 32, 0)
+    assert run["lostOpen"] is True
+    assert run["lostTitle"] == "The vJoy update lost a device"
+    assert run["lostBody"] == drivers.lost_text([v4])
+    assert run["lostButtons"] == ["Repair Now", "Repair Later"]
+    assert run["lostNowCalls"] == ["repairNow"]
+    assert run["lostLaterCalls"] == ["repairLater"]
+    assert run["nothingLostOpen"] is False
+    assert run["nothingLostCalls"] == []
+
+
+def test_lost_rows_with_repair(run: dict) -> None:
+    assert run["lostRowBefore"] is False
+    assert run["lostRowName"] == "vJoy 4"
+    assert run["lostRowSummary"] == "8 axes (X-S2), 32 buttons, 0 hats"
+    assert run["lostRowMark"] == "lost in the vJoy update"
+    assert run["lostRowMarkColor"] == run["styleWarn"]
+    assert run["lostRowRepair"] == "Repair"
+    assert run["lostRowCalls"] == ["repairDevice 4"]
+    assert run["lostRowGone"] is True
+
+
 def test_results_and_restart_buttons(run: dict) -> None:
     assert run["result0"] == "vJoy: Installed 2.2.2.0"
     assert run["restartVisible"] is True

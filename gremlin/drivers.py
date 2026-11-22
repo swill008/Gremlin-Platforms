@@ -613,7 +613,7 @@ def alike_warning(groups: list[list[int]]) -> str:
 
 # -- job and result files -----------------------------------------------------
 
-JOB_OPS = ("install", "update", "remove", "vjoy_setup")
+JOB_OPS = ("install", "update", "remove", "vjoy_setup", "vjoy_restore")
 FILE_KINDS = ("download", "bundled")
 RESULT_STATES = ("waiting", "running", "done", "failed")
 FILE_VERSION = 1
@@ -633,6 +633,30 @@ class JobResult:
     message: str = ""
     restart: bool = False
     used: str = ""  # "bundled" | "download" | ""
+    # A vJoy update (12 S25b): devices it lost (missing or different) and the
+    # ids it added (the new driver's default vJoy 1).
+    lost: list[VJoyDevice] = field(default_factory=list)
+    added: list[int] = field(default_factory=list)
+
+
+def _device_dict(d: VJoyDevice) -> dict:
+    return {"id": d.id, "axes": list(d.axes), "buttons": d.buttons, "hats": d.hats}
+
+
+def _device_from(item: object, where: str) -> VJoyDevice:
+    """A checked device from its file dict; ValueError when bad."""
+    if not isinstance(item, dict):
+        raise ValueError(f"{where}: bad device entry {item!r}")
+    device = VJoyDevice(
+        _int(item.get("id"), "device id"),
+        _axes(item.get("axes", list(VJOY_AXES))),
+        _int(item.get("buttons", 128), "buttons"),
+        _int(item.get("hats", 4), "hats"),
+    )
+    problem = device.problem()
+    if problem:
+        raise ValueError(f"{where}: {problem}")
+    return device
 
 
 def _atomic_write_json(path: PathLike, data: dict) -> None:
@@ -664,15 +688,7 @@ def write_jobs(path: PathLike, jobs: list[Job]) -> None:
                 "files": [
                     {"path": str(f["path"]), "kind": f["kind"]} for f in job.files
                 ],
-                "devices": [
-                    {
-                        "id": d.id,
-                        "axes": list(d.axes),
-                        "buttons": d.buttons,
-                        "hats": d.hats,
-                    }
-                    for d in job.devices
-                ],
+                "devices": [_device_dict(d) for d in job.devices],
             }
             for job in jobs
         ],
@@ -732,22 +748,9 @@ def read_jobs(path: PathLike) -> list[Job]:
         raw_devices = raw.get("devices", [])
         if not isinstance(raw_devices, list):
             raise ValueError(f"job {number}: devices is not a list")
-        devices: list[VJoyDevice] = []
-        for item in raw_devices:
-            if not isinstance(item, dict):
-                raise ValueError(f"job {number}: bad device entry {item!r}")
-            device = VJoyDevice(
-                _int(item.get("id"), "device id"),
-                _axes(item.get("axes", list(VJOY_AXES))),
-                _int(item.get("buttons", 128), "buttons"),
-                _int(item.get("hats", 4), "hats"),
-            )
-            problem = device.problem()
-            if problem:
-                raise ValueError(f"job {number}: {problem}")
-            devices.append(device)
-        if op == "vjoy_setup" and (driver != "vjoy" or not devices):
-            raise ValueError(f"job {number}: vjoy_setup needs vjoy and devices")
+        devices = [_device_from(item, f"job {number}") for item in raw_devices]
+        if op in ("vjoy_setup", "vjoy_restore") and (driver != "vjoy" or not devices):
+            raise ValueError(f"job {number}: {op} needs vjoy and devices")
         if op == "remove" and driver != "hidhide":
             raise ValueError(f"job {number}: only HidHide can be removed")
         jobs.append(Job(op, driver, clean_files, devices))
@@ -764,6 +767,8 @@ def write_results(path: PathLike, results: list[JobResult], finished: bool) -> N
                 "message": r.message,
                 "restart": bool(r.restart),
                 "used": r.used,
+                "lost": [_device_dict(d) for d in r.lost],
+                "added": list(r.added),
             }
             for r in results
         ],
@@ -784,6 +789,8 @@ def read_results(path: PathLike) -> tuple[list[JobResult], bool]:
                 message=str(item.get("message", "")),
                 restart=bool(item.get("restart", False)),
                 used=str(item.get("used", "")),
+                lost=[_device_from(d, "result") for d in item.get("lost", [])],
+                added=[_int(i, "added id") for i in item.get("added", [])],
             )
             for item in data["jobs"]
         ]
@@ -792,6 +799,164 @@ def read_results(path: PathLike) -> tuple[list[JobResult], bool]:
         return results, bool(data.get("finished", False))
     except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError):
         return [], False
+
+
+# -- a vJoy update keeps the devices (12 S25b, 06 S185, 01 S187) -------------
+
+LOST_FILE = "vjoy_lost.json"
+# The data folder (configuration.json's): gremlin.util.userprofile_path()'s
+# rule, repeated here because this module imports nothing from the program.
+_DATA_FOLDER = "Gremlin Platforms"
+
+
+def data_dir() -> Path:
+    """%userprofile%/Gremlin Platforms; under tests gremlin.util's (temp) one.
+
+    Not imported: test/conftest.py loads gremlin.util and points
+    userprofile_path at a temp folder, so tests never touch the real one.
+    """
+    util = sys.modules.get("gremlin.util")
+    if _under_test() and util is not None:
+        return Path(util.userprofile_path())
+    return Path(os.getenv("userprofile") or os.path.expanduser("~")) / _DATA_FOLDER
+
+
+def lost_path() -> Path:
+    return data_dir() / LOST_FILE
+
+
+def read_lost(path: PathLike | None = None) -> list[VJoyDevice]:
+    """The devices a vJoy update lost and nobody has put back; [] when none."""
+    try:
+        with open(path or lost_path(), encoding="utf-8") as handle:
+            data = json.load(handle)
+        if not isinstance(data, dict) or data.get("version") != FILE_VERSION:
+            return []
+        devices = [_device_from(d, "lost") for d in data.get("devices", [])]
+    except (OSError, UnicodeDecodeError, ValueError, TypeError, AttributeError):
+        return []
+    return sorted(devices, key=lambda d: d.id)
+
+
+def _store_lost(devices: list[VJoyDevice], path: PathLike | None) -> None:
+    target = Path(path or lost_path())
+    if not devices:
+        target.unlink(missing_ok=True)
+        return
+    _atomic_write_json(
+        target,
+        {
+            "version": FILE_VERSION,
+            "devices": [_device_dict(d) for d in sorted(devices, key=lambda d: d.id)],
+        },
+    )
+
+
+def write_lost(devices: list[VJoyDevice], path: PathLike | None = None) -> None:
+    """Adds the devices, replacing older entries with the same ids."""
+    if not devices:
+        return
+    new = {d.id: d for d in devices}
+    kept = [d for d in read_lost(path) if d.id not in new]
+    _store_lost(kept + list(new.values()), path)
+
+
+def clear_lost(ids: list[int], path: PathLike | None = None) -> None:
+    """Forgets the ids; the file goes when nothing is left."""
+    gone = set(ids)
+    _store_lost([d for d in read_lost(path) if d.id not in gone], path)
+
+
+def prune_lost(current: list[VJoyDevice], path: PathLike | None = None) -> None:
+    """Forgets remembered devices that are present again with the same layout
+    (12 S25b)."""
+    now = {d.id: (d.axes, d.buttons, d.hats) for d in current}
+    remembered = read_lost(path)
+    kept = [d for d in remembered if now.get(d.id) != (d.axes, d.buttons, d.hats)]
+    if len(kept) != len(remembered):
+        _store_lost(kept, path)
+
+
+def compare_devices(
+    before: list[VJoyDevice], after: list[VJoyDevice]
+) -> tuple[list[VJoyDevice], list[int]]:
+    """(lost, added): lost = before devices missing after or with another
+    layout (axes, buttons, hats), as they were before; added = new ids."""
+    now = {d.id: d for d in after}
+    lost = [
+        d
+        for d in before
+        if d.id not in now
+        or (now[d.id].axes, now[d.id].buttons, now[d.id].hats)
+        != (d.axes, d.buttons, d.hats)
+    ]
+    was = {d.id for d in before}
+    added = sorted(d.id for d in after if d.id not in was)
+    return sorted(lost, key=lambda d: d.id), added
+
+
+def _count(n: int, singular: str, plural: str) -> str:
+    return f"{n} {singular if n == 1 else plural}"
+
+
+def _join(parts: list[str]) -> str:
+    if len(parts) <= 1:
+        return "".join(parts)
+    return ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
+def device_brief(d: VJoyDevice) -> str:
+    """ "vJoy 4 (8 axes, 32 buttons, 0 hats)" """
+    return (
+        f"vJoy {d.id} ({_count(len(d.axes), 'axis', 'axes')}, "
+        f"{_count(d.buttons, 'button', 'buttons')}, {_count(d.hats, 'hat', 'hats')})"
+    )
+
+
+def lost_text(devices: list[VJoyDevice]) -> str:
+    """The "The vJoy update lost a device" text; "" when none."""
+    devices = sorted(devices, key=lambda d: d.id)
+    if not devices:
+        return ""
+    who = _join([device_brief(d) for d in devices])
+    if len(devices) == 1:
+        return (
+            f"After updating vJoy, {who} is missing. It was probably set up "
+            "with an older vJoy tool that the new vJoy doesn't read. "
+            "Gremlin-Platforms can put it back exactly as it was."
+        )
+    return (
+        f"After updating vJoy, {who} are missing. They were probably set up "
+        "with an older vJoy tool that the new vJoy doesn't read. "
+        "Gremlin-Platforms can put them back exactly as they were."
+    )
+
+
+def added_text(ids: list[int]) -> str:
+    """ "vJoy 1 was added by the vJoy update"; "" when none."""
+    ids = sorted(ids)
+    if not ids:
+        return ""
+    verb = "was" if len(ids) == 1 else "were"
+    return f"{_join([f'vJoy {i}' for i in ids])} {verb} added by the vJoy update"
+
+
+def update_info_text(devices: list[VJoyDevice]) -> str:
+    """The "vJoy update and your devices" text (both versions)."""
+    if not devices:
+        return (
+            "vJoy's devices couldn't be read before the update, so they can't "
+            "be checked afterwards. Check them in Tools › Drivers after the update."
+        )
+    ids = sorted(d.id for d in devices)
+    names = ", ".join(f"vJoy {i}" for i in ids)
+    noted = _count(len(ids), "vJoy device", "vJoy devices")
+    return (
+        "Updating vJoy can lose vJoy devices that were set up with older vJoy "
+        f"tools. Gremlin-Platforms has noted your {noted} ({names}) and checks "
+        "them after the update. If one is missing or different, you'll be "
+        "asked whether to repair it."
+    )
 
 
 # -- the HidHide two-step update ----------------------------------------------

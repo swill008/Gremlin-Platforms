@@ -296,6 +296,9 @@ def run_jobs(
         log.error("Bad job file %s: %s", jobs_path, error)
         return 2
     results = [drivers.JobResult(state="waiting") for _ in jobs]
+    # This run's vJoy device check (12 S25b), carried across its jobs; every
+    # run_job (an injected one too) gets it.
+    vjoy_run = driver_jobs.VJoyRun(jobs)
 
     def publish(finished: bool) -> None:
         try:
@@ -312,10 +315,13 @@ def run_jobs(
             if run is driver_jobs.run_job:
                 # vJoy's installer log goes beside the helper's own log.
                 results[index] = run(
-                    job, command_runner, log_dir=str(jobs_log_path().parent)
+                    job,
+                    command_runner,
+                    log_dir=str(jobs_log_path().parent),
+                    vjoy_run=vjoy_run,
                 )
             else:
-                results[index] = run(job, command_runner)
+                results[index] = run(job, command_runner, vjoy_run=vjoy_run)
         except Exception as error:  # noqa: BLE001 - reported, never a crash
             log.exception("Job %d failed", index)
             results[index] = drivers.JobResult(state="failed", message=str(error))
