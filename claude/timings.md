@@ -1302,3 +1302,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-22 | Rebuild 1.1.1 with the add-device row | build | ~7 min | 2 min | 04:54-04:56 |
 | 2026-11-22 | Test machine: restore + new 1.1.1 setup + restart, Remote Desktop on CF15T | test machine | ~3 min | 3 min | 05:01-05:04 |
 | 2026-11-22 | Quick tests --changed after add-device row (with the test machine running) | test | ~9 min | 9 min | 04:56-05:05 |
+| 2026-11-22 | Release prep: map check, OT list, to-do, commit d95b3f78, push (lead) | lead | ~5 min | 6 min | 05:06-05:12 |
+| 2026-11-22 | Windows' Startup Apps switch: STARTUP2 (Sonnet agent) | feature | 3-8 min | ~2 min | 05:24-05:25 |
+| 2026-11-22 | Windows' Startup Apps switch: TRAY2 (Sonnet agent) | feature | 3-8 min | 1 min | 05:24-05:25 |
+| 2026-11-22 | Windows' Startup Apps switch: DOCS5 (Sonnet agent) | docs | 3-8 min | 1 min | 05:24-05:25 |
+| 2026-11-22 | Build 1.1.1 (final) and start setup on the user's PC | build | ~2 min | 1 min | 05:26-05:27 |

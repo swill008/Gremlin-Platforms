@@ -15,6 +15,12 @@ from typing import Protocol
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 VALUE_NAME = "Gremlin-Platforms"
+# Windows' own Startup Apps switch is recorded here (read, never written).
+APPROVED_KEY = (
+    r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
+)
+NOTE_OFF_IN_WINDOWS = "Turned off in Windows' Startup Apps"
+SETTINGS_URI = "ms-settings:startupapps"
 
 _log = logging.getLogger("system")
 
@@ -27,6 +33,13 @@ class Store(Protocol):
     def get(self, name: str) -> str | None: ...
     def set(self, name: str, value: str) -> None: ...
     def delete(self, name: str) -> None: ...
+
+
+class ApprovedStore(Protocol):
+    """Read-only: the StartupApproved record, whose first byte is odd when the
+    user turned the entry off in Windows' Startup Apps."""
+
+    def get(self, name: str) -> bytes | None: ...
 
 
 def _under_test() -> bool:
@@ -72,6 +85,24 @@ class _RealStore:
             pass
 
 
+class _RealApprovedStore:
+    def __init__(self) -> None:
+        if _under_test():
+            raise RealRegistryBlocked(
+                "startup_entry used the real registry from a test"
+            )
+
+    def get(self, name: str) -> bytes | None:
+        import winreg
+
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, APPROVED_KEY) as key:
+                value, _kind = winreg.QueryValueEx(key, name)
+        except OSError:
+            return None
+        return bytes(value) if isinstance(value, (bytes, bytearray)) else None
+
+
 def _store(store: Store | None) -> Store:
     return store if store is not None else _RealStore()
 
@@ -90,9 +121,40 @@ def command(exe: str | None = None) -> str:
     return f'"{python}" "{script}" --start-minimized'
 
 
-def is_enabled(store: Store | None = None) -> bool:
-    """True when the value is in the list (whatever its command)."""
-    return _store(store).get(VALUE_NAME) is not None
+def state(
+    store: Store | None = None, approved: ApprovedStore | None = None
+) -> str:
+    """"off" (no entry), "off_in_windows" (entry present, switched off in
+    Windows' Startup Apps) or "on". An unreadable record counts as absent."""
+    if _store(store).get(VALUE_NAME) is None:
+        return "off"
+    record = approved if approved is not None else _RealApprovedStore()
+    try:
+        data = record.get(VALUE_NAME)
+    except OSError:
+        data = None
+    if isinstance(data, (bytes, bytearray)) and data and data[0] % 2 == 1:
+        return "off_in_windows"
+    return "on"
+
+
+def is_enabled(
+    store: Store | None = None, approved: ApprovedStore | None = None
+) -> bool:
+    """True when the entry is there and Windows lets it run."""
+    return state(store, approved) == "on"
+
+
+def open_windows_startup_settings() -> bool:
+    """Opens Windows' Startup Apps page; True when asked. Refused in tests."""
+    if _under_test():
+        raise RealRegistryBlocked("startup_entry opened Windows settings from a test")
+    try:
+        os.startfile(SETTINGS_URI)  # type: ignore[attr-defined]  # noqa: S606
+    except OSError as exc:
+        _log.warning(f"Start with Windows: could not open Windows settings: {exc}")
+        return False
+    return True
 
 
 def set_enabled(on: bool, store: Store | None = None) -> bool:

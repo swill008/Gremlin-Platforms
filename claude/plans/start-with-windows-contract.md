@@ -76,3 +76,24 @@ Decision rows D-01-START-WITH-WINDOWS (01 section 12) and the 12 S37 change
 | SSM | `gremlin/screen_saver_mode.py`, `test/unit/test_ssm_core.py` |
 | DOCS | `qml/help/*.js`, `claude/glossary.md`, `claude/program-map/*` (not S194/S37 text), `claude/todo.md` |
 | lead | this file, timings, build, commit |
+
+## 6. Windows' Startup Apps switch (2026-11-22, user 1a, 2a; spec 01 S194)
+
+Read, never written. Owner STARTUP2: `gremlin/startup_entry.py`, `gremlin/ui/option.py`, `test/unit/test_startup_entry.py`:
+
+```python
+APPROVED_KEY = r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"  # HKCU
+def state(store=None, approved=None) -> str   # "on" | "off" | "off_in_windows"
+    # "off": no Run value; "off_in_windows": Run value present and the
+    # StartupApproved value's first byte is odd; else "on". Unreadable record -> as if absent.
+def is_enabled(store=None, approved=None) -> bool  # state(...) == "on"
+def open_windows_startup_settings() -> bool  # os.startfile("ms-settings:startupapps"); refused under pytest
+NOTE_OFF_IN_WINDOWS = "Turned off in Windows' Startup Apps"
+```
+`approved` is an injectable read-only store (get only). Options: when state is
+off_in_windows the switch shows off with the note; turning it on calls
+open_windows_startup_settings() and leaves the entry as it is.
+
+Owner TRAY2: `gremlin/ui/system_tray.py`, `test/unit/test_tray_start_with_windows.py`:
+tick from `state()=="on"`; click when "off_in_windows" calls
+open_windows_startup_settings(); the item's text stays "Start with Windows".

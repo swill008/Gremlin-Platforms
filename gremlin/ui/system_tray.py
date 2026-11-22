@@ -577,18 +577,24 @@ class SystemTrayIcon(QtCore.QObject):
         return 0
 
     @staticmethod
-    def _start_with_windows_on(store: startup_entry.Store | None = None) -> bool:
-        """Whether the Windows start-up entry is set; False when the
-        start-up module fails (the tray must not break)."""
+    def _start_with_windows_state(store: startup_entry.Store | None = None) -> str:
+        """"on", "off" or "off_in_windows" (Windows' Startup Apps has it
+        turned off); "off" when the start-up module fails (the tray must not
+        break)."""
         try:
             from gremlin import startup_entry
 
-            return bool(startup_entry.is_enabled(store=store))
+            return str(startup_entry.state(store=store))
         except Exception:
             logging.getLogger("system").warning(
                 "Tray: reading the start-with-Windows entry failed", exc_info=True
             )
-            return False
+            return "off"
+
+    @staticmethod
+    def _start_with_windows_on(store: startup_entry.Store | None = None) -> bool:
+        """Whether the tick shows: only when the entry is really on."""
+        return SystemTrayIcon._start_with_windows_state(store) == "on"
 
     def _toggle_start_with_windows(
         self, store: startup_entry.Store | None = None
@@ -596,14 +602,17 @@ class SystemTrayIcon(QtCore.QObject):
         try:
             from gremlin import startup_entry
 
-            on = not self._start_with_windows_on(store)
-            logging.getLogger("system").info(
-                "Tray: Start with Windows %s", "on" if on else "off"
-            )
+            log = logging.getLogger("system")
+            state = self._start_with_windows_state(store)
+            if state == "off_in_windows":
+                log.info("Tray: Start with Windows is off in Windows, opening settings")
+                if not startup_entry.open_windows_startup_settings():
+                    log.warning("Tray: could not open Windows Startup Apps settings")
+                return
+            on = state != "on"
+            log.info("Tray: Start with Windows %s", "on" if on else "off")
             if not startup_entry.set_enabled(on, store=store):
-                logging.getLogger("system").warning(
-                    "Tray: Start with Windows change was not applied"
-                )
+                log.warning("Tray: Start with Windows change was not applied")
         except Exception:
             logging.getLogger("system").warning(
                 "Tray: Start with Windows toggle failed", exc_info=True

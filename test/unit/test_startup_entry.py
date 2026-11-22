@@ -38,8 +38,47 @@ class FakeStore:
         self.values.pop(name, None)
 
 
+class _Present(FakeStore):
+    def __init__(self) -> None:
+        super().__init__()
+        self.values["Gremlin-Platforms"] = "x"
+
+
+class FakeApproved:
+    """Read-only StartupApproved record; records every get."""
+
+    def __init__(self, data: object = None, fail: bool = False) -> None:
+        self.data = data
+        self.fail = fail
+        self.reads = 0
+
+    def get(self, name: str) -> bytes | None:
+        self.reads += 1
+        if self.fail:
+            raise PermissionError("Access is denied")
+        return self.data if name == "Gremlin-Platforms" else None  # type: ignore[return-value]
+
+
 @pytest.fixture
-def store(monkeypatch: pytest.MonkeyPatch) -> FakeStore:
+def approved(monkeypatch: pytest.MonkeyPatch) -> FakeApproved:
+    fake = FakeApproved()
+    monkeypatch.setattr(startup_entry, "_RealApprovedStore", lambda: fake)
+    return fake
+
+
+@pytest.fixture
+def opened(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    calls: list[int] = []
+    monkeypatch.setattr(
+        startup_entry,
+        "open_windows_startup_settings",
+        lambda: calls.append(1) or True,
+    )
+    return calls
+
+
+@pytest.fixture
+def store(monkeypatch: pytest.MonkeyPatch, approved: FakeApproved) -> FakeStore:
     fake = FakeStore()
     monkeypatch.setattr(startup_entry, "_RealStore", lambda: fake)
     return fake
@@ -79,10 +118,54 @@ def test_on_and_off_write_and_delete_the_value(store: FakeStore) -> None:
 def test_is_enabled_reads_any_command() -> None:
     fake = FakeStore()
     fake.values["Gremlin-Platforms"] = r'"D:\old\gp.exe"'
-    assert startup_entry.is_enabled(fake)
+    assert startup_entry.is_enabled(fake, FakeApproved())
     fake.values.clear()
     fake.values["Other"] = "x"
-    assert not startup_entry.is_enabled(fake)
+    assert not startup_entry.is_enabled(fake, FakeApproved())
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        (None, "on"),
+        (b"", "on"),
+        (b"\x02\x00\x00\x00", "on"),
+        (b"\x06\x00", "on"),
+        (b"\x03\x00\x00\x00", "off_in_windows"),
+        (b"\x01", "off_in_windows"),
+        ("garbage", "on"),
+        (12, "on"),
+    ],
+)
+def test_state_reads_the_first_byte(data: object, expected: str) -> None:
+    fake = FakeStore()
+    fake.values["Gremlin-Platforms"] = "x"
+    assert startup_entry.state(fake, FakeApproved(data)) == expected
+    assert startup_entry.is_enabled(fake, FakeApproved(data)) is (expected == "on")
+
+
+def test_state_off_without_the_entry_even_if_record_is_odd() -> None:
+    assert startup_entry.state(FakeStore(), FakeApproved(b"\x03")) == "off"
+
+
+def test_state_unreadable_record_counts_as_absent() -> None:
+    fake = FakeStore()
+    fake.values["Gremlin-Platforms"] = "x"
+    assert startup_entry.state(fake, FakeApproved(fail=True)) == "on"
+
+
+def test_set_enabled_never_touches_the_approved_record(
+    store: FakeStore, approved: FakeApproved
+) -> None:
+    assert not hasattr(approved, "set")
+    assert startup_entry.set_enabled(True)
+    assert startup_entry.set_enabled(False)
+    assert approved.reads == 0
+
+
+def test_windows_settings_are_refused_under_pytest() -> None:
+    with pytest.raises(startup_entry.RealRegistryBlocked):
+        startup_entry.open_windows_startup_settings()
 
 
 def test_a_refused_write_returns_false_and_logs(
@@ -98,6 +181,8 @@ def test_a_refused_write_returns_false_and_logs(
 def test_the_real_registry_is_refused_under_pytest() -> None:
     with pytest.raises(startup_entry.RealRegistryBlocked):
         startup_entry.is_enabled()
+    with pytest.raises(startup_entry.RealRegistryBlocked):
+        startup_entry.state(_Present())
     with pytest.raises(startup_entry.RealRegistryBlocked):
         startup_entry.set_enabled(True)
 
@@ -146,11 +231,45 @@ def test_option_shows_windows_list_and_changes_it(store: FakeStore) -> None:
         config.Configuration().set(*_KEY, before)
 
 
+def test_option_off_in_windows_shows_the_note_and_opens_settings(
+    store: FakeStore, approved: FakeApproved, opened: list[int]
+) -> None:
+    model, roles = _model()
+    index = model.index(0, 0)
+    before = config.Configuration().value(*_KEY)
+    try:
+        # On: no note beyond the normal description.
+        store.values["Gremlin-Platforms"] = "x"
+        normal = model.data(index, roles["description"])
+        assert startup_entry.NOTE_OFF_IN_WINDOWS not in str(normal)
+        approved.data = b"\x03\x00"
+        assert model.data(index, roles["value"]) is False
+        assert model.data(index, roles["description"]) == (
+            startup_entry.NOTE_OFF_IN_WINDOWS
+        )
+        changed: list[int] = []
+        model.dataChanged.connect(lambda *_a: changed.append(1))
+        assert not model.setData(index, True, roles["value"])
+        assert opened == [1]
+        assert changed
+        # The Run value is left alone; nothing was written anywhere.
+        assert store.values == {"Gremlin-Platforms": "x"}
+        assert approved.data == b"\x03\x00"
+        assert config.Configuration().value(*_KEY) == before
+        # Turning it off from this state still removes the entry.
+        assert model.setData(index, False, roles["value"])
+        assert store.values == {}
+        assert opened == [1]
+    finally:
+        config.Configuration().set(*_KEY, before)
+
+
 def test_option_failure_puts_the_switch_back(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     fake = FakeStore(fail=True)
     monkeypatch.setattr(startup_entry, "_RealStore", lambda: fake)
+    monkeypatch.setattr(startup_entry, "_RealApprovedStore", FakeApproved)
     model, roles = _model()
     index = model.index(0, 0)
     changed: list[int] = []

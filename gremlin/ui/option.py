@@ -172,11 +172,31 @@ def _start_with_windows_read() -> bool:
         return bool(cfg.value("global", "general", "start-with-windows"))
 
 
+def _start_with_windows_note() -> str | None:
+    """Shown as the row's description when Windows has it switched off."""
+    from gremlin import startup_entry
+
+    try:
+        if startup_entry.state() == "off_in_windows":
+            return startup_entry.NOTE_OFF_IN_WINDOWS
+    except startup_entry.RealRegistryBlocked:
+        pass
+    return None
+
+
 def _start_with_windows_write(value: Any) -> bool:  # noqa: ANN401
     from gremlin import startup_entry
 
+    if value and startup_entry.state() == "off_in_windows":
+        # Only the user can switch it on there; the entry stays as it is.
+        startup_entry.open_windows_startup_settings()
+        return False
     return startup_entry.set_enabled(bool(value))
 
+
+_LIVE_NOTES: dict[tuple[str, str, str], Any] = {
+    ("global", "general", "start-with-windows"): _start_with_windows_note,
+}
 
 _LIVE_VALUES: dict[tuple[str, str, str], tuple[Any, Any]] = {
     ("global", "general", "start-with-windows"): (
@@ -618,7 +638,9 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         elif self._config.exists(section, group, name):
             key = (section, group, name)
             value = self._config.get(section, group, name, role_name)
-            if role_name == "value" and key in _LIVE_VALUES:
+            if role_name == "description" and key in _LIVE_NOTES:
+                value = _LIVE_NOTES[key]() or value
+            elif role_name == "value" and key in _LIVE_VALUES:
                 value = _LIVE_VALUES[key][0]()
             elif role_name == "value":
                 if self._config.data_type(section, group, name) == PropertyType.Path:
@@ -652,10 +674,12 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
             value = stored_choice((section, group, name), value)
             live = _LIVE_VALUES.get((section, group, name))
             if live is not None and not live[1](value):
-                logging.getLogger("system").warning(
-                    f"Options: {entry_title(name)} was not changed; the switch "
-                    "shows Windows' setting again"
-                )
+                note = _LIVE_NOTES.get((section, group, name))
+                if note is None or note() is None:
+                    logging.getLogger("system").warning(
+                        f"Options: {entry_title(name)} was not changed; the "
+                        "switch shows Windows' setting again"
+                    )
                 self.dataChanged.emit(index, index, [role])
                 return False
             self._config.set(section, group, name, value)

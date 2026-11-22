@@ -18,8 +18,20 @@ from gremlin.ui import system_tray
 
 @pytest.fixture
 def entry(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
-    state = {"on": False, "fail": False, "raise_read": False}
+    state = {"on": False, "fail": False, "raise_read": False, "off_in_windows": False}
     calls: list[bool] = []
+    opened: list[int] = []
+
+    def get_state(store: object = None) -> str:
+        if state["raise_read"]:
+            raise OSError("registry unavailable")
+        if state["off_in_windows"]:
+            return "off_in_windows"
+        return "on" if state["on"] else "off"
+
+    def open_settings() -> bool:
+        opened.append(1)
+        return True
 
     def is_enabled(store: object = None) -> bool:
         if state["raise_read"]:
@@ -34,13 +46,15 @@ def entry(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         return True
 
     module = types.ModuleType("gremlin.startup_entry")
+    module.state = get_state  # type: ignore[attr-defined]
+    module.open_windows_startup_settings = open_settings  # type: ignore[attr-defined]
     module.is_enabled = is_enabled  # type: ignore[attr-defined]
     module.set_enabled = set_enabled  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "gremlin.startup_entry", module)
     import gremlin
 
     monkeypatch.setattr(gremlin, "startup_entry", module, raising=False)
-    return SimpleNamespace(state=state, calls=calls)
+    return SimpleNamespace(state=state, calls=calls, opened=opened)
 
 
 def _tray() -> system_tray.SystemTrayIcon:
@@ -130,3 +144,19 @@ def test_start_up_failures_never_break_the_tray(
     entry.state["fail"] = True
     _tray()._toggle_start_with_windows()
     assert entry.state["on"] is False
+
+
+def test_off_in_windows_shows_unticked_and_click_opens_settings(
+    entry: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import win32con
+
+    items = _menu_items(monkeypatch)
+    entry.state["off_in_windows"] = True
+    _tray()._show_menu(0, 0)
+    flags, _ident, text = _start_item(items)
+    assert not flags & win32con.MF_CHECKED
+    assert text == "Start with Windows"
+    _tray()._toggle_start_with_windows()
+    assert entry.opened == [1]
+    assert entry.calls == []  # nothing written
