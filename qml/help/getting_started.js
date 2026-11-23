@@ -343,7 +343,57 @@ function topics() {
                 + "<li>Without <code>--profile</code>, the program opens the profile you used last (see <a href=\"topic:getting-started-start-up\">What opens when the program starts</a>).</li>"
                 + "<li>In a shortcut, put the options after the program's path in the shortcut's <b>Target</b> box.</li>"
                 + "</ul>",
-            related: ["getting-started-start-up", "getting-started-run", "options-profile-tray"]
+            related: ["getting-started-start-up", "getting-started-run", "options-profile-tray", "getting-started-control"]
+        },
+        {
+            id: "getting-started-control",
+            section: "Getting started",
+            title: "Control the program from other programs",
+            body: "<p><b>gremlin-ctl</b> is a small command line program that reads and controls Gremlin-Platforms while it runs. Scripts and other programs on this PC can use it too.</p>"
+                + "<h4>How to</h4>"
+                + "<ol>"
+                + "<li>Choose <b>Tools › Options</b>, then <b>General</b>.</li>"
+                + "<li>Under <b>Control</b>, turn on <b>Allow control from other programs</b> <a href=\"show:option/Allow control from other programs\">Show me ›</a>.</li>"
+                + "<li>Open a command prompt in the program's folder, where <code>gremlin-ctl.exe</code> sits next to <code>gremlin_platforms.exe</code>.</li>"
+                + "<li>Type a command, such as <code>gremlin-ctl state</code>, and press Enter.</li>"
+                + "</ol>"
+                + "<h4>What you see</h4>"
+                + "<table>"
+                + "<tr><th>Command</th><th>What it does</th></tr>"
+                + "<tr><td><code>gremlin-ctl state</code></td><td>Shows the version, the profile, the mode, tracing, the Health count and Screen Saver Mode.</td></tr>"
+                + "<tr><td><code>gremlin-ctl devices</code></td><td>Lists the devices and whether each is plugged in.</td></tr>"
+                + "<tr><td><code>gremlin-ctl run start</code>, <code>gremlin-ctl run stop</code></td><td>Runs or stops the profile.</td></tr>"
+                + "<tr><td><code>gremlin-ctl profile load \"My flight.xml\"</code>, <code>gremlin-ctl profile save</code></td><td>Opens a profile, or saves the open one.</td></tr>"
+                + "<tr><td><code>gremlin-ctl commands</code></td><td>Lists the menu commands, each with its id.</td></tr>"
+                + "<tr><td><code>gremlin-ctl run-command tools.history</code></td><td>Runs a menu command by its id, here <b>Tools › History</b>.</td></tr>"
+                + "<tr><td><code>gremlin-ctl options</code></td><td>Lists the Options settings.</td></tr>"
+                + "<tr><td><code>gremlin-ctl option get global/vjoy/keep-alive</code>, <code>gremlin-ctl option set global/vjoy/keep-alive true</code></td><td>Reads or changes one setting.</td></tr>"
+                + "<tr><td><code>gremlin-ctl trace on</code>, <code>gremlin-ctl trace off</code>, <code>gremlin-ctl trace status</code></td><td>Turns tracing on or off, or shows it.</td></tr>"
+                + "<tr><td><code>gremlin-ctl log system -n 20</code>, <code>gremlin-ctl log trace</code></td><td>Shows the last lines of the system log or the trace.</td></tr>"
+                + "<tr><td><code>gremlin-ctl windows</code></td><td>Lists the program's windows by their titles.</td></tr>"
+                + "<tr><td><code>gremlin-ctl window open tools.history</code>, <code>gremlin-ctl window close History</code></td><td>Opens a window by its menu command id, or closes it by its title.</td></tr>"
+                + "<tr><td><code>gremlin-ctl window read History</code></td><td>Lists the text, buttons and fields a window shows.</td></tr>"
+                + "<tr><td><code>gremlin-ctl window screenshot History C:\\shots\\history.png</code></td><td>Saves a picture of that window only.</td></tr>"
+                + "<tr><td><code>gremlin-ctl window press History Close</code>, <code>gremlin-ctl window type Search Find gear</code></td><td>Presses a button, or types into a field, by its name.</td></tr>"
+                + "<tr><td><code>gremlin-ctl help</code></td><td>Lists every command.</td></tr>"
+                + "</table>"
+                + "<p>Add <code>--json</code> to any command to get the answer as data for a script.</p>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li><b>Allow control from other programs</b> is off at first. Only you can switch it on or off, in Options; gremlin-ctl can't change it.</li>"
+                + "<li>It works on this PC only, never over a network.</li>"
+                + "<li>Each command waits up to 10 seconds for an answer, or 30 seconds for a screenshot or a profile load.</li>"
+                + "<li>Profile and Options changes made this way show in <b>Tools › History</b>, marked <b>by API</b>.</li>"
+                + "<li>Every command is written to the system log.</li>"
+                + "<li>Windows it opens appear where the program usually opens them. It works while you use the program too.</li>"
+                + "<li>gremlin-ctl ends with a number scripts can check:<ul>"
+                + "<li><b>0</b>: done.</li>"
+                + "<li><b>1</b>: the command failed; the reason is shown.</li>"
+                + "<li><b>2</b>: the program isn't running, or <b>Allow control from other programs</b> is off.</li>"
+                + "<li><b>3</b>: gremlin-ctl and the program are different versions.</li>"
+                + "</ul></li>"
+                + "</ul>",
+            related: ["getting-started-command-line", "options-profile-general", "tools-trace", "tools-history"]
         },
         {
             id: "getting-started-close",

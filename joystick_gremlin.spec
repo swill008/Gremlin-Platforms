@@ -265,6 +265,13 @@ helper_hidden_imports = [
 ]
 helper_excludes = list(exclude_imports) + ["PySide6", "tkinter"]
 
+# gremlin-ctl: a fourth exe in the same folder, a console command line for
+# the control pipe (claude/plans/control-api-contract.md). Standard library
+# only, no Qt and nothing from gremlin; it shares _internal and has its own
+# small PYZ. The tester-only build leaves it out.
+ctl_name = "gremlin-ctl"
+ctl_excludes = list(exclude_imports) + ["PySide6", "tkinter", "gremlin"]
+
 if tester_only:
     COLLECT(
         tester_exe,
@@ -345,8 +352,43 @@ else:
         # Windows asks for administrator rights each time it starts.
         uac_admin=True,
     )
+    c = Analysis(
+        ["gremlin_ctl/__main__.py"],
+        # The repository root, so "gremlin_ctl" imports as a package.
+        pathex=[SPECPATH],
+        binaries=[],
+        datas=[],
+        hiddenimports=["gremlin_ctl", "gremlin_ctl.cli", "gremlin_ctl.client"],
+        excludes=ctl_excludes,
+        hookspath=[],
+        hooksconfig={},
+        runtime_hooks=[],
+        noarchive=False,
+        optimize=0,
+    )
+    trim(c)
+    ctl_exe = EXE(
+        PYZ(c.pure),
+        c.scripts,
+        [],
+        name=ctl_name,
+        debug=False,
+        bootloader_ignore_signals=False,
+        exclude_binaries=True,
+        strip=False,
+        upx=False,
+        runtime_tmpdir=None,
+        # A command line: it prints to the console it was started from.
+        console=True,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon="gfx\\icon.ico",
+    )
 
-    # One folder, all three exes: COLLECT keeps one copy of each shared file.
+    # One folder, all four exes: COLLECT keeps one copy of each shared file.
     COLLECT(
         exe,
         a.binaries,
@@ -357,6 +399,9 @@ else:
         helper_exe,
         h.binaries,
         h.datas,
+        ctl_exe,
+        c.binaries,
+        c.datas,
         strip=False,
         upx=False,
         upx_exclude=["dill.dll", "vJoyInterface.dll"],

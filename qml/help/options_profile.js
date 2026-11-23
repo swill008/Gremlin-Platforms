@@ -45,7 +45,7 @@ function topics() {
             id: "options-profile-general",
             section: "Options",
             title: "General options",
-            body: "<p>The <b>General</b> section of Options covers startup, devices, vJoy, diagnostics and History.</p>"
+            body: "<p>The <b>General</b> section of Options covers startup, devices, vJoy, control from other programs, diagnostics and History.</p>"
                 + "<h4>What you see</h4>"
                 + "<ul>"
                 + "<li><b>Startup and Tray</b>:<ul>"
@@ -66,6 +66,9 @@ function topics() {
                 + "<li><b>vJoy</b>:<ul>"
                 + "<li><b>Keep vJoy devices awake</b> <a href=\"show:option/Keep vJoy devices awake\">Show me ›</a>: while the profile runs, sends to each vJoy device again after 60 seconds with no change. Only for older vJoy versions that stop responding when idle. Off at first.</li>"
                 + "</ul></li>"
+                + "<li><b>Control</b>:<ul>"
+                + "<li><b>Allow control from other programs</b> <a href=\"show:option/Allow control from other programs\">Show me ›</a>: lets the gremlin-ctl command line and other programs on this PC read and control the program. Off at first. See <a href=\"topic:getting-started-control\">Control the program from other programs</a>.</li>"
+                + "</ul></li>"
                 + "<li><b>Diagnostics</b>: <b>Diagnostic logs</b> and <b>Log When Not Responding</b>. See <a href=\"topic:options-profile-diagnostics\">Diagnostic logs</a>.</li>"
                 + "<li><b>History</b>:<ul>"
                 + "<li><b>Days to keep changes</b> <a href=\"show:option/Days to keep changes\">Show me ›</a>: how long <b>Tools › History</b> keeps each change.</li>"
@@ -78,7 +81,7 @@ function topics() {
                 + "<li>With <b>Keep vJoy devices awake</b> on, Windows counts each send as input, so it turns the displays on about once a minute while the profile runs. Leave it off unless your vJoy stops responding.</li>"
                 + "<li>A change to <b>Keep vJoy devices awake</b> takes effect the next time you choose <b>Run</b>.</li>"
                 + "</ul>",
-            related: ["options-profile-options", "options-profile-tray", "options-profile-start-with-windows", "tools-hidhide", "tools-history"]
+            related: ["options-profile-options", "options-profile-tray", "options-profile-start-with-windows", "getting-started-control", "tools-hidhide", "tools-history"]
         },
         {
             id: "options-profile-tray",

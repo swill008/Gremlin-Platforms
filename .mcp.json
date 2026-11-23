@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "gremlin": {
+      "type": "stdio",
+      "command": "C:/Users/Stacie/AppData/Local/pypoetry/Cache/virtualenvs/joystickgremlin-4UY8FelE-py3.13/Scripts/python.exe",
+      "args": ["tools/gremlin_mcp/server.py"],
+      "env": {"PYTHONUNBUFFERED": "1"}
+    }
+  }
+}

@@ -1,0 +1,1025 @@
+# -*- coding: utf-8; -*-
+
+# SPDX-License-Identifier: GPL-3.0-only
+
+"""Control from other programs: the gremlin-ctl command line, the MCP
+server and scripts read and control the program through a private named
+pipe (claude/plans/control-api.md, control-api-contract.md).
+
+Only while Options › General › "Allow control from other programs" is on
+(off at first; only the user changes it, never a call). The pipe has a new
+random name and a 32-byte key each time it opens, the same method as the
+device helper (gremlin/device_disable.py); both are written to
+<user folder>/api/endpoint.json, which goes when the pipe closes.
+
+One JSON request per message, {"call", "args"}; the answer is {"ok": true,
+"result"} or {"ok": false, "error"}. Calls come from register(): the ones
+here, and the window and menu command ones registered at attach_ui(). A
+call that needs the window runs on the main thread with a time limit; past
+it the answer is an error and the program carries on. Nothing in the
+program waits on a client: each connection has its own thread, every wait
+on it is bounded, and a client that stops answering is dropped.
+
+Every call writes one system log line "API: <call> <args> -> ok|error".
+Profile saves and Options changes made here go into Tools › History
+marked "(by API)" where History's group path can mark them (see
+_by_api).
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import json
+import logging
+import os
+import secrets
+import sys
+import threading
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Protocol
+
+from gremlin import clock, threads
+
+PROTOCOL_VERSION = 1
+PIPE_PREFIX = "\\\\.\\pipe\\gremlin-platforms-api-"
+SWITCH_KEY = ("global", "control", "allow-other-programs")
+SWITCH_DESCRIPTION = (
+    "Lets the gremlin-ctl command line and other programs on this PC read "
+    "and control Gremlin-Platforms."
+)
+OFF_TEXT = "Control from other programs is off in Options › General."
+SWITCH_REFUSED_TEXT = "Only the user can change this setting, in Options › General."
+ENDPOINT_FOLDER = "api"
+ENDPOINT_NAME = "endpoint.json"
+
+# Limits: a request's size, the key handshake, an idle connection, the
+# connections served at once, and the wait for another call to finish.
+MAX_REQUEST_BYTES = 1024 * 1024
+HANDSHAKE_S = 5.0
+IDLE_S = 120.0
+MAX_CONNECTIONS = 4
+POLL_S = 0.5
+DEFAULT_TIMEOUT_S = 10.0
+LONG_TIMEOUT_S = 30.0
+LOG_LINES_MAX = 2000
+
+_log = logging.getLogger("system")
+
+
+class CallError(Exception):
+    """A call that can't be done; its text is the answer's error."""
+
+
+# --- the switch ---------------------------------------------------------------
+
+
+def register_options() -> None:
+    """The Options switch (before the start-up purge)."""
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+
+    Configuration().register(
+        *SWITCH_KEY, PropertyType.Bool, False, SWITCH_DESCRIPTION, {}, True
+    )
+
+
+def allowed() -> bool:
+    """The switch is on (False when it can't be read)."""
+    try:
+        from gremlin.config import Configuration
+
+        return bool(Configuration().value(*SWITCH_KEY))
+    except Exception:
+        return False
+
+
+# --- the call registry ---------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _Call:
+    handler: Callable[[dict], Any]
+    main_thread: bool
+    timeout_s: float
+    summary: str
+
+
+_calls: dict[str, _Call] = {}
+_calls_lock = threading.Lock()
+# One call at a time (a second waits for the first, up to its own limit).
+_busy = threading.Lock()
+
+
+def register(
+    name: str,
+    handler: Callable[[dict], Any],
+    *,
+    main_thread: bool = False,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+    summary: str = "",
+) -> None:
+    """Adds a call (the owning module registers its own; a second one with
+    the same name replaces the first). handler(args) returns a JSON-able
+    result or raises CallError with the answer's text."""
+    with _calls_lock:
+        _calls[str(name)] = _Call(handler, bool(main_thread), float(timeout_s), summary)
+
+
+def calls() -> list[dict]:
+    """Every call: [{"name", "summary"}], by name."""
+    with _calls_lock:
+        items = sorted(_calls.items())
+    return [{"name": name, "summary": call.summary} for name, call in items]
+
+
+def _short(args: dict) -> str:
+    if not args:
+        return ""
+    try:
+        text = json.dumps(args, ensure_ascii=False, default=str)
+    except Exception:
+        text = repr(args)
+    return text if len(text) <= 120 else text[:117] + "..."
+
+
+def _json_safe(value: Any) -> Any:  # noqa: ANN401 - any result
+    return json.loads(json.dumps(value, default=str))
+
+
+def dispatch(call: str, args: dict | None = None) -> dict:
+    """Runs one call; returns the answer {"ok", "result"|"error"}. Never
+    raises. With the switch off nothing runs."""
+    args = {} if args is None else args
+    name = str(call)
+    reply: dict
+    if not allowed():
+        reply = {"ok": False, "error": OFF_TEXT}
+    elif not isinstance(args, dict):
+        reply = {"ok": False, "error": "args must be an object."}
+    else:
+        with _calls_lock:
+            entry = _calls.get(name)
+        if entry is None:
+            reply = {
+                "ok": False,
+                "error": f"Unknown call: {name}. The call 'help' lists them.",
+            }
+        else:
+            reply = _run(name, entry, args)
+    if reply["ok"]:
+        _log.warning(f"API: {name} {_short(args)} -> ok")
+    else:
+        _log.warning(f"API: {name} {_short(args)} -> error: {reply['error']}")
+    return reply
+
+
+def _run(name: str, entry: _Call, args: dict) -> dict:
+    if not _busy.acquire(timeout=entry.timeout_s):
+        return {"ok": False, "error": "Busy with another call; try again."}
+    try:
+        if entry.main_thread:
+            result = threads.main_call_wait(
+                entry.handler, args, timeout=entry.timeout_s
+            )
+        else:
+            result = entry.handler(args)
+        return {"ok": True, "result": _json_safe(result)}
+    except TimeoutError:
+        return {
+            "ok": False,
+            "error": f"{name} took over {entry.timeout_s:g} s; the program "
+            "carried on without it.",
+        }
+    except CallError as error:
+        return {"ok": False, "error": str(error)}
+    except Exception as error:
+        _log.exception(f"API: {name} failed")
+        return {"ok": False, "error": f"{type(error).__name__}: {error}"}
+    finally:
+        _busy.release()
+
+
+def handle_bytes(data: bytes) -> bytes:
+    """One request message to its answer message (UTF-8 JSON both)."""
+    try:
+        request = json.loads(bytes(data).decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        reply: dict = {"ok": False, "error": "The request isn't JSON."}
+    else:
+        if not isinstance(request, dict) or not isinstance(request.get("call"), str):
+            reply = {"ok": False, "error": 'A request is {"call": name, "args": {}}.'}
+        else:
+            reply = dispatch(request["call"], request.get("args") or {})
+    return json.dumps(reply, ensure_ascii=False).encode("utf-8")
+
+
+# --- the pipe -------------------------------------------------------------------
+
+
+class Listener(Protocol):
+    def accept(self) -> Any: ...  # noqa: ANN401 - a Connection
+
+    def close(self) -> None: ...
+
+
+ListenerFactory = Callable[[str], Listener]
+# (connection, key) -> True when the client proved it has the key.
+Handshake = Callable[[Any, bytes], bool]
+
+
+def _under_test() -> bool:
+    return bool(os.environ.get("PYTEST_CURRENT_TEST")) or "pytest" in sys.modules
+
+
+class RealPipeBlocked(RuntimeError):
+    """A real named pipe opened from a test (pass a listener_factory)."""
+
+
+class _PipeListener:
+    """A named pipe listener without a handshake of its own: the key check
+    runs on the connection's thread with time limits (_handshake), so a
+    client that connects and says nothing never holds up the next one.
+    close() wakes a waiting accept() by connecting to it."""
+
+    def __init__(self, address: str) -> None:
+        if _under_test():
+            raise RealPipeBlocked("control API pipe opened from a test")
+        from multiprocessing.connection import Listener as MpListener
+
+        self._address = address
+        self._listener = MpListener(address, family="AF_PIPE")
+        self._closed = False
+        self._accepting = False
+
+    def accept(self) -> Any:  # noqa: ANN401 - a Connection
+        self._accepting = True
+        try:
+            conn = self._listener.accept()
+        finally:
+            self._accepting = False
+        if self._closed:
+            conn.close()
+            raise OSError("listener closed")
+        return conn
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self._accepting:
+            try:
+                from multiprocessing.connection import Client
+
+                Client(self._address, family="AF_PIPE").close()
+            except Exception:
+                pass
+        try:
+            self._listener.close()
+        except Exception:
+            pass
+
+
+class _Bounded:
+    """A connection whose every read waits at most limit seconds."""
+
+    def __init__(self, conn: Any, limit: float) -> None:  # noqa: ANN401
+        self._conn = conn
+        self._limit = limit
+
+    def send_bytes(self, data: bytes) -> None:
+        self._conn.send_bytes(data)
+
+    def recv_bytes(self, maxlength: int | None = None) -> bytes:
+        if not self._conn.poll(self._limit):
+            raise TimeoutError("no answer in the handshake")
+        return self._conn.recv_bytes(maxlength)
+
+
+def _handshake(conn: Any, key: bytes) -> bool:  # noqa: ANN401
+    """The key check multiprocessing's Listener(authkey=key) does, both
+    ways, each read bounded (a Client(authkey=key) passes it)."""
+    from multiprocessing.connection import answer_challenge, deliver_challenge
+
+    bounded = _Bounded(conn, HANDSHAKE_S)
+    try:
+        deliver_challenge(bounded, key)  # type: ignore[arg-type]
+        answer_challenge(bounded, key)  # type: ignore[arg-type]
+        return True
+    except Exception as error:
+        _log.warning(f"API: a connection was refused ({type(error).__name__})")
+        return False
+
+
+def endpoint_path() -> Path:
+    """<user folder>/api/endpoint.json: the fixed Gremlin Platforms folder in
+    the user's profile (where configuration.json is), so gremlin-ctl finds
+    it without reading the settings."""
+    from gremlin import util
+
+    return Path(util.userprofile_path()) / ENDPOINT_FOLDER / ENDPOINT_NAME
+
+
+def _write_endpoint(address: str, key: bytes) -> None:
+    path = endpoint_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(
+        {
+            "address": address,
+            "key": key.hex(),
+            "version": PROTOCOL_VERSION,
+            "pid": os.getpid(),
+        }
+    )
+    temp = path.with_name(path.name + ".tmp")
+    try:
+        temp.unlink()
+    except FileNotFoundError:
+        pass
+    fd = os.open(str(temp), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.replace(temp, path)
+
+
+def _remove_endpoint() -> None:
+    try:
+        endpoint_path().unlink()
+    except FileNotFoundError:
+        pass
+    except OSError:
+        _log.warning("API: endpoint.json could not be removed", exc_info=True)
+
+
+class _Server:
+    """One open pipe: its accept thread and the connections it serves."""
+
+    def __init__(self, factory: ListenerFactory, handshake: Handshake) -> None:
+        self.address = PIPE_PREFIX + secrets.token_hex(16)
+        self.key = secrets.token_bytes(32)
+        self._handshake = handshake
+        self._listener = factory(self.address)
+        self._stop = threading.Event()
+        self._lock = threading.Lock()
+        self._conns: set[Any] = set()
+
+    def start(self) -> None:
+        threads.start("Control API", self._accept_loop, stop=self.close)
+
+    def _accept_loop(self) -> None:
+        while not self._stop.is_set():
+            try:
+                conn = self._listener.accept()
+            except Exception:
+                if not self._stop.is_set():
+                    _log.warning("API: the pipe stopped listening", exc_info=True)
+                return
+            if self._stop.is_set():
+                _close(conn)
+                return
+            with self._lock:
+                full = len(self._conns) >= MAX_CONNECTIONS
+                if not full:
+                    self._conns.add(conn)
+            if full:
+                _log.warning("API: a connection was refused (too many at once)")
+                _close(conn)
+                continue
+            threads.start(
+                "Control API connection",
+                self._serve,
+                conn,
+                stop=lambda c=conn: _close(c),
+            )
+
+    def _serve(self, conn: Any) -> None:  # noqa: ANN401
+        try:
+            if not self._handshake(conn, self.key):
+                return
+            idle_from = clock.monotonic()
+            while not self._stop.is_set():
+                if not conn.poll(POLL_S):
+                    if clock.monotonic() - idle_from > IDLE_S:
+                        return
+                    continue
+                data = conn.recv_bytes(MAX_REQUEST_BYTES)
+                if self._stop.is_set():
+                    return
+                conn.send_bytes(handle_bytes(data))
+                idle_from = clock.monotonic()
+        except (EOFError, OSError, TimeoutError):
+            pass  # the client went away or stopped answering
+        except Exception:
+            _log.exception("API: a connection failed")
+        finally:
+            with self._lock:
+                self._conns.discard(conn)
+            _close(conn)
+
+    def close(self) -> None:
+        """Asks everything to end; returns at once."""
+        self._stop.set()
+        try:
+            self._listener.close()
+        except Exception:
+            pass
+        with self._lock:
+            conns = list(self._conns)
+        for conn in conns:
+            _close(conn)
+
+
+def _close(conn: Any) -> None:  # noqa: ANN401
+    try:
+        conn.close()
+    except Exception:
+        pass
+
+
+_state_lock = threading.RLock()
+_server: _Server | None = None
+_started = False
+_watching = False
+_factory: ListenerFactory | None = None
+_handshake_fn: Handshake | None = None
+
+
+def start(
+    listener_factory: ListenerFactory | None = None,
+    handshake: Handshake | None = None,
+) -> None:
+    """At program start: the pipe opens while the switch is on, and follows
+    it (Options, History Restore) until stop()."""
+    global _started, _watching, _factory, _handshake_fn
+    with _state_lock:
+        _started = True
+        _factory = listener_factory
+        _handshake_fn = handshake
+        if not _watching:
+            try:
+                from gremlin.signal import signal
+
+                signal.configChanged.connect(apply)
+                _watching = True
+            except Exception:
+                _log.exception("API: the switch can't be followed")
+    apply()
+
+
+def apply() -> None:
+    """Opens or closes the pipe to match the switch."""
+    with _state_lock:
+        want = _started and allowed()
+        if want and _server is None:
+            _open()
+        elif not want and _server is not None:
+            _close_server()
+        elif not want:
+            _remove_endpoint()  # one left by a program that ended badly
+
+
+def _open() -> None:
+    global _server
+    try:
+        server = _Server(_factory or _PipeListener, _handshake_fn or _handshake)
+    except Exception:
+        _log.exception("API: the pipe could not open")
+        return
+    try:
+        _write_endpoint(server.address, server.key)
+    except Exception:
+        _log.exception("API: endpoint.json could not be written")
+        server.close()
+        return
+    _server = server
+    server.start()
+    _log.warning("API: control from other programs is on (pipe open)")
+
+
+def _close_server() -> None:
+    global _server
+    server, _server = _server, None
+    if server is not None:
+        server.close()
+        _log.warning("API: control from other programs is off (pipe closed)")
+    _remove_endpoint()
+
+
+def stop() -> None:
+    """At quit: the pipe closes and endpoint.json goes."""
+    global _started, _watching
+    with _state_lock:
+        _started = False
+        if _watching:
+            try:
+                from gremlin.signal import signal
+
+                signal.configChanged.disconnect(apply)
+            except Exception:
+                pass
+            _watching = False
+        _close_server()
+
+
+def running() -> bool:
+    """The pipe is open."""
+    with _state_lock:
+        return _server is not None
+
+
+def address() -> str:
+    """The open pipe's address ("" when closed)."""
+    with _state_lock:
+        return _server.address if _server is not None else ""
+
+
+def attach_ui() -> None:
+    """Once the window exists: the calls of the menu command bridge
+    (Backend.register_api_calls) and of the windows
+    (gremlin.ui.control_windows.register_api_calls) join. Either missing
+    is logged; the rest still works."""
+    me = sys.modules[__name__]
+    instance = None
+    try:
+        from gremlin.ui import backend
+
+        instance = getattr(backend.Backend, "instance", None)
+        hook = getattr(instance, "register_api_calls", None)
+        if hook is None:
+            hook = getattr(backend, "register_api_calls", None)
+        if hook is None:
+            _log.warning("API: the menu command calls are not there")
+        else:
+            hook(me)
+    except Exception:
+        _log.exception("API: the menu command calls could not join")
+    try:
+        from gremlin.ui import control_windows
+
+        control_windows.register_api_calls(me, backend=instance)
+    except Exception:
+        _log.exception("API: the window calls could not join")
+
+
+# --- History: marked "by API" ------------------------------------------------------
+
+
+BY_API = "(by API)"
+
+
+def _by_api(title: str, area: str, work: Callable[[], Any]) -> Any:  # noqa: ANN401
+    """Runs work inside a History group titled title + " (by API)" with
+    {"by": "api"} on the entry, so the change it records shows in Tools ›
+    History as made by the API (one change: its own entry, retitled)."""
+    from gremlin import history
+
+    token = history.begin_group(f"{title} {BY_API}", area=area, extra={"by": "api"})
+    try:
+        return work()
+    finally:
+        history.end_group(token)
+
+
+# --- the calls owned here ------------------------------------------------------------
+
+
+def _backend() -> Any:  # noqa: ANN401 - gremlin.ui.backend.Backend
+    from gremlin.ui import backend
+
+    instance = backend.Backend.instance
+    if instance is None:
+        raise CallError("The program's window isn't ready yet.")
+    return instance
+
+
+def _hello(_args: dict) -> dict:
+    from gremlin import util
+
+    return {"version": PROTOCOL_VERSION, "program_version": util.get_code_version()}
+
+
+def _help(_args: dict) -> list[dict]:
+    return calls()
+
+
+def _run_state(backend: Any) -> str:  # noqa: ANN401
+    if backend.gremlinStarting:
+        return "starting"
+    return "running" if backend.gremlinActive else "stopped"
+
+
+def _guarded(read: Callable[[], Any]) -> Any:  # noqa: ANN401
+    try:
+        return read()
+    except Exception:
+        _log.exception("API: a state value could not be read")
+        return None
+
+
+def _screen_saver_state() -> dict | None:
+    """Screen Saver Mode's status, when its module is loaded (nothing is
+    started to answer)."""
+    module = sys.modules.get("gremlin.screen_saver_mode")
+    if module is None:
+        return None
+    status = module.manager().status()
+    return dataclasses.asdict(status)
+
+
+def _state(_args: dict) -> dict:
+    from gremlin import health, trace, util
+
+    backend = _backend()
+    return {
+        "version": util.get_code_version(),
+        "api_version": PROTOCOL_VERSION,
+        "profile": _guarded(backend.profilePath),
+        "profile_name": _guarded(lambda: backend.windowTitle),
+        "unsaved": _guarded(lambda: bool(backend.profileContainsUnsavedChanges)),
+        "run": _guarded(lambda: _run_state(backend)),
+        "mode": _guarded(lambda: backend.currentMode),
+        "tracing": trace.enabled(),
+        "health": _guarded(health.broken_count),
+        "screen_saver_mode": _guarded(_screen_saver_state),
+    }
+
+
+def _devices(_args: dict) -> list[dict]:
+    """The devices plugged in now, then the other devices the program knows
+    (the open profile's, saved module files: store.known_devices()), each
+    with plugged_in (S3). An unplugged one's counts are None."""
+    from gremlin import device_initialization
+    from gremlin.modules import store
+
+    found = []
+    plugged: set[str] = set()
+    for dev in device_initialization.joystick_devices():
+        guid = str(dev.device_guid)
+        plugged.add(store.stored_guid_key(guid))
+        found.append(
+            {
+                "name": dev.name,
+                "label": dev.name,
+                "guid": guid,
+                "virtual": bool(dev.is_virtual),
+                "vjoy_id": dev.vjoy_id if dev.is_virtual else None,
+                "axes": dev.axis_count,
+                "buttons": dev.button_count,
+                "hats": dev.hat_count,
+                "plugged_in": True,
+            }
+        )
+    try:
+        known = store.known_devices()
+    except Exception:
+        _log.exception("API: the known devices could not be read")
+        known = []
+    for row in known:
+        guid = str(row.get("guid") or "")
+        if row.get("connected") or (guid and store.stored_guid_key(guid) in plugged):
+            continue
+        found.append(
+            {
+                "name": row.get("name") or "",
+                "label": row.get("label") or row.get("name") or "",
+                "guid": guid,
+                "virtual": None,
+                "vjoy_id": None,
+                "axes": None,
+                "buttons": None,
+                "hats": None,
+                "plugged_in": False,
+            }
+        )
+    return found
+
+
+def _run_start(_args: dict) -> dict:
+    backend = _backend()
+    backend.activate_gremlin(True)
+    return {"run": _run_state(backend)}
+
+
+def _run_stop(_args: dict) -> dict:
+    backend = _backend()
+    backend.activate_gremlin(False)
+    return {"run": _run_state(backend)}
+
+
+def _profile_load(args: dict) -> dict:
+    from gremlin import util
+
+    path = str(args.get("path") or "")
+    if not path:
+        raise CallError("profile.load needs a path.")
+    path = os.path.abspath(path)
+    if not os.path.isfile(path):
+        raise CallError(f"No profile file at {path}.")
+    backend = _backend()
+    if backend.profileContainsUnsavedChanges:
+        raise CallError(
+            "The open profile has unsaved changes; save or discard them in "
+            "the program first."
+        )
+    backend.loadProfile(path)
+    if not util.same_path(backend.profilePath(), path):
+        raise CallError("The profile didn't open (the program says why).")
+    return {"profile": path}
+
+
+def _profile_save(_args: dict) -> dict:
+    backend = _backend()
+    path = backend.profilePath()
+    if not path:
+        raise CallError(
+            "The open profile has no file yet: save it in the program first "
+            "(File › Save As)."
+        )
+    # Not grouped in History: a profile save is several entries (each
+    # input, the whole-profile copy), which a group would fold into one;
+    # made_by marks each of them "(by API)" instead (decision 3a).
+    from gremlin import history
+
+    with history.made_by("api"):
+        saved = backend.saveProfile(path)
+    if not saved:
+        raise CallError(backend.saveProblem() or "The profile was not saved.")
+    return {"profile": path, "saved": True}
+
+
+def _parse_key(args: dict) -> tuple[str, str, str]:
+    key = str(args.get("key") or "")
+    parts = tuple(key.split("/"))
+    if len(parts) != 3 or not all(parts):
+        raise CallError('A setting key is "section/group/name" (options.list).')
+    if parts not in _option_keys():
+        raise CallError(f"No Options setting {key} (options.list lists them).")
+    return parts  # type: ignore[return-value]
+
+
+def _option_keys() -> dict[tuple[str, str, str], tuple[str, str]]:
+    """The settings Options shows that are stored settings: key ->
+    (sidebar section, group title)."""
+    from gremlin.config import Configuration
+    from gremlin.ui import option
+
+    cfg = Configuration()
+    found = {}
+    for section, groups in option.main_layout():
+        for group, keys in groups:
+            for key in keys:
+                if cfg.exists(*key):
+                    found[key] = (section, group)
+    return found
+
+
+def _describe(key: tuple[str, str, str], where: tuple[str, str]) -> dict:
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+    from gremlin.ui import option
+
+    cfg = Configuration()
+    data_type = cfg.data_type(*key)
+    item = {
+        "key": "/".join(key),
+        "title": option.entry_title(key[2], "/".join(key)),
+        "section": where[0],
+        "group": where[1],
+        "type": PropertyType.to_string(data_type),
+        "value": option.shown_setting(key),
+        "description": cfg.description(*key),
+    }
+    props = cfg.properties(*key) or {}
+    if data_type == PropertyType.Selection:
+        item["choices"] = [
+            option.shown_choice(key, v) for v in props.get("valid_options", [])
+        ]
+    for limit in ("min", "max"):
+        if limit in props:
+            item[limit] = props[limit]
+    return item
+
+
+def _options_list(_args: dict) -> list[dict]:
+    return [_describe(key, where) for key, where in _option_keys().items()]
+
+
+def _option_get(args: dict) -> dict:
+    key = _parse_key(args)
+    return _describe(key, _option_keys()[key])
+
+
+_TRUE = {"true", "on", "yes", "1"}
+_FALSE = {"false", "off", "no", "0"}
+
+
+def _converted(key: tuple[str, str, str], value: Any) -> Any:  # noqa: ANN401
+    """value (often text from the command line) as the setting's type."""
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+    from gremlin.ui import option
+
+    cfg = Configuration()
+    data_type = cfg.data_type(*key)
+    props = cfg.properties(*key) or {}
+    if data_type == PropertyType.Bool:
+        if isinstance(value, bool):
+            return value
+        text = str(value).strip().lower()
+        if text in _TRUE:
+            return True
+        if text in _FALSE:
+            return False
+        raise CallError("This setting is on or off: true or false.")
+    if data_type in (PropertyType.Int, PropertyType.Float):
+        kind = int if data_type == PropertyType.Int else float
+        try:
+            if isinstance(value, bool):
+                raise ValueError
+            number = kind(str(value).strip()) if isinstance(value, str) else kind(value)
+        except (TypeError, ValueError):
+            raise CallError(f"This setting is a number ({kind.__name__}).") from None
+        low, high = props.get("min"), props.get("max")
+        if (low is not None and number < low) or (high is not None and number > high):
+            raise CallError(f"This setting is from {low} to {high}.")
+        return number
+    if data_type == PropertyType.Selection:
+        text = str(value)
+        choices = [option.shown_choice(key, v) for v in props.get("valid_options", [])]
+        if choices and text not in choices:
+            raise CallError("Choose one of: " + ", ".join(map(str, choices)) + ".")
+        return text
+    if data_type in (PropertyType.String, PropertyType.Path):
+        return str(value)
+    raise CallError(
+        f"This setting ({PropertyType.to_string(data_type)}) is changed in "
+        "Options only."
+    )
+
+
+def _option_set(args: dict) -> dict:
+    from gremlin.config import settings_history_title
+    from gremlin.ui import option
+
+    key = _parse_key(args)
+    if key == SWITCH_KEY:
+        raise CallError(SWITCH_REFUSED_TEXT)
+    if "value" not in args:
+        raise CallError("option.set needs a value.")
+    value = _converted(key, args["value"])
+    title = settings_history_title(["/".join(key)])
+    done = _by_api(title, "settings", lambda: option.change_setting(key, value))
+    if not done:
+        raise CallError("The setting was not changed (Windows kept its own).")
+    return _describe(key, _option_keys()[key])
+
+
+def _trace_categories() -> dict[str, tuple[Callable[[], bool], Callable[[bool], None]]]:
+    """The Trace tab's rows that aren't devices, as trace.categories() lists
+    them: name -> (ticked, set)."""
+    from gremlin import trace
+
+    return {c.name: (c.ticked, c.set) for c in trace.categories()}
+
+
+def _trace_switch(args: dict, on: bool) -> dict:
+    from gremlin import trace
+
+    category = str(args.get("category") or "")
+    if not category:
+        trace.set_enabled(on)
+    else:
+        found = _trace_categories()
+        if category not in found:
+            raise CallError(
+                f"No trace category {category}; one of: " + ", ".join(found) + "."
+            )
+        found[category][1](on)
+    return _trace_status({})
+
+
+def _trace_on(args: dict) -> dict:
+    return _trace_switch(args, True)
+
+
+def _trace_off(args: dict) -> dict:
+    return _trace_switch(args, False)
+
+
+def _trace_status(_args: dict) -> dict:
+    from gremlin import trace
+
+    return {
+        "tracing": trace.enabled(),
+        "categories": {
+            name: bool(ticked()) for name, (ticked, _s) in _trace_categories().items()
+        },
+        "file": str(trace.file_path()),
+    }
+
+
+def _tail(path: Path, count: int) -> list[str]:
+    """The last count lines of a text file (only its end is read)."""
+    if not path.is_file():
+        return []
+    size = path.stat().st_size
+    chunk = min(size, max(64 * 1024, count * 400))
+    with open(path, "rb") as fh:
+        fh.seek(size - chunk)
+        text = fh.read().decode("utf-8", errors="replace")
+    lines = text.splitlines()
+    if chunk < size:
+        lines = lines[1:]  # the first may be cut
+    return lines[-count:] if count else []
+
+
+def _log_lines(args: dict) -> dict:
+    from gremlin import trace, util
+
+    which = str(args.get("which") or "system")
+    try:
+        count = int(args.get("lines") or 50)
+    except (TypeError, ValueError):
+        raise CallError("lines is a number.") from None
+    count = max(1, min(count, LOG_LINES_MAX))
+    if which == "system":
+        path = Path(util.logs_dir()) / "system.log"
+    elif which == "trace":
+        path = Path(trace.file_path())
+    else:
+        raise CallError('which is "system" or "trace".')
+    return {"file": str(path), "lines": _tail(path, count)}
+
+
+def _register_own() -> None:
+    register("hello", _hello, summary="The API and program versions.")
+    register("help", _help, summary="Every call.")
+    register(
+        "state",
+        _state,
+        main_thread=True,
+        summary="Version, profile, Run state, mode, tracing, Health count, "
+        "Screen Saver Mode.",
+    )
+    register("devices", _devices, main_thread=True, summary="Devices plugged in.")
+    register("run.start", _run_start, main_thread=True, summary="Run the open profile.")
+    register("run.stop", _run_stop, main_thread=True, summary="Stop the Run.")
+    register(
+        "profile.load",
+        _profile_load,
+        main_thread=True,
+        timeout_s=LONG_TIMEOUT_S,
+        summary="Open a profile {path}.",
+    )
+    register(
+        "profile.save",
+        _profile_save,
+        main_thread=True,
+        timeout_s=LONG_TIMEOUT_S,
+        summary="Save the open profile to its file.",
+    )
+    register(
+        "option.get",
+        _option_get,
+        main_thread=True,
+        summary='One Options setting {key: "section/group/name"}.',
+    )
+    register(
+        "option.set",
+        _option_set,
+        main_thread=True,
+        summary="Change an Options setting {key, value}.",
+    )
+    register(
+        "options.list",
+        _options_list,
+        main_thread=True,
+        summary="Every Options setting.",
+    )
+    register(
+        "trace.on",
+        _trace_on,
+        main_thread=True,
+        summary="Tracing on, or one category {category}.",
+    )
+    register(
+        "trace.off",
+        _trace_off,
+        main_thread=True,
+        summary="Tracing off, or one category {category}.",
+    )
+    register(
+        "trace.status",
+        _trace_status,
+        main_thread=True,
+        summary="Tracing and its categories.",
+    )
+    register(
+        "log",
+        _log_lines,
+        summary='The last lines of a log {which: "system"|"trace", lines}.',
+    )
+
+
+_register_own()

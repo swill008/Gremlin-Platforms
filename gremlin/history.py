@@ -29,7 +29,8 @@ import shutil
 import threading
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +72,32 @@ _closing = False
 _kept_now: set[str] = set()
 
 syslog = logging.getLogger("system")
+
+# Who made the changes recorded on this thread (made_by()): each entry gets
+# {"by": who} and its title the mark, e.g. "(by API)" (13 decision 3a).
+BY_MARKS = {"api": "(by API)"}
+_by = threading.local()
+
+
+@contextmanager
+def made_by(who: str) -> Iterator[None]:
+    """Entries recorded on this thread inside it, and work later() queues
+    from it, are marked as made by who (one of BY_MARKS)."""
+    previous = getattr(_by, "who", None)
+    _by.who = who
+    try:
+        yield
+    finally:
+        _by.who = previous
+
+
+def _made_by() -> str | None:
+    return getattr(_by, "who", None)
+
+
+def _marked(title: str, who: str) -> str:
+    mark = BY_MARKS.get(who, f"(by {who})")
+    return title if title.endswith(mark) else f"{title} {mark}"
 
 
 def folder() -> Path:
@@ -128,7 +155,7 @@ def _make(
     after: Any,  # noqa: ANN401
     kind: str,
 ) -> dict:
-    return {
+    entry = {
         "id": uuid.uuid4().hex,
         "at": clock.now(),
         "area": area if area in AREAS else "settings",
@@ -138,6 +165,11 @@ def _make(
         "before": before,
         "after": after,
     }
+    who = _made_by()
+    if who:
+        entry["title"] = _marked(title, who)
+        entry["by"] = who
+    return entry
 
 
 def write_now(
@@ -160,7 +192,11 @@ def write_now(
 
 def later(work: Callable[[], None]) -> None:
     """Runs work on the writer thread (comparing a save, keeping pictures),
-    so the save itself stays quick. It writes with write_now()."""
+    so the save itself stays quick. It writes with write_now(). Work queued
+    inside made_by() runs inside it too."""
+    who = _made_by()
+    if who:
+        work = _run_made_by(who, work)
     if _held(work):
         return
     if _closing:
@@ -168,6 +204,14 @@ def later(work: Callable[[], None]) -> None:
         return
     _queue.put(work)
     _wake_writer()
+
+
+def _run_made_by(who: str, work: Callable[[], None]) -> Callable[[], None]:
+    def run() -> None:
+        with made_by(who):
+            work()
+
+    return run
 
 
 # --- one action, one entry (10 S51, 08 S12a) -----------------------------------
@@ -312,8 +356,12 @@ def restore_word(which: str) -> str:
 
 
 def original_title(entry: dict) -> str:
-    """The entry's title without a restore's "Restored: " / "Reapplied: "."""
+    """The entry's title without a restore's "Restored: " / "Reapplied: "
+    nor its made_by() mark (a Restore is the user's own)."""
     title = str(entry.get("title") or "")
+    mark = BY_MARKS.get(str(entry.get("by") or ""))
+    if mark and title.endswith(" " + mark):
+        title = title[: -len(mark) - 1]
     prefixes = [f"{w}: " for w in _RESTORE_WORDS.values()]
     changed = True
     while changed:

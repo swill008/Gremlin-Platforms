@@ -404,6 +404,14 @@ def shutdown_cleanup() -> None:
     except Exception:
         log.exception("Shutdown: Screen Saver Mode")
     try:
+        # The control API's pipe closes and its endpoint file goes; only
+        # one that was loaded.
+        api = sys.modules.get("gremlin.control_api")
+        if api is not None:
+            api.stop()
+    except Exception:
+        log.exception("Shutdown: control API")
+    try:
         # The device helper ends with the program (12 S25); only one that
         # was loaded.
         disable = sys.modules.get("gremlin.device_disable")
@@ -984,6 +992,9 @@ def register_config_options() -> None:
     # this list stays the one place every setting is registered before the
     # purge (01 S6, section 7).
     gremlin.ui.highlight_option.ensure_registered()
+    from gremlin import control_api
+
+    control_api.register_options()  # Allow control from other programs
 
 
 def configure_loggers() -> None:
@@ -1396,6 +1407,15 @@ def main() -> int:
         gremlin.ui.screen_saver_mode_model.start()
     except Exception:
         logging.getLogger("system").exception("Could not start Screen Saver Mode")
+    try:
+        # Control from other programs (Options switch, off at first): the
+        # window's calls join, then the pipe opens while the switch is on.
+        from gremlin import control_api
+
+        control_api.attach_ui()
+        control_api.start()
+    except Exception:
+        logging.getLogger("system").exception("Could not start the control API")
     app.exec()
     logging.getLogger("system").info("Terminating Gremlin")
     try:

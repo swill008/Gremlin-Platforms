@@ -67,10 +67,14 @@ def test_on_writes_lines_and_file(tmp_path: pathlib.Path) -> None:
     trace.set_enabled(False)
     assert hooked == [True, False]
     trace._hooks.remove(hook)
-    assert _points() == [trace.EVENT, trace.RAW, trace.EVENT]
+    # The date line comes first: tracing on starts with one.
+    assert _points() == [trace.EVENT, trace.EVENT, trace.RAW, trace.EVENT]
     shown = [x for x in trace.lines() if x[1] != trace.STATE]
-    assert shown[1][1:4] == ("Stick Button 2", trace.RAW, "pressed")
+    assert trace.is_date_line(shown[0][3])
+    assert shown[1][3] == "Tracing on"
+    assert shown[2][1:4] == ("Stick Button 2", trace.RAW, "pressed")
     text = (tmp_path / "logs" / "trace.log").read_text(encoding="utf-8")
+    assert trace.is_date_line(text.splitlines()[0])
     assert "Tracing on" in text and "Stick Button 2  RAW  pressed" in text
     assert "Button 3" not in text
 

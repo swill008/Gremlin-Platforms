@@ -374,6 +374,9 @@ class Backend(QtCore.QObject):
         self.profile.mark_clean()
         shared_state.current_profile = self.profile
         self._last_error = ""
+        # Main.qml's menu commands (setCommandBridge): list and run by id.
+        self._command_list_fn: QtQml.QJSValue | None = None
+        self._command_run_fn: QtQml.QJSValue | None = None
         # Why the last _load_profile(report=False) failed.
         self._load_problem = ""
         # Read by main() after the event loop ends; set only by the quit path.
@@ -697,6 +700,77 @@ class Backend(QtCore.QObject):
     def minimize(self) -> None:
         root_window = self.engine.rootObjects()[0]
         root_window.setVisibility(QtGui.QWindow.Visibility.Minimized)
+
+    @QtCore.Slot(QtQml.QJSValue, QtQml.QJSValue)
+    def setCommandBridge(self, list_fn: QtQml.QJSValue, run_fn: QtQml.QJSValue) -> None:
+        """Main.qml hands over how to list and run its menu commands
+        (main_commands.js through Gremlin.Menus Commands), for the control
+        API (gremlin/control_api.py) and its window calls."""
+        self._command_list_fn = list_fn
+        self._command_run_fn = run_fn
+
+    def _command_bridge(self) -> tuple[QtQml.QJSValue, QtQml.QJSValue] | None:
+        list_fn = self._command_list_fn
+        run_fn = self._command_run_fn
+        if list_fn is None or run_fn is None:
+            return None
+        if not (list_fn.isCallable() and run_fn.isCallable()):
+            return None
+        return list_fn, run_fn
+
+    def command_list(self) -> list[dict]:
+        """The main window's menu commands: [{"id", "text", "group"}], in
+        menu order. Empty before Main.qml is up. Main thread only."""
+        threads.assert_main("Backend.command_list")
+        bridge = self._command_bridge()
+        if bridge is None:
+            return []
+        value = bridge[0].call([])
+        rows = value.toVariant() if not value.isError() else None
+        if not isinstance(rows, list):
+            return []
+        return [
+            {
+                "id": str(row.get("id", "")),
+                "text": str(row.get("text", "")),
+                "group": str(row.get("group", "")),
+            }
+            for row in rows
+            if isinstance(row, dict) and row.get("id")
+        ]
+
+    def run_command_id(self, command_id: str) -> bool:
+        """Runs a main window menu command by its id (main_commands.js), as
+        the menus and the command palette do. False when there is no such
+        command or it can't be used now. Main thread only."""
+        threads.assert_main("Backend.run_command_id")
+        bridge = self._command_bridge()
+        if bridge is None:
+            return False
+        value = bridge[1].call([QtQml.QJSValue(str(command_id))])
+        if value.isError():
+            logging.getLogger("system").warning(
+                f"Command {command_id} failed: {value.toString()}"
+            )
+            return False
+        return bool(value.toBool())
+
+    def register_api_calls(self, control_api: object) -> None:
+        """The control API's command calls (claude/plans/control-api-contract.md):
+        "commands" and "command.run" {id}."""
+        register = getattr(control_api, "register")
+        register(
+            "commands",
+            lambda args: self.command_list(),
+            main_thread=True,
+            summary="The main window's menu commands: id, text and group.",
+        )
+        register(
+            "command.run",
+            lambda args: {"ran": self.run_command_id(str((args or {}).get("id", "")))},
+            main_thread=True,
+            summary="Runs a menu command by its id, as the menus do.",
+        )
 
     @QtCore.Slot(str)
     def pauseInputHighlighting(self, holder: str) -> None:

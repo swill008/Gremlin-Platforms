@@ -27,10 +27,12 @@ import logging
 import logging.handlers
 import math
 import pathlib
+import re
 import threading
 import time
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from gremlin import clock, threads
@@ -135,6 +137,10 @@ _last_written: dict[tuple[int, str, int], tuple[float, float]] = {}
 
 _local = threading.local()
 
+# The local date of the last date line ("--- YYYY-MM-DD ---"): one when
+# tracing turns on and before the first line of each new day.
+_last_date: str | None = None
+
 _logger: logging.Logger | None = None
 _handler: logging.handlers.RotatingFileHandler | None = None
 
@@ -149,7 +155,7 @@ def enabled() -> bool:
 def set_enabled(on: bool) -> None:
     """Turns tracing on or off (never saved). Writes an EVENT line and runs
     the on_change hooks."""
-    global _enabled, _since
+    global _enabled, _since, _last_date
     on = bool(on)
     if not on and _enabled:
         # Closing hooks run while Tracing is still on, so a last line can be written.
@@ -167,6 +173,7 @@ def set_enabled(on: bool) -> None:
             osc_reset()
             _since = clock.now()
             _enabled = True
+            _last_date = None  # the "Tracing on" line starts with a date line
             _add(EVENT, "", "Tracing on")
         else:
             _flush_pending(still=True)
@@ -759,6 +766,61 @@ def osc_on(area: str) -> bool:
         return False
 
 
+# --- the switchable categories ------------------------------------------------
+#
+# The Trace tab's on/off rows that aren't devices, for another program (the
+# control API's trace.on / trace.off / trace.status). A new row with its own
+# debug/trace setting is added here, or to NOT_CATEGORIES when it isn't an
+# on/off row; test_trace_additions.py fails until it is.
+
+# debug/trace settings that aren't on/off rows: per-device ticks and checks,
+# the file size and the axis rate.
+NOT_CATEGORIES = (_CFG_TICKS, _CFG_OOS, _CFG_MAX_MB, _CFG_AXIS_RATE)
+
+
+@dataclass(frozen=True)
+class Category:
+    """One switchable row: its name, the debug/trace setting that saves it,
+    whether it is ticked, and its setter."""
+
+    name: str
+    config_key: str
+    ticked: Callable[[], bool]
+    set: Callable[[bool], None]
+
+
+def _osc_area(area: str) -> Category:
+    return Category(
+        f"osc/{area}",
+        _CFG_OSC,
+        lambda: area in osc_ticked(),
+        lambda on: set_osc(area, on),
+    )
+
+
+def categories() -> list[Category]:
+    """The switchable rows, in the Trace tab's order; then osc/<area> for
+    each OSC area ("osc" is the OSC row: every area on, or all off)."""
+    return [
+        Category("hidhide", _CFG_HIDHIDE, hidhide_ticked, set_hidhide),
+        Category(
+            "screen-saver-mode",
+            _CFG_SCREEN_SAVER,
+            screen_saver_ticked,
+            set_screen_saver,
+        ),
+        Category("window", _CFG_WINDOW, window_ticked, set_window),
+        Category("timing", _CFG_TIMING, timing_ticked, set_timing),
+        Category(
+            "osc",
+            _CFG_OSC,
+            lambda: len(osc_ticked()) == len(OSC_AREAS),
+            set_osc_all,
+        ),
+        *(_osc_area(area) for area in OSC_AREAS),
+    ]
+
+
 def ticked_devices() -> list[uuid.UUID]:
     with _LOCK:
         return [
@@ -773,7 +835,7 @@ def _reset_for_tests() -> None:
     file (tests only). on_change hooks are kept."""
     global _ticks, _enabled, _since, _notice, _version, _logger, _handler, _max_mb
     global _axis_rate, _axis_interval, _osc_areas, _screen_saver_on
-    global _window_on, _timing_on
+    global _window_on, _timing_on, _last_date
     set_enabled(False)
     with _LOCK:
         _cancel_flush()
@@ -797,6 +859,7 @@ def _reset_for_tests() -> None:
         _axis_pending.clear()
         _last_raw.clear()
         _last_written.clear()
+        _last_date = None
         if _handler is not None and _logger is not None:
             _logger.removeHandler(_handler)
             _handler.close()
@@ -816,15 +879,45 @@ def _add(
     point: str, control: str, detail: str, warning: bool = False, t: float | None = None
 ) -> None:
     """Appends one line (caller holds _LOCK or doesn't need ordering)."""
-    global _version
+    global _version, _last_date
+    t = clock.now() if t is None else t
     line = (_stamp(t), control, point, detail, warning)
     with _LOCK:
+        day = time.strftime("%Y-%m-%d", time.localtime(t))
+        # Only forward: a held line stamped before midnight writes none.
+        if _last_date is None or day > _last_date:
+            _last_date = day
+            _add_date_line(line[0], day)
         _lines.append(line)
         _version += 1
     if _logger is not None:
         try:
             text = f"{line[0]}  {control or '-'}  {point}  {detail}"
             _logger.log(logging.WARNING if warning else logging.INFO, text)
+        except Exception:
+            pass
+
+
+def date_line(day: str) -> str:
+    """The trace's date line, e.g. "--- 2026-11-23 ---"."""
+    return f"--- {day} ---"
+
+
+def is_date_line(text: str) -> bool:
+    """True for a date line (a line's detail, or a trace.log line)."""
+    return bool(re.fullmatch(r"--- \d{4}-\d{2}-\d{2} ---", str(text).strip()))
+
+
+def _add_date_line(stamp: str, day: str) -> None:
+    """Writes the date line (caller holds _LOCK): an EVENT in the view, the
+    bare line in trace.log, so the times after it can be read as dates."""
+    global _version
+    text = date_line(day)
+    _lines.append((stamp, "", EVENT, text, False))
+    _version += 1
+    if _logger is not None:
+        try:
+            _logger.info(text)
         except Exception:
             pass
 
@@ -1014,6 +1107,22 @@ def output(vjoy_id: int, kind: str, index: int, value: object, result: str) -> N
             point,
             f"vjoy {vjoy_id} {kind} {index}",
             f"vJoy {vjoy_id} {name} = {shown} · {result}",
+        )
+    except Exception:
+        pass
+
+
+def vjoy_keep_alive(vjoy_id: int, idle_s: float) -> None:
+    """A held vJoy reset by the keep-alive (06 S54): one OUTPUT line, not
+    tied to a ticked input."""
+    if not _enabled:
+        return
+    try:
+        vid = int(vjoy_id)
+        _add(
+            OUTPUT,
+            f"vjoy {vid}",
+            f"vJoy {vid} keep-alive reset (idle {round(float(idle_s))} s)",
         )
     except Exception:
         pass

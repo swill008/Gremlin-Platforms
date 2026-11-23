@@ -1100,6 +1100,7 @@ function topics() {
                 + "<li>When tracing turns on, and when part of the program's state changes, the trace writes a <b>State</b> block.<ul>"
                 + "<li>It holds the profile, the ticks and the Screen Saver Mode settings. Save Diagnostics writes the same block.</li>"
                 + "</ul></li>"
+                + "<li>When tracing turns on, and at midnight, the trace writes a date line, such as \"--- 2026-11-23 ---\".</li>"
                 + "<li><b>Save Diagnostics…</b> includes trace.log.</li>"
                 + "<li>With tracing off, nothing is written and it costs nothing.</li>"
                 + "</ul>",
@@ -1123,6 +1124,7 @@ function topics() {
                 + "</table>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
+                + "<li>With <b>Keep vJoy devices awake</b> on, each send to an idle vJoy device writes an OUTPUT line, such as \"vJoy 1 keep-alive reset (idle 60 s)\".</li>"
                 + "<li>Map to Mouse writes one line per change, never one per pointer step, such as \"Mouse motion stopped\".</li>"
                 + "<li>A device that changed layout shows its axes and buttons before and after.</li>"
                 + "</ul>",
@@ -1155,6 +1157,11 @@ function topics() {
                 + "<li>When the profile stops, vJoy is put back at rest, so a Stop never shows as out of step.</li>"
                 + "<li>While HidHide's own window is open, the program can't read HidHide. The trace says so once.</li>"
                 + "<li>Screen Saver Mode errors are written to the normal log too, even with tracing off.</li>"
+                + "<li>When Windows turns the displays back on while they are kept off, the line names what woke them.<ul>"
+                + "<li>It gives the last input Windows saw right before, its device and kind, and whether it counted.</li>"
+                + "<li>It also gives the time since the program last wrote to vJoy or an Xbox pad.</li>"
+                + "<li>Game controllers are listened to only while the displays are kept off, only to name them. They never count as input.</li>"
+                + "</ul></li>"
                 + "<li>The <b>Window</b> row writes:<ul>"
                 + "<li>the window shown, hidden, minimized, maximized, restored or full screen;</li>"
                 + "<li>moved or resized, in one line after it settles;</li>"

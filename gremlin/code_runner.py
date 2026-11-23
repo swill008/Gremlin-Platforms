@@ -355,6 +355,12 @@ def _profile_path(running: Any) -> str | None:  # noqa: ANN401
     return str(path) if path else None
 
 
+def _profile_name(running: Any) -> str:  # noqa: ANN401
+    """The profile's name as the user sees it (its file name), for the log."""
+    path = _profile_path(running)
+    return Path(path).stem if path and path != "." else "Untitled"
+
+
 def _where(item: Any) -> str:  # noqa: ANN401
     """ "<device> <control> (<mode>)" for an input, for the log."""
     device = str(item.device_id)
@@ -477,6 +483,9 @@ class CodeRunner:
             raise
         else:
             if self._running:
+                logging.getLogger("system").info(
+                    f"Profile started ({_profile_name(profile)})"
+                )
                 trace.event(
                     f"Profile {'restarted' if restarting else 'started'}"
                     f" (mode {mode_manager.ModeManager().current.name})"
@@ -593,6 +602,11 @@ class CodeRunner:
     def stop(self) -> None:
         """Ends the Run: run_scope runs the Stop stages. Safe to call twice."""
         marks = _Marks()
+        if self._running:
+            # Every start has its stop in the system log, a restart too.
+            logging.getLogger("system").info(
+                f"Profile stopped ({_profile_name(getattr(self, '_profile', None))})"
+            )
         if self._running and not self._restarting:
             trace.event("Profile stopped")
         run_scope.stop()

@@ -16,6 +16,11 @@ $dist = Join-Path $root "dist\gremlin_platforms"
 if (-not (Test-Path (Join-Path $dist "gremlin_platforms.exe"))) {
     throw "dist\gremlin_platforms is missing: run pyinstaller joystick_gremlin.spec first."
 }
+# The command line for the control pipe (claude/plans/control-api.md) is
+# built by the same spec; an older dist without it would ship without it.
+if (-not (Test-Path (Join-Path $dist "gremlin-ctl.exe"))) {
+    throw "dist\gremlin_platforms\gremlin-ctl.exe is missing: run pyinstaller joystick_gremlin.spec again."
+}
 # The driver installers the setup carries (01 S188) must be in installer\drivers.
 $drivers = Join-Path $PSScriptRoot "drivers"
 foreach ($name in @(

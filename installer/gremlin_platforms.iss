@@ -88,6 +88,8 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 ; User data lives in %USERPROFILE%\Gremlin Platforms and is never touched.
 
 [Files]
+; The whole PyInstaller folder: gremlin_platforms.exe, Gremlin Input Tester.exe,
+; Gremlin Device Helper.exe and the gremlin-ctl.exe command line, with _internal.
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Third-party licence notices (dill, spdlog, Qt, ...) next to the program,
 ; with vjoy.txt, vigembus.txt and hidhide.txt for the bundled drivers (01 S188).

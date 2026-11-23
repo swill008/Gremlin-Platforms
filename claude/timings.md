@@ -1360,3 +1360,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-22 | vJoy 180-min idle probe run (VJTEST) | test | 180 min | 180 min | 19:24:39-22:24:42, all 6 checkpoints pass |
 | 2026-11-23 | Keep-alive switch: CODE / TESTS / DOCS agents | fix | 3-8 min each | 3-4 min each | 04:25-04:29, 3 parallel agents |
 | 2026-11-23 | Quick tests (`--changed` ran all 6 parts) + pyright | test | ~1 min | 9 min | 04:29-04:38; option.py change pulled in every part; 1 fail (proc_tree guard on new test), fixed 04:39 |
+| 2026-11-23 | Build (PyInstaller + installer) for the keep-alive switch | build | ~3 min (rule: 1-7 min) | 1 min | 04:48-04:49 |
+| 2026-11-23 | CI for cc9af540 (keep-alive switch) | ci | ~23 min | ~25 min | 04:40-05:05, FAILED |
+| 2026-11-23 | Control API + tracing batch: 9 parallel agents (API, WINDOWS, COMMANDS, CLI, MCP, SSM-TRACE, TRACE, TESTS, DOCS) | feature | no data; guess 15-20 min | 15 min | 05:07-05:22; COMMANDS 2, MCP 3, CLI 4, WINDOWS 4, SSM-TRACE 5, TRACE 4, API 9, DOCS 10, TESTS 14 |
+| 2026-11-23 | FIX-API (devices known, History by API for saves, trace categories owned by trace.py) | fix | 3-8 min each | 4 min | 05:24-05:28, 1 agent |
+| 2026-11-23 | CI-FIX: 3 order-dependent CI failures (2 races fixed in tests, OSC not reproduced) | fix | no data; guess 15-20 min | 6 min | 05:24-05:30, 1 agent |
+| 2026-11-23 | Quick tests (--changed, all 6 parts) + pyright, control API batch | test | ~9 min | 9 min | 05:30-05:39; 1 fail (packaging test pinned three exes), fixed 05:41 |

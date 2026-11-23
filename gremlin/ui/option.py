@@ -88,6 +88,8 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ]),
         # Off at first: for older vJoy versions only (06 S54).
         ("vJoy", [("global", "vjoy", "keep-alive")]),
+        # Off at first; only the user changes it (gremlin/control_api.py).
+        ("Control", [("global", "control", "allow-other-programs")]),
         ("Diagnostics", [
             ("global", "general", "debug"),
             ("global", "general", "log-when-not-responding"),
@@ -309,6 +311,7 @@ _KEY_TITLES = {
     "global/screen-saver-mode/devices": "Saved Devices list",
     "global/screen-saver-mode/wake-pc": "Wake PC list",
     "global/vjoy/keep-alive": "Keep vJoy devices awake",
+    "global/control/allow-other-programs": "Allow control from other programs",
 }
 
 
@@ -370,6 +373,43 @@ _JS_SPACE = (
 
 def _js_trim(text: str) -> str:
     return text.strip(_JS_SPACE)
+
+
+def shown_setting(key: tuple[str, str, str]) -> Any:  # noqa: ANN401
+    """A setting's value as Options shows it: a live value's reader (Start
+    with Windows), a choice in its shown words, a folder as text."""
+    section, group, name = key
+    cfg = gremlin.config.Configuration()
+    if key in _LIVE_VALUES:
+        return _LIVE_VALUES[key][0]()
+    value = cfg.value(section, group, name)
+    if cfg.data_type(section, group, name) == PropertyType.Path:
+        value = str(value)
+    return shown_choice(key, value)
+
+
+def change_setting(key: tuple[str, str, str], value: Any) -> bool:  # noqa: ANN401
+    """Changes a setting as its Options row does (the row and the control
+    API both come here): a choice in its shown words is stored as stored,
+    a live value goes through its writer first. False when not changed
+    (the writer refused; Options shows the real value again)."""
+    section, group, name = key
+    cfg = gremlin.config.Configuration()
+    if cfg.data_type(section, group, name) == PropertyType.Path:
+        value = Path(value)
+    value = stored_choice(key, value)
+    live = _LIVE_VALUES.get(key)
+    if live is not None and not live[1](value):
+        note = _LIVE_NOTES.get(key)
+        if note is None or note() is None:
+            logging.getLogger("system").warning(
+                f"Options: {entry_title(name)} was not changed; the "
+                "switch shows Windows' setting again"
+            )
+        return False
+    cfg.set(section, group, name, value)
+    signal.configChanged.emit()
+    return True
 
 
 @ta.QmlElement
@@ -672,23 +712,9 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
                 f"Cannot set data for non-config entry {section}.{group}.{name}"
             )
         if self.roles[role] == "value":
-            if self._config.data_type(section, group, name) == PropertyType.Path:
-                value = Path(value)
-            value = stored_choice((section, group, name), value)
-            live = _LIVE_VALUES.get((section, group, name))
-            if live is not None and not live[1](value):
-                note = _LIVE_NOTES.get((section, group, name))
-                if note is None or note() is None:
-                    logging.getLogger("system").warning(
-                        f"Options: {entry_title(name)} was not changed; the "
-                        "switch shows Windows' setting again"
-                    )
-                self.dataChanged.emit(index, index, [role])
-                return False
-            self._config.set(section, group, name, value)
+            done = change_setting((section, group, name), value)
             self.dataChanged.emit(index, index, [role])
-            signal.configChanged.emit()
-            return True
+            return done
         return False
 
     def flags(self, index: ta.ModelIndex) -> QtCore.Qt.ItemFlag:

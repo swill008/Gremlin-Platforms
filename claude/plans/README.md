@@ -15,3 +15,4 @@
 | `help-style-guide.md` | Draft 2026-11-22 for approval: Help voice, length, words, facts, page template, look, automatic check (from the Help review) |
 | `help-rewrite-brief.md` | Shared brief for the 2026-11-22 Help page writers |
 | `help-fix-brief.md` | Shared brief for the 2026-11-22 Help fixes from the fresh-reader test |
+| `control-api.md` | Plan 2026-11-23 (not approved to build): API in the program over a private pipe, client library, `gremlin-ctl` CLI (ships) and MCP server (dev only); user answers recorded |

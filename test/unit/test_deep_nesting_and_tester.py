@@ -176,7 +176,11 @@ def test_tester_keeps_updating_and_says_once(qapp, tmp_path: pathlib.Path) -> No
 def settings_file(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[pathlib.Path]:
+    """A deep settings file, in place before the settings are dropped: a
+    leftover thread that makes Configuration in between reads this file
+    too, not an empty folder (CI seed 418907)."""
     path = tmp_path / "configuration.json"
+    path.write_text(DEEP_OBJECT, encoding="utf-8")
     monkeypatch.setattr(gremlin.config, "_config_file_path", str(path))
     monkeypatch.setattr(gremlin.config, "_damaged_copy", "")
     monkeypatch.setattr(deferred_write, "_scheduler", lambda: None)
@@ -186,7 +190,6 @@ def settings_file(
 
 
 def test_deep_settings_file_is_kept_aside(settings_file: pathlib.Path) -> None:
-    settings_file.write_text(DEEP_OBJECT, encoding="utf-8")
     gremlin.config.Configuration()
     copies = list(settings_file.parent.glob("configuration.json.bad-*"))
     assert len(copies) == 1

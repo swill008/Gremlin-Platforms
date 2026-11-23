@@ -68,6 +68,20 @@ _vjoy_off: set[int] = set()
 _KEEP_ALIVE_S = 60.0
 _keep_alive: dict[int, tuple[object, run_scope.Timer]] = {}
 
+# clock.monotonic() of the last vJoy or Xbox write by this program (a value
+# written, or a keep-alive reset); None before the first. One float store on
+# the write path, read by Screen Saver Mode's wake trace (12, SSM-TRACE).
+_last_write_at: float | None = None
+
+
+def last_write_age_s() -> float | None:
+    """Seconds since this program last wrote to vJoy or an Xbox pad (a
+    keep-alive reset counts); None when it hasn't yet."""
+    at = _last_write_at
+    if at is None:
+        return None
+    return max(0.0, clock.monotonic() - at)
+
 config.Configuration().register(
     "global",
     "vjoy",
@@ -450,6 +464,7 @@ def _keep_alive_check(vjoy_id: int, token: object) -> None:
     again _KEEP_ALIVE_S after its last write (a fixed period from the open
     re-sent it only after up to twice that). A released device arms no new
     check."""
+    global _last_write_at
     vid = int(vjoy_id)
     dev = _opened_vjoy(vid)
     if dev is None:
@@ -463,6 +478,8 @@ def _keep_alive_check(vjoy_id: int, token: object) -> None:
         idle = clock.monotonic() - float(dev.last_active)
         if idle >= _KEEP_ALIVE_S:
             dev.reset()
+            _last_write_at = clock.monotonic()
+            trace.vjoy_keep_alive(vid, idle)
         else:
             # Never less than a little: a clock going back can't spin it.
             wait = max(_KEEP_ALIVE_S - idle, min(_KEEP_ALIVE_S, 1.0))
@@ -599,6 +616,7 @@ def write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> bool:  # n
 
 def _write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> str:  # noqa: ANN401
     """write_vjoy's work; the result as the trace says it."""
+    global _last_write_at
     if not _sending():
         return "blocked (not running)"
     if not _passes(vjoy_id, kind, input_id):
@@ -627,6 +645,7 @@ def _write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> str:  # n
         key = ("vjoy-error", int(vjoy_id), kind, input_id)
         _log_once(key, f"vJoy write failed: {exc}")
         return f"failed: {exc}"
+    _last_write_at = clock.monotonic()
     return "written"
 
 
@@ -979,6 +998,7 @@ def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
     on the pad is available, nothing is claimed (as in GremlinEx). Nothing
     is sent while stopped, so no pad is plugged in outside a Run (06 Q19).
     """
+    global _last_write_at
     if not _sending():
         return False
     if int(pad_id) not in xbox_pads_on():
@@ -995,6 +1015,7 @@ def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
     except Exception as exc:
         _log_once(("xbox-error", int(pad_id)), f"Xbox pad {pad_id} write failed: {exc}")
         return False
+    _last_write_at = clock.monotonic()
     return True
 
 

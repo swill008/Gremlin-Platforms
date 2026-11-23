@@ -25,6 +25,7 @@ import math
 import os
 import re
 import subprocess
+import sys
 import threading
 from collections import deque
 from collections.abc import Callable, Iterable
@@ -43,6 +44,10 @@ HOLD_NO_WAKE_DEVICE = "no_wake_device"
 RESET_KEYBOARD = "keyboard"
 RESET_MOUSE = "mouse"
 RESET_PROGRAM = "program"
+# Wake cause (trace only): a game controller report or Gremlin's own input,
+# remembered while keeping the displays off; never counted.
+SEEN_CONTROLLER = "game controller"
+SEEN_OWN = "own"
 
 PROBLEM_NO_SCREEN_SAVER = "no_screen_saver"
 PROBLEM_WINDOWS_NEVER = "windows_never"
@@ -431,6 +436,14 @@ class WindowsApi:
             _log().exception("Screen Saver Mode: device name lookup failed")
             return ""
 
+    def device_part(self, handle: int) -> str:
+        """The HID part ("Col01") of a raw input device, "" when it has
+        none. Once per handle, never per event."""
+        try:
+            return device_part_of_path(raw_device_path(handle))
+        except Exception:
+            return ""
+
     def device_physical_id(self, handle: int) -> str:
         """The physical device a raw input handle belongs to ("" when
         unknown). Slow-ish: once per handle, on the listener thread."""
@@ -623,6 +636,12 @@ def instance_id_from_path(path: str) -> str:
     if "#{" in text:
         text = text[: text.rindex("#{")]
     return text.replace("#", "\\")
+
+
+def device_part_of_path(path: str) -> str:
+    """ "Col01" from a device path with &COL01, "" when it has none."""
+    m = re.search(r"&COL([0-9A-Fa-f]{2})", path)
+    return f"Col{m.group(1).upper()}" if m else ""
 
 
 def vid_pid_text(path: str) -> str:
@@ -846,6 +865,13 @@ _RIDEV_REMOVE = 0x00000001
 _RIDEV_INPUTSINK = 0x00000100
 _RIM_TYPEMOUSE = 0
 _RIM_TYPEKEYBOARD = 1
+_RIM_TYPEHID = 2
+_RID_HEADER = 0x10000005
+# Game controller usages (page 1) heard only while keeping the displays off,
+# only to name a wake's last input: joystick, gamepad, multi-axis controller.
+_USAGES_CONTROLLER = (0x04, 0x05, 0x08)
+# Posted to the listener window: wParam 1 listen to game controllers, 0 stop.
+_WM_WATCH_CONTROLLERS = 0x8002
 _USAGE_PAGE_GENERIC = 0x01
 _RI_KEY_BREAK = 0x01
 # RI_MOUSE_LEFT/RIGHT/MIDDLE/BUTTON_4/BUTTON_5 _DOWN; not move, not wheel.
@@ -1118,6 +1144,11 @@ class InputClock:
         self._hwnd: Any = None
         # The last counted input's source: (device handle or None, kind).
         self._source: tuple[int | None, str] = (None, "")
+        # The last input of any kind, counted or not, to name a wake's cause
+        # (trace only): (handle or None, kind, counted, monotonic time).
+        self._seen: tuple[int | None, str, bool, float] | None = None
+        # Game controllers are heard (only to fill _seen) while True.
+        self._controllers = False
         # Program input per second: [second, count], the last minute only.
         self._program: deque[list[int]] = deque(maxlen=self._PROGRAM_SECONDS + 1)
         self._program_lock = threading.Lock()
@@ -1236,9 +1267,10 @@ class InputClock:
         `press` a key or button down; `wheel` a mouse wheel turn. Gremlin's
         own input (own) doesn't count; with a Wake PC list, neither does a
         device not on it."""
-        if own:
-            return
         now = clock.monotonic()
+        if own:
+            self._seen = (None, SEEN_OWN, False, now)
+            return
         wake = self._wake
         if source and (wake is not None or self.report_presses or self.report_activity):
             physical = self.physical_id(source)
@@ -1253,10 +1285,12 @@ class InputClock:
                     self._pressed_at[(physical, kind)] = now
                     self._send("press", source, physical, kind)
             if wake is not None and physical not in wake:
+                self._seen = (source, kind, False, now)
                 if physical not in self._not_counted:
                     self._not_counted.add(physical)
                     self._send("not_counted", source, physical, kind)
                 return
+        self._seen = (source or None, kind if source else RESET_PROGRAM, True, now)
         if not source:
             self._source = (None, RESET_PROGRAM)
             second = int(now)
@@ -1275,6 +1309,61 @@ class InputClock:
         """(device handle or None, "keyboard" | "mouse" | "program" | "")
         of the last counted input."""
         return self._source
+
+    def last_seen(self) -> tuple[int | None, str, bool, float] | None:
+        """The last input of any kind, counted or not: (device handle or
+        None, kind, counted, monotonic time); None when none yet. Kinds:
+        "keyboard", "mouse", "program", "own" (Gremlin's), "game
+        controller" (only heard while watch_controllers is on)."""
+        return self._seen
+
+    def watch_controllers(self, on: bool) -> bool:
+        """Hears game controller reports (on) or stops (off), only to name
+        the last input before a wake; nothing new counts. Any thread: from
+        another thread it posts to the listener, which registers. False
+        when there is no listener."""
+        hwnd, u, thread = self._hwnd, self._user32, self._thread
+        if not hwnd or u is None:
+            return False
+        try:
+            if thread is not None and thread.ident == threading.get_ident():
+                self._set_controllers(on)
+                return True
+            return bool(u.PostMessageW(hwnd, _WM_WATCH_CONTROLLERS, int(on), 0))
+        except Exception:
+            return False
+
+    def _set_controllers(self, on: bool) -> None:
+        """Listener thread: registers or removes the game controller usages."""
+        if on == self._controllers or self._user32 is None:
+            return
+        hwnd = self._hwnd if on else None
+        flags = _RIDEV_INPUTSINK if on else _RIDEV_REMOVE
+        n = len(_USAGES_CONTROLLER)
+        devices = (_RAWINPUTDEVICE * n)(
+            *(
+                _RAWINPUTDEVICE(_USAGE_PAGE_GENERIC, u, flags, hwnd)
+                for u in _USAGES_CONTROLLER
+            )
+        )
+        if self._user32.RegisterRawInputDevices(
+            devices, n, ctypes.sizeof(_RAWINPUTDEVICE)
+        ):
+            self._controllers = on
+            if not on:
+                self._seen_controller_off()
+        else:
+            _log().warning(
+                "Screen Saver Mode: game controller input not "
+                f"{'registered' if on else 'removed'} "
+                f"(Windows error {ctypes.get_last_error()})"
+            )
+
+    def _seen_controller_off(self) -> None:
+        """A game controller is no longer the last input once not heard."""
+        seen = self._seen
+        if seen is not None and seen[1] == SEEN_CONTROLLER:
+            self._seen = None
 
     def program_input_per_min(self, now: float | None = None) -> int:
         """Inputs sent by programs (not Gremlin) in the last 60 s."""
@@ -1304,9 +1393,29 @@ class InputClock:
                     ctypes.byref(size),
                     ctypes.sizeof(RAWINPUTHEADER),
                 )
+                if got == 0xFFFFFFFF and self._controllers:
+                    # A game controller report is larger than RAWINPUT:
+                    # its header is enough.
+                    size = wintypes.UINT(ctypes.sizeof(RAWINPUTHEADER))
+                    got = self._user32.GetRawInputData(
+                        l_param,
+                        _RID_HEADER,
+                        ctypes.byref(raw.header),
+                        ctypes.byref(size),
+                        ctypes.sizeof(RAWINPUTHEADER),
+                    )
                 if got != 0xFFFFFFFF and got > 0:
                     kind = raw_input_kind(raw)
-                    if kind:
+                    if raw.header.dwType == _RIM_TYPEHID:
+                        # Only remembered, never counted (no per-report trace).
+                        if self._controllers:
+                            self._seen = (
+                                raw.header.hDevice or None,
+                                SEEN_CONTROLLER,
+                                False,
+                                clock.monotonic(),
+                            )
+                    elif kind:
                         self.note_input(
                             own=kind == "own",
                             source=raw.header.hDevice or None,
@@ -1339,6 +1448,12 @@ class InputClock:
                     self.arm_poll_timer(again)
             except Exception:
                 _log().exception("Screen Saver Mode device wait timer failed")
+            return 0
+        elif msg == _WM_WATCH_CONTROLLERS:
+            try:
+                self._set_controllers(bool(w_param))
+            except Exception:
+                _log().exception("Screen Saver Mode game controller watch failed")
             return 0
         elif msg == _WM_ARM_POLL:
             try:
@@ -1458,6 +1573,11 @@ class InputClock:
         finally:
             if _power_window == hwnd:
                 _power_window = 0
+            try:
+                self._set_controllers(False)
+            except Exception:
+                pass
+            self._controllers = False
             self._hwnd = None
             self._registered = False
             self._ready.set()
@@ -1550,8 +1670,12 @@ class ScreenSaverMode:
         self._last_hold = ""
         self._last_problems = ("", "", "")
         self._hold_program = ""
-        # Device names by raw input handle, looked up once each.
+        # Device names and HID parts by raw input handle, looked up once each.
         self._names: dict[int, str] = {}
+        self._parts: dict[int, str] = {}
+        # The last input before the latest wake, noted at the wake (trace
+        # only): (handle or None, kind, counted, seconds before), or None.
+        self._wake_cause: tuple[int | None, str, bool, float] | None = None
         self._last_reset_traced: tuple[str, str] | None = None
         # Keeping the displays off (S6): shared with the listener thread,
         # whose window procedure only notes and posts under this lock.
@@ -2036,6 +2160,18 @@ class ScreenSaverMode:
         self._names[handle] = name
         return name
 
+    def _device_part(self, handle: int) -> str:
+        """The device's HID part ("Col01"), looked up once per handle."""
+        if handle in self._parts:
+            return self._parts[handle]
+        lookup = getattr(self._api, "device_part", None)
+        try:
+            part = str(lookup(handle) or "") if lookup is not None else ""
+        except Exception:
+            part = ""
+        self._parts[handle] = part
+        return part
+
     def _reset_source(self) -> tuple[str, str]:
         """(device name, kind) of the last counted input."""
         try:
@@ -2205,6 +2341,7 @@ class ScreenSaverMode:
             _log().info("Screen Saver Mode: displays powered off")
             self._note("action fired: power off displays: sent", listener)
             self._note("keep off started", listener)
+            self._watch_controllers(True)
         except Exception as e:
             with self._keep_lock:
                 self._keeping_off = False
@@ -2269,6 +2406,7 @@ class ScreenSaverMode:
             # power off the displays a person just woke.
             if not self._keeping_off or self._counted_since(self._keep_input_at):
                 return
+            self._wake_cause = self._seen_before(now)
             if now - self._last_power_off < self.POWER_OFF_GAP_S:
                 if self._retry_at:
                     return
@@ -2294,13 +2432,25 @@ class ScreenSaverMode:
         Returns the seconds still to wait, None when nothing is pending."""
         return self._retry_keep_off(clock.monotonic())
 
+    def _seen_before(self, now: float) -> tuple[int | None, str, bool, float] | None:
+        """The listener's last input (any kind) and its seconds before now."""
+        last_seen = getattr(self._clock, "last_seen", None)
+        seen = last_seen() if last_seen is not None else None
+        if seen is None:
+            return None
+        handle, kind, counted, at = seen
+        return handle, kind, counted, max(0.0, now - at)
+
     def _note_resend(self, now: float) -> None:
         """Under the lock: one re-send counted."""
         self._retry_at = 0.0
         self._last_power_off = now
         self._wakes += 1
         self._wakes_total += 1
-        self._events.append(("resend", self._wakes, "", clock.now()))
+        self._events.append(
+            ("resend", self._wakes, _cause_text(self._wake_cause), clock.now())
+        )
+        self._wake_cause = None
 
     def _post_resend(self) -> None:
         try:
@@ -2336,6 +2486,7 @@ class ScreenSaverMode:
                 return
             self._keeping_off = False
             self._retry_at = 0.0
+            self._wake_cause = None
             wakes, total = self._wakes, self._wakes_total
             sent_mono, sent_wall = self._off_sent
         if input_at is not None:
@@ -2356,6 +2507,47 @@ class ScreenSaverMode:
             f"({total} since switched on)"
         )
         _trace(f"keep off ended: {reason}; {wakes} wakes")
+        self._watch_controllers(False)
+
+    def _watch_controllers(self, on: bool) -> None:
+        """Game controllers are heard only while keeping the displays off,
+        only to name a wake's last input (trace)."""
+        watch = getattr(self._clock, "watch_controllers", None)
+        if watch is None:
+            return
+        try:
+            watch(on)
+        except Exception:
+            _log().exception("Screen Saver Mode: game controller watch failed")
+
+    def _wake_text(self, cause: str, at: float) -> str:
+        """': last input <name> (<kind>) N s before, counted|not counted;
+        last vJoy/Xbox write <age>' for a wake noted at wall time `at`."""
+        parts: list[str] = []
+        if cause:
+            handle_text, kind, counted, before = cause.split("\t")
+            handle = int(handle_text) if handle_text else 0
+            if kind == SEEN_OWN:
+                source = "Gremlin's own input"
+            elif kind == RESET_PROGRAM:
+                source = "input sent by a program"
+            else:
+                part = self._device_part(handle) if handle else ""
+                name = (self._device_name(handle) if handle else "") or "a device"
+                source = f"{name} ({kind}, {part})" if part else f"{name} ({kind})"
+            parts.append(
+                f"last input {source} {float(before):.1f} s before, "
+                f"{'counted' if counted == '1' else 'not counted'}"
+            )
+        else:
+            parts.append("no input seen before it")
+        age = _output_write_age_s()
+        if age is None:
+            parts.append("no vJoy/Xbox write yet")
+        else:
+            age = max(0.0, age - max(0.0, clock.now() - at))
+            parts.append(f"last vJoy/Xbox write {_age_text(age)} ago")
+        return ": " + "; ".join(parts)
 
     def _drain_events(self) -> None:
         """Traces what the listener thread noted (main thread)."""
@@ -2369,7 +2561,7 @@ class ScreenSaverMode:
             elif kind == "resend":
                 _trace(
                     "keep off: Windows turned the displays back on, "
-                    f"power off sent again (#{n})",
+                    f"power off sent again (#{n}){self._wake_text(text, at)}",
                     t=at,
                 )
             elif kind == "wait":
@@ -2522,6 +2714,40 @@ class ScreenSaverMode:
         st.wake_count = st.wakes
         st.last_away = dict(self._last_away) if self._last_away else None
         return st
+
+
+def _cause_text(cause: tuple[int | None, str, bool, float] | None) -> str:
+    """A wake cause as event text (handle, kind, counted, seconds before)."""
+    if cause is None:
+        return ""
+    handle, kind, counted, before = cause
+    return f"{handle or ''}\t{kind}\t{int(counted)}\t{before:.3f}"
+
+
+def _output_write_age_s() -> float | None:
+    """Seconds since the last vJoy/Xbox write (output module), None when
+    none yet or the module isn't loaded (nothing was written then)."""
+    output = sys.modules.get("gremlin.modules.output")
+    age_s = getattr(output, "last_write_age_s", None) if output else None
+    if age_s is None:
+        return None
+    try:
+        age = age_s()
+    except Exception:
+        return None
+    return None if age is None else float(age)
+
+
+def _age_text(seconds: float) -> str:
+    """0.8 s, 14 s, 14 min, 2 h 5 min."""
+    if seconds < 10:
+        return f"{seconds:.1f} s"
+    if seconds < 60:
+        return f"{int(seconds)} s"
+    minutes = round(seconds / 60)
+    if minutes < 60:
+        return f"{minutes} min"
+    return f"{minutes // 60} h {minutes % 60} min"
 
 
 def _wait_text(seconds: int | float) -> str:

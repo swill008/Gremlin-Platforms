@@ -55,16 +55,20 @@ def _kwarg(call: ast.Call, name: str) -> ast.expr:
     raise AssertionError(f"{ast.unparse(call)[:60]} has no {name}=")
 
 
-def test_spec_builds_three_exes_with_no_console() -> None:
+def test_spec_builds_four_exes_only_gremlin_ctl_with_a_console() -> None:
     tree = _spec_tree()
     values = _assigned(tree)
     exes = {
         _value(_kwarg(call, "name"), values): call
         for call in _calls(tree, "EXE")
     }
-    assert set(exes) == {"gremlin_platforms", _TESTER, "Gremlin Device Helper"}
-    for call in exes.values():
-        assert ast.literal_eval(_kwarg(call, "console")) is False
+    assert set(exes) == {
+        "gremlin_platforms", _TESTER, "Gremlin Device Helper", "gremlin-ctl"
+    }
+    for name, call in exes.items():
+        # gremlin-ctl is the command line (13): it prints to its console.
+        console = ast.literal_eval(_kwarg(call, "console"))
+        assert console is (name == "gremlin-ctl")
         assert ast.literal_eval(_kwarg(call, "icon")) == "gfx\\icon.ico"
 
 

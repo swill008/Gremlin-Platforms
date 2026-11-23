@@ -149,6 +149,20 @@ ApplicationWindow {
     property bool _keepConfigInTray: false
     readonly property bool _configLive: !trayed || _keepConfigInTray
 
+    // For the control API (Backend.setCommandBridge): the main window's
+    // commands, and running one by id as a menu click does.
+    function _apiCommandList() {
+        return Commands.all().filter(function(c) { return c.owner === "main" })
+            .map(function(c) { return { id: c.id, text: c.text, group: c.group || "" } })
+    }
+
+    function _apiRunCommand(id) {
+        var c = Commands.get(id)
+        if (!c || c.owner !== "main")
+            return false
+        return Commands.trigger(id)
+    }
+
     function enterTray() {
         _keepConfigInTray = displayUnsaved()
         trayed = true
@@ -165,6 +179,10 @@ ApplicationWindow {
         }
         Commands.defineAll(MainCommands.commandList(), "main")
         shortcutCommands = Commands.withShortcuts()
+        // The control API lists and runs these commands by id, through the
+        // same Commands.trigger the menus and the palette use.
+        if (backend)
+            backend.setCommandBridge(_apiCommandList, _apiRunCommand)
         _windowPlacement.restore(_root)
         refreshSourceModuleCount()
         // Tool windows reach closeActionPanes() through Helpers.

@@ -28,6 +28,11 @@ python-osc = ">=1.8"
 # OSC discovery (D-09-OSC-DISCOVERY); pinned, 0.147.0 is from 2025-05.
 zeroconf = "0.147.0"
 
+# Development only, never in the installer: the MCP server in
+# tools/gremlin_mcp/ (control API plan, claude/plans/control-api.md).
+[tool.poetry.group.dev.dependencies]
+mcp = "^2.3.0"
+
 [tool.pytest.ini_options]
 pythonpath = "."
 addopts = "--import-mode=importlib"
@@ -55,7 +60,7 @@ extend-select = ["ANN", "I", "E501"]
 "joystick_gremlin.py" = ["E402"]
 
 [tool.pyright]
-include = ["action_plugins", "dill", "gremlin", "joystick_gremlin.py", "vjoy"]
+include = ["action_plugins", "dill", "gremlin", "gremlin_ctl", "joystick_gremlin.py", "vjoy"]
 exclude = ["**/__pycache__", "**/.git", "**/.venv", "**/venv"]
 reportMissingImports = true
 reportMissingTypeStubs = false

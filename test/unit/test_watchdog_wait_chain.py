@@ -87,20 +87,18 @@ def test_the_freeze_report_includes_the_wait_chain(
 ) -> None:
     chain = ([_lock("SendMessage", "Blocked")], False)
     monkeypatch.setattr(watchdog, "_query_wait_chain", lambda tid: chain)
-    done = threading.Event()
-    real = watchdog.wait_chain_block
-
-    def spy() -> str:
-        out = real()
-        done.set()
-        return out
-
-    monkeypatch.setattr(watchdog, "wait_chain_block", spy)
     caplog.set_level(logging.WARNING, logger="system")
     dog = watchdog.Watchdog(threshold_s=0.2)
     dog.start()
     try:
-        assert done.wait(10.0)  # no main loop runs here: the beats stop
+        # No main loop runs here: the beats stop. Wait for the warning
+        # itself: it is logged only after every block of the report, and
+        # stop() waits just 2 s for the watchdog's thread (CI seed 418907).
+        pause = threading.Event()
+        for _ in range(500):  # at most about 10 s
+            if "Not responding for" in caplog.text:
+                break
+            pause.wait(0.02)
     finally:
         dog.stop()
     assert "Not responding for" in caplog.text
