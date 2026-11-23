@@ -1382,3 +1382,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | HEALTH-MIN: Health minimum width 1020 dp from the panel + line sum (test first) | fix | 3-8 min | 2 min | 07:36-07:38, 1 agent |
 | 2026-11-23 | Build + silent install + live check (Health opens, profile restarted) | build/test | ~3 min | 1 min | 07:39-07:40, lead |
 | 2026-11-23 | Health minimum 1100 (both chips): edit + test + build + silent install + live check | fix/build | 3-8 min | 5 min | 07:42-07:47, lead |
+| 2026-11-23 | CI for 75e9c325 (S17, devices/log, Search columns) | ci | ~23 min | 24 min | 07:30-07:54, FAILED: test_planes_print (1) + test_gesture_undo smoke stall (26 errors); both pass locally (35/35) |
