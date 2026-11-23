@@ -268,3 +268,7 @@ the switch never changed. View back on Home.
 | 42 | `gremlin_windows` | `{}` | ok | PASS |  |
 | 43 | `gremlin_state` | `{}` | ok | PASS |  |
 | 44 | `all tools called` | `{}` | ok | PASS | not called: [] |
+
+## Later runs
+
+- [live2.md](live2.md): agent LIVE2, 09:36-09:42. `option set` on a number and a choice setting (pass), History "(by API)" for `profile save` after a real change (pass; closes finding 5), vJoy keep-alive trace lines (pass), tracing left on overnight. New finding: `run stop` can answer `run: running`.

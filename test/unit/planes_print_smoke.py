@@ -30,6 +30,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import time
 from pathlib import Path
 
 from smoke_exit import smoke_exit
@@ -234,20 +235,63 @@ def main() -> None:
     saved: list = []
     ev("_hw").areaSaved.connect(lambda ok, error: saved.append([ok, error]))
 
+    def pictures() -> list:
+        """Each map picture in every window (the screen's and the print
+        renderer's copies): file name, status (1 Ready, 2 Loading) and the
+        size it is read at."""
+        found = []
+
+        def walk(item: QtQuick.QQuickItem) -> None:
+            for kid in item.childItems():
+                if kid.objectName() == "pictureImage":
+                    found.append(kid)
+                walk(kid)
+
+        for w in QtGui.QGuiApplication.topLevelWindows():
+            if isinstance(w, QtQuick.QQuickWindow):
+                walk(w.contentItem())
+        shown = []
+        for img in found:
+            # status is an enum PySide can't convert: read it in QML.
+            expr = QtQml.QQmlExpression(
+                QtQml.qmlContext(img), img,
+                "[String(source).split('/').pop(), status,"
+                " sourceSize.width, sourceSize.height]",
+            )
+            value = expr.evaluate()
+            value = value[0] if isinstance(value, tuple) else value
+            shown.append(value.toVariant() if hasattr(value, "toVariant") else value)
+        return shown
+
     def export(name: str) -> dict:
         target = folder / name
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
         count = len(saved) + 1
+        started = time.monotonic()
         ev(f"_editorWin.exportTo({json.dumps(url)}, 'png')")
         wait_until(
             lambda: len(saved) >= count and ev("_editorWin.exportBusy") is False,
             f"{name} exported",
-            # Ends when the export is in; a slow CI runner with both smokes
-            # at once took over 10 s (run 44784713580: file missing).
-            timeout_ms=60000,
+            # Ends when the export is in. A slow CI runner with both smokes
+            # at once took over 10 s (run 44784713580: file missing), then
+            # over 60 s for the big picture (run 45184219978). Qt reads
+            # pictures on a lowest-priority thread that a busy runner
+            # starves: pinned to one busy core the big export took 19-36 s
+            # against 1.2 s idle. 100 s keeps the run under the 140 s limit.
+            timeout_ms=100000,
             fail=False,
         )
-        return red_box(target)
+        shot = red_box(target)
+        shot["took"] = round(time.monotonic() - started, 1)
+        if shot.get("missing"):
+            # What it was still waiting for (run 45184219978: missing).
+            shot.update(
+                saved=saved[count - 1:],
+                busy=ev("_editorWin.exportBusy"),
+                renderer=ev("_renderer.busy ? String(_renderer._job.state) : 'idle'"),
+                pictures=pictures(),
+            )
+        return shot
 
     ev("_editorWin.setPrint('paper', 'fit')")
     ev("_editorWin._ed().clearPrintArea()")

@@ -1389,3 +1389,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | CI for 29cf515b (Health test survives a rebuild) | ci | ~23 min | 22 min | 08:25-08:47, passed |
 | 2026-11-23 | Sweep fixes: FIX-A (unknown command id, help) + FIX-B (window errors, ids, log space) | fix | 3-8 min each | 3-5 min each | 08:43-08:48, 2 parallel agents |
 | 2026-11-23 | Build + silent install + live retest of the sweep fixes | build/test | ~3 min | 2 min | 08:48-08:50, lead |
+| 2026-11-23 | CI for 68f15959 (sweep fixes) | ci | ~23 min | 26 min | 08:50-09:16, FAILED 3 (input_thread_ui_blocked viewer seen x3, rig_editor_golden picture, final_03 vJoy viewer); all pass locally (38/38) |
+| 2026-11-23 | FLAKE-1: input thread viewer test (axis refresh events raced the viewer count) | fix | no data; guess 10-15 min | 11 min | 09:20-09:31, 1 agent |
+| 2026-11-23 | FLAKE-2: rig editor picture wait (low-priority Qt image thread starved on busy CI) | fix | no data; guess 10-15 min | 6 min | 09:20-09:26, 1 agent |
+| 2026-11-23 | FLAKE-3: vJoy viewer test (test helper skipped the claim cache refresh) | fix | no data; guess 10-15 min | 4 min | 09:20-09:24, 1 agent |
+| 2026-11-23 | LIVE2: number/choice option set, profile save (by API), keep-alive trace lines, overnight tracing on | test | no data; guess 10 min | 5 min | 09:36-09:41, 1 agent |
+| 2026-11-23 | FLAKE-4: picture waits in the print and Device Library photo tests | fix | no data; guess 10-15 min | 21 min | 09:30-09:51, 1 agent (load runs 1.5-2.5 min each) |

@@ -187,11 +187,20 @@ class _Viewer(QtCore.QObject):
     def __init__(self) -> None:
         super().__init__()
         self.seen: list[bool] = []  # True when its slot ran on the main thread
+        self.pressed = 0  # the test's own button press
 
     @QtCore.Slot(object)
-    def on_event(self, _event: object) -> None:
+    def on_event(self, event: event_handler.Event) -> None:
         main = QtCore.QCoreApplication.instance().thread()
         self.seen.append(QtCore.QThread.currentThread() == main)
+        # The Run start's axis refresh (synthetic, from the macro thread)
+        # may still be arriving; only the fired press is counted.
+        if (
+            event.event_type == InputType.JoystickButton
+            and event.identifier == _BUTTON
+            and not getattr(event, "synthetic", False)
+        ):
+            self.pressed += 1
 
 
 def test_highlight_and_viewers_on_main_action_on_input(rig: SimpleRig) -> None:
@@ -200,11 +209,12 @@ def test_highlight_and_viewers_on_main_action_on_input(rig: SimpleRig) -> None:
     bus.event.connect(viewer.on_event, QtCore.Qt.ConnectionType.QueuedConnection)
     try:
         rig.fire()
-        assert _pump(lambda: bool(viewer.seen) and bool(rig.rec.actions))
+        assert _pump(lambda: bool(viewer.pressed) and bool(rig.rec.actions))
     finally:
         bus.event.disconnect(viewer.on_event)
     assert rig.rec.actions[0][1], "the action did not run on the input thread"
-    assert viewer.seen == [True], "a viewer slot did not run on the main thread"
+    assert viewer.pressed == 1, "the press reached the viewer more than once"
+    assert all(viewer.seen), "a viewer slot did not run on the main thread"
 
 
 # 3 ---------------------------------------------------------------------------

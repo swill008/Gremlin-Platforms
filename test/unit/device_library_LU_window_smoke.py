@@ -616,8 +616,20 @@ def main() -> None:
         if err:
             print(f"ERROR {name}: {err}", flush=True)
             continue
-        if not pump(cond):
+        # A picture wait gets 30 s: Qt loads pictures on a lowest-priority
+        # thread, which a busy CI runner can starve for seconds (run
+        # 44912081449; 2 of 6 runs pinned to one busy core missed 5 s). It
+        # ends as soon as the picture is in.
+        picture = "Image.Ready" in cond
+        if not pump(cond, 30.0 if picture else 5.0):
             print(f"ERROR {name}: timed out waiting for {cond}", flush=True)
+            if picture:
+                status, _err = evaluate(
+                    "var p = _bridge.item('libraryPhoto'); 'libraryPhoto still"
+                    " loading: status ' + p.status + ' (1 Ready, 2 Loading),"
+                    " source ' + p.source"
+                )
+                print(f"ERROR {name}: {status}", flush=True)
         if show:
             value, err = evaluate(show)
             if err:

@@ -207,7 +207,19 @@ def put_module(
         path.write_text(doc, encoding="utf-8")
     else:
         path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    _drop_output_claims()
     return path
+
+
+def _drop_output_claims() -> None:
+    """A program save re-reads the output claims (store._saved); this write
+    skips the store, so the output layer's one-second claim cache is dropped
+    here. Otherwise a read the test before made in the last second (no vJoy
+    module yet) is still used: "(no output module)" for a vJoy just written."""
+    from gremlin.modules import output
+
+    with output._lock:
+        output._claims_at = 0.0
 
 
 def put_picture(

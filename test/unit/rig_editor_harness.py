@@ -593,31 +593,38 @@ class Session:
 
     # --- recording --------------------------------------------------------
 
-    def _images_loading(self) -> bool:
-        """True while any Image in the window is still loading: pictures load
-        asynchronously, and a busy machine can take longer than the step's
-        pause, leaving the picture out of the screenshot."""
+    def _images_loading(self) -> list[str]:
+        """The sources of the Images in the window still loading: pictures
+        load asynchronously, and a busy machine can take longer than the
+        step's pause, leaving the picture out of the screenshot."""
+        loading: list[str] = []
         items = [self.win.contentItem()]
         while items:
             item = items.pop()
             if item.metaObject().className().startswith("QQuickImage"):
                 # Python has no converter for the status enum; QML reads it.
                 # 2 is Image.Loading.
-                loading = QtQml.QQmlExpression(
+                busy = QtQml.QQmlExpression(
                     QtQml.QQmlEngine.contextForObject(item), item, "status === 2"
                 ).evaluate()
-                if loading[0] if isinstance(loading, tuple) else loading:
-                    return True
+                if busy[0] if isinstance(busy, tuple) else busy:
+                    loading.append(item.property("source").toString())
             items.extend(item.childItems())
-        return False
+        return loading
 
     def record(self, step: str, image: bool = False) -> None:
         self.wait(150)
         if image:
-            deadline = QtCore.QDeadlineTimer(5000)
+            # Qt reads pictures on a thread at the lowest priority. With every
+            # core busy (CI runs the parts side by side), Windows runs a
+            # starved thread only after about 4 s, so one load can take over
+            # 5 s (run 45198532296). 30 s is under the stall watch's 50 s.
+            deadline = QtCore.QDeadlineTimer(30000)
             if self._images_loading():
-                while self._images_loading():
-                    assert not deadline.hasExpired(), "a picture never finished loading"
+                while loading := self._images_loading():
+                    assert not deadline.hasExpired(), (
+                        f"a picture never finished loading: {loading}"
+                    )
                     self.wait(10)
                 # The loaded picture is drawn on the next frame.
                 self.wait(50)
