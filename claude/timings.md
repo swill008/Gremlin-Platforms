@@ -1395,3 +1395,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | FLAKE-3: vJoy viewer test (test helper skipped the claim cache refresh) | fix | no data; guess 10-15 min | 4 min | 09:20-09:24, 1 agent |
 | 2026-11-23 | LIVE2: number/choice option set, profile save (by API), keep-alive trace lines, overnight tracing on | test | no data; guess 10 min | 5 min | 09:36-09:41, 1 agent |
 | 2026-11-23 | FLAKE-4: picture waits in the print and Device Library photo tests | fix | no data; guess 10-15 min | 21 min | 09:30-09:51, 1 agent (load runs 1.5-2.5 min each) |
+| 2026-11-23 | RUNWAIT: run start/stop answer after the Run's own started/stopped signal | fix | 3-8 min | 5 min | 10:08-10:13, 1 agent |
+| 2026-11-23 | Build + silent install + live check (3x start/stop, already-in-state cases) | build/test | ~3 min | 2 min | 10:13-10:15, lead |

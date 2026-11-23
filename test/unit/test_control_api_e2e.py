@@ -94,26 +94,16 @@ def story(j: Journey) -> None:
     out["endpoint-while-on"] = endpoint.exists()
     out["endpoint-under-home"] = str(endpoint).startswith(os.environ["USERPROFILE"])
 
-    def wait_run(client: Any, want: str) -> str:  # noqa: ANN401
-        import time
-
-        deadline = time.monotonic() + 20
-        run = ""
-        while time.monotonic() < deadline:
-            run = client.call("state")["run"]
-            if run == want:
-                break
-            time.sleep(0.1)
-        return run
-
     def client_calls() -> dict:
         found: dict[str, Any] = {}
         with ctl.connect(endpoint=endpoint) as client:
             found["state"] = client.call("state")
+            # Each answer comes when the Run has started / stopped
+            # (D-13-RUN-WAIT): the state read next agrees, no polling.
             found["run.start"] = client.call("run.start")
-            found["running"] = wait_run(client, "running")
+            found["running"] = client.call("state")["run"]
             found["run.stop"] = client.call("run.stop")
-            found["stopped"] = wait_run(client, "stopped")
+            found["stopped"] = client.call("state")["run"]
             found["commands"] = client.call("commands")
             found["windows"] = client.call("window.list")
         return found
@@ -168,7 +158,9 @@ def test_the_client_reads_state(run: dict) -> None:
 
 def test_run_start_and_stop_through_the_api_start_and_stop_the_run(run: dict) -> None:
     found = step(run, "client")
+    assert found["run.start"] == {"run": "running"}, found
     assert found["running"] == "running", found
+    assert found["run.stop"] == {"run": "stopped"}, found
     assert found["stopped"] == "stopped", found
 
 

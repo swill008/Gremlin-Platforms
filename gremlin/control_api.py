@@ -66,6 +66,8 @@ POLL_S = 0.5
 DEFAULT_TIMEOUT_S = 10.0
 LONG_TIMEOUT_S = 30.0
 LOG_LINES_MAX = 2000
+# run.start / run.stop: the longest wait for the Run's answer.
+RUN_WAIT_S = DEFAULT_TIMEOUT_S
 
 _log = logging.getLogger("system")
 
@@ -719,16 +721,85 @@ def _devices(_args: dict) -> list[dict]:
     return found
 
 
-def _run_start(_args: dict) -> dict:
+class _RunWaiter:
+    """One Run or Stop answer: set on the main thread by Backend's
+    runStartHandled / runStopHandled (its state already updated)."""
+
+    def __init__(self) -> None:
+        self.done = threading.Event()
+        self.ok = True
+        self.error = ""
+
+    def started(self, ok: bool, error: str) -> None:
+        self.ok = bool(ok)
+        self.error = str(error or "")
+        self.done.set()
+
+    def stopped(self) -> None:
+        self.done.set()
+
+
+def _run_send(backend: Any, run: bool) -> tuple[bool, str]:  # noqa: ANN401
+    """On the main thread: asks for the Run (True) or Stop. Returns (done,
+    state): done when nothing is left to wait for (already in the wanted
+    state, or inline, where the Run finished on this thread)."""
+    from gremlin import input_thread
+
+    state = _run_state(backend)
+    if state == ("running" if run else "stopped"):
+        return True, state
+    if not (run and state == "starting"):
+        # A Run already on its way isn't asked for again: its answer follows.
+        backend.activate_gremlin(run)
+    if not input_thread.is_running() or input_thread.is_inline():
+        return True, _run_state(backend)
+    return False, state
+
+
+def _run_last_error(backend: Any) -> str:  # noqa: ANN401
+    runner = getattr(backend, "runner", None)
+    return str(getattr(runner, "last_error", "") or "")
+
+
+def _run_set(run: bool) -> dict:
+    """run.start / run.stop on the listener thread: the request goes to the
+    main thread, the wait for its answer stays here (D-13-RUN-WAIT)."""
+    from PySide6 import QtCore
+
     backend = _backend()
-    backend.activate_gremlin(True)
-    return {"run": _run_state(backend)}
+    limit = float(RUN_WAIT_S)
+    deadline = clock.monotonic() + limit
+    waiter = _RunWaiter()
+    # Armed before the request, so the answer can't come first; direct: the
+    # slot only sets an Event, on the thread that emits (the main thread).
+    answered = backend.runStartHandled if run else backend.runStopHandled
+    slot = waiter.started if run else waiter.stopped
+    answered.connect(slot, QtCore.Qt.ConnectionType.DirectConnection)
+    try:
+        done, state = threads.main_call_wait(_run_send, backend, run, timeout=limit)
+        if done:
+            if run and state != "running":
+                raise CallError(_run_last_error(backend) or "The Run didn't start.")
+            return {"run": state}
+        if not waiter.done.wait(max(0.0, deadline - clock.monotonic())):
+            word = "start" if run else "stop"
+            raise CallError(f"The Run didn't {word} within {limit:g} s.")
+        if run and not waiter.ok:
+            raise CallError(waiter.error or "The Run didn't start.")
+        return {"run": "running" if run else "stopped"}
+    finally:
+        try:
+            answered.disconnect(slot)
+        except (RuntimeError, TypeError):
+            pass
+
+
+def _run_start(_args: dict) -> dict:
+    return _run_set(True)
 
 
 def _run_stop(_args: dict) -> dict:
-    backend = _backend()
-    backend.activate_gremlin(False)
-    return {"run": _run_state(backend)}
+    return _run_set(False)
 
 
 def _profile_load(args: dict) -> dict:
@@ -989,8 +1060,10 @@ def _register_own() -> None:
     register(
         "devices", _devices, main_thread=True, summary="Devices, plugged in or not."
     )
-    register("run.start", _run_start, main_thread=True, summary="Run the open profile.")
-    register("run.stop", _run_stop, main_thread=True, summary="Stop the Run.")
+    # Off the main thread: only the request goes there; the answer is
+    # waited for here (RUN_WAIT_S).
+    register("run.start", _run_start, summary="Run the open profile.")
+    register("run.stop", _run_stop, summary="Stop the Run.")
     register(
         "profile.load",
         _profile_load,

@@ -331,6 +331,10 @@ class Backend(QtCore.QObject):
     profileChanged = QtCore.Signal()
     recentProfilesChanged = QtCore.Signal()
     activityChanged = QtCore.Signal()
+    # The Run's answer, after the handlers above updated the status: the
+    # control API's run.start / run.stop wait on these (page 13 S10).
+    runStartHandled = QtCore.Signal(bool, str)
+    runStopHandled = QtCore.Signal()
     propertyChanged = QtCore.Signal()
     uiChanged = QtCore.Signal()
     quitRequested = QtCore.Signal()
@@ -671,6 +675,7 @@ class Backend(QtCore.QObject):
         self._starting = False
         _sync_run_highlight_hold(self.runner)
         self.activityChanged.emit()
+        self.runStartHandled.emit(ok, error)
 
     @QtCore.Slot()
     def _on_run_stopped(self) -> None:
@@ -678,9 +683,11 @@ class Backend(QtCore.QObject):
         if self._starting:
             # Stop then Run pressed quickly: the Stop's answer came first;
             # the Run's runStarted still follows.
+            self.runStopHandled.emit()
             return
         _sync_run_highlight_hold(self.runner)
         self.activityChanged.emit()
+        self.runStopHandled.emit()
 
     def run_profile(self, fpath: str) -> bool:
         """Stop, open the profile at fpath and Run it (a Load Profile

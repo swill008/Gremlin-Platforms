@@ -715,3 +715,172 @@ def test_devices_ids_are_in_one_form(monkeypatch: pytest.MonkeyPatch) -> None:
         "abcdef01-2345-6789-abcd-ef0123456789",
         "22222222-aaaa-2222-2222-222222222222",
     ]
+
+
+# --- run.start / run.stop answer when done (D-13-RUN-WAIT) ------------------------
+
+
+class _RunBackend(QtCore.QObject):
+    """Backend's Run side as the API sees it: activate_gremlin hands the
+    request over and the answer comes later on the main thread (as the
+    input thread's runStarted/runStopped reach Backend's handlers)."""
+
+    runStartHandled = QtCore.Signal(bool, str)
+    runStopHandled = QtCore.Signal()
+
+    def __init__(
+        self, *, delay_ms: int = 150, fail: str = "", answer: bool = True
+    ) -> None:
+        super().__init__()
+        self.gremlinStarting = False
+        self.gremlinActive = False
+        self.delay_ms = delay_ms
+        self.fail = fail
+        self.answer = answer
+        self.asked: list[bool] = []
+
+    def activate_gremlin(self, activate: bool) -> None:
+        self.asked.append(activate)
+        self.gremlinStarting = activate
+        if self.answer:
+            QtCore.QTimer.singleShot(self.delay_ms, lambda: self._done(activate))
+
+    def _done(self, activate: bool) -> None:
+        self.gremlinStarting = False
+        if activate:
+            self.gremlinActive = not self.fail
+            self.runStartHandled.emit(not self.fail, self.fail)
+        else:
+            self.gremlinActive = False
+            self.runStopHandled.emit()
+
+    def listeners(self) -> int:
+        return self.receivers(QtCore.SIGNAL("runStartHandled(bool,QString)")) + (
+            self.receivers(QtCore.SIGNAL("runStopHandled()"))
+        )
+
+
+@pytest.fixture
+def run_backend(
+    monkeypatch: pytest.MonkeyPatch, connected: ctl.Client
+) -> Callable[..., _RunBackend]:
+    from gremlin import input_thread
+
+    monkeypatch.setattr(input_thread, "is_running", lambda: True)
+    monkeypatch.setattr(input_thread, "is_inline", lambda: False)
+
+    def make(**kwargs: Any) -> _RunBackend:  # noqa: ANN401
+        backend = _RunBackend(**kwargs)
+        monkeypatch.setattr(control_api, "_backend", lambda: backend)
+        return backend
+
+    return make
+
+
+def test_run_stop_answers_stopped_after_the_run_has_stopped(
+    connected: ctl.Client, run_backend: Callable[..., _RunBackend]
+) -> None:
+    """The old answer read the state at once and said "running" (seen
+    live): the answer now waits for the Run to stop."""
+    backend = run_backend()
+    backend.gremlinActive = True
+    assert _off_main(lambda: connected.call("run.stop")) == {"run": "stopped"}
+    assert backend.asked == [False]
+    assert backend.listeners() == 0
+
+
+def test_run_start_answers_running_after_the_run_has_started(
+    connected: ctl.Client, run_backend: Callable[..., _RunBackend]
+) -> None:
+    backend = run_backend()
+    assert _off_main(lambda: connected.call("run.start")) == {"run": "running"}
+    assert backend.asked == [True]
+    assert backend.listeners() == 0
+
+
+def test_a_run_that_fails_to_start_is_an_error_with_its_text(
+    connected: ctl.Client, run_backend: Callable[..., _RunBackend]
+) -> None:
+    backend = run_backend(fail="No vJoy device 3.")
+    with pytest.raises(ctl.CallError, match=r"No vJoy device 3\."):
+        _off_main(lambda: connected.call("run.start"))
+    assert backend.listeners() == 0
+
+
+def test_run_stop_without_an_answer_is_an_error_not_a_state(
+    connected: ctl.Client,
+    run_backend: Callable[..., _RunBackend],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(control_api, "RUN_WAIT_S", 0.5)
+    backend = run_backend(answer=False)
+    backend.gremlinActive = True
+    with pytest.raises(ctl.CallError, match="didn't stop within 0.5 s"):
+        _off_main(lambda: connected.call("run.stop"))
+    assert backend.listeners() == 0
+
+
+def test_run_start_and_stop_in_the_wanted_state_answer_at_once(
+    connected: ctl.Client, run_backend: Callable[..., _RunBackend]
+) -> None:
+    backend = run_backend(answer=False)
+    assert _off_main(lambda: connected.call("run.stop")) == {"run": "stopped"}
+    backend.gremlinActive = True
+    assert _off_main(lambda: connected.call("run.start")) == {"run": "running"}
+    assert backend.asked == []
+    assert backend.listeners() == 0
+
+
+def test_run_start_inline_answers_from_the_finished_run(
+    connected: ctl.Client,
+    run_backend: Callable[..., _RunBackend],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Inline (no input thread): the Run is done when activate_gremlin
+    returns; the answer reads it, no wait."""
+    from gremlin import input_thread
+
+    monkeypatch.setattr(input_thread, "is_running", lambda: False)
+    backend = run_backend(answer=False)
+
+    def at_once(activate: bool) -> None:
+        backend.asked.append(activate)
+        backend.gremlinActive = activate
+
+    backend.activate_gremlin = at_once  # type: ignore[method-assign]
+    assert _off_main(lambda: connected.call("run.start")) == {"run": "running"}
+    assert _off_main(lambda: connected.call("run.stop")) == {"run": "stopped"}
+    assert backend.asked == [True, False]
+    assert backend.listeners() == 0
+
+
+def test_backend_says_when_it_has_handled_the_runs_answer(qapp: object) -> None:
+    """Backend's handlers update the status, then emit runStartHandled /
+    runStopHandled (what run.start / run.stop wait on), also for a Stop
+    answered while a later Run is still starting."""
+    from gremlin.ui.backend import Backend
+
+    class _Runner:
+        def is_running(self) -> bool:
+            return False
+
+    class _Stub(QtCore.QObject):
+        runStartHandled = QtCore.Signal(bool, str)
+        runStopHandled = QtCore.Signal()
+        activityChanged = QtCore.Signal()
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.runner = _Runner()
+            self._starting = True
+            self._wanted_active = True
+
+    stub = _Stub()
+    seen: list[tuple] = []
+    stub.runStartHandled.connect(lambda ok, error: seen.append(("start", ok, error)))
+    stub.runStopHandled.connect(lambda: seen.append(("stop",)))
+    Backend.klass._on_run_stopped(stub)  # type: ignore[arg-type]  # noqa: SLF001 - starting
+    Backend.klass._on_run_started(stub, False, "It failed.")  # type: ignore[arg-type]  # noqa: SLF001
+    assert stub._starting is False  # noqa: SLF001
+    Backend.klass._on_run_stopped(stub)  # type: ignore[arg-type]  # noqa: SLF001
+    assert seen == [("stop",), ("start", False, "It failed."), ("stop",)]
