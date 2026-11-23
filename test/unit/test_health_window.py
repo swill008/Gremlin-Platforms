@@ -25,6 +25,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "test" / "journeys"))
 from _harness import (  # noqa: E402  # pyright: ignore[reportMissingImports]
     Journey,
+    check_result_columns,
+    result_columns,
     run_journey,
 )
 
@@ -48,6 +50,46 @@ def _first_line(j: Journey) -> Any:  # noqa: ANN401
         "for (var i = 0; i < w.health.rowCount(); i++) "
         "if (w.health.get(i).rowKind === 'result') return i; return -1 })()",
     )
+
+
+_LONG = (
+    "Map to vJoy: vJoy 3 · Button 2, then a very long action text that goes "
+    "on and on past the end of any window it is shown in · Button 99"
+)
+
+
+def _columns(j: Journey, win: Any, first: int, second: int) -> Any:  # noqa: ANN401
+    """01 S196 in Health: a short and a long action (one inherited) on the
+    two lines, wide and narrow, against Health's headings."""
+    import json
+
+    lines = [
+        {
+            "inputLabel": "Button 1",
+            "mode": "Default",
+            "text": "Map to vJoy: vJoy 3 · Button 1",
+        },
+        {
+            "inputLabel": "Button 2 of the left throttle",
+            "mode": "Air",
+            "text": _LONG,
+            "inheritedFrom": "Default",
+        },
+    ]
+    for i, line in zip((first, second), lines, strict=True):
+        row = {
+            "rowKind": "result",
+            "notFound": True,
+            "why": "vJoy 3 isn't there",
+            **line,
+        }
+        _safe(j, f"_list.itemAtIndex({i}).model = " + json.dumps(row), win)
+    j.settle()
+    heads = {c: "healthHead:" + c for c in ("input", "mode", "action")}
+    return {
+        "wide": result_columns(j, win, heads, [first, second], 1430),
+        "narrow": result_columns(j, win, heads, [first, second], 700),
+    }
 
 
 def story(j: Journey) -> None:
@@ -141,6 +183,7 @@ def story(j: Journey) -> None:
         "return t })()",
         menu,
     )
+    out["columns"] = _columns(j, win, int(first), int(second))
     _safe(j, "escapePressed()", win)
     j.settle()
     out["closed"] = _safe(j, _WIN + " === null")
@@ -209,6 +252,22 @@ def test_ctrl_click_picks_two_and_they_are_removed_together(result: dict) -> Non
 
 def test_esc_closes_the_window(result: dict) -> None:
     assert result["closed"] is True
+
+
+def test_line_columns_line_up_under_the_headings(result: dict) -> None:
+    """01 S196 in Health: Input, Mode and the action (its ⚠ first) start
+    under Health's headings, wide and narrow; a long action is cut in the
+    middle inside the line."""
+    found = result["columns"]
+    assert isinstance(found, dict), found
+    check_result_columns(found["wide"])
+    assert found["wide"]["rows"][1]["cut"] is True, found["wide"]
+    # Narrow, Health's fixed Input and Mode leave the action no room (its
+    # own widths, not capped as Search's are); they still line up.
+    narrow = found["narrow"]
+    for row in narrow["rows"]:
+        for column in ("input", "mode", "action"):
+            assert abs(row[column] - narrow["heads"][column]) <= 1, (column, narrow)
 
 
 if __name__ == "__main__":

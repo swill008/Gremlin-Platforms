@@ -153,6 +153,7 @@ Rectangle {
             }
         }
         Label {
+            objectName: "searchRowMode:" + _row.index
             Layout.preferredWidth: _row.modeWidth
             Layout.minimumWidth: _row.modeWidth
             Layout.maximumWidth: _row.modeWidth
@@ -164,6 +165,9 @@ Rectangle {
         // The action, in the Bindings number style, and the notes that matched.
         ColumnLayout {
             Layout.fillWidth: true
+            // Takes all the slack, so Input and Mode never drift off their
+            // headings when the action is short (01 S196).
+            Layout.maximumWidth: Number.POSITIVE_INFINITY
             spacing: Style.dp(2)
             RowLayout {
             Layout.fillWidth: true
@@ -192,7 +196,9 @@ Rectangle {
                 text: _row.f("text", "")
             }
             Rectangle {
+                objectName: "searchRowAction:" + _row.index
                 Layout.fillWidth: true
+                Layout.preferredWidth: _actionMetrics.advanceWidth + Style.dp(12)
                 Layout.maximumWidth: _actionMetrics.advanceWidth + Style.dp(12)
                 implicitHeight: _actionText.implicitHeight + Style.dp(4)
                 radius: Style.dp(5)
@@ -225,6 +231,11 @@ Rectangle {
                     visible: _actionHover.hovered && _actionHover.enabled
                     text: _row.f("text", "")
                 }
+            }
+            // The space after a short action, so the box stays at the
+            // Action heading (01 S196).
+            Item {
+                Layout.fillWidth: true
             }
             }
             Label {

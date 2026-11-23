@@ -24,6 +24,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "test" / "journeys"))
 from _harness import (  # noqa: E402  # pyright: ignore[reportMissingImports]
     Journey,
+    check_result_columns,
+    result_columns,
     run_journey,
 )
 
@@ -31,9 +33,9 @@ from _harness import (  # noqa: E402  # pyright: ignore[reportMissingImports]
 # | Script side (the child process)
 
 
-def _safe(j: Journey, code: str) -> Any:  # noqa: ANN401
+def _safe(j: Journey, code: str, target: Any = None) -> Any:  # noqa: ANN401
     try:
-        return j.ev(code)
+        return j.ev(code, target)
     except RuntimeError as err:
         return "ERROR " + str(err)
 
@@ -222,6 +224,71 @@ def _layout(j: Journey, win: str) -> Any:  # noqa: ANN401
     return found
 
 
+# Stand-in results for the column check: inputs and actions of every length,
+# one with an "Inherited from" chip.
+_LONG = (
+    "Map to vJoy: vJoy 1 · Button 1, then a very long action text that goes "
+    "on and on past the end of any window it is shown in · Button 99"
+)
+_COLUMN_ROWS = [
+    {"inputLabel": "Hat 1", "mode": "Default", "text": "Map to vJoy: vJoy 1 · Hat 1"},
+    {"inputLabel": "Button 1", "mode": "Default", "text": "Pause"},
+    {
+        "inputLabel": "X Rotation of the left throttle",
+        "mode": "Default",
+        "text": "Map to vJoy: vJoy 1 · X Rotation, curved",
+    },
+    {
+        "inputLabel": "Button 6",
+        "mode": "Air",
+        "text": "Map to vJoy: vJoy 1 · Button 6",
+        "inheritedFrom": "Default",
+    },
+    {"inputLabel": "B", "mode": "Default", "text": _LONG},
+]
+
+
+def _columns(j: Journey, win: str) -> Any:  # noqa: ANN401
+    """Results of every length in the real window, wide and narrow."""
+    from gremlin import search_index
+
+    window = j.ev(win)
+    if window is None or isinstance(window, str):
+        return "no window"
+    uid = j.stick().device_guid.uuid
+    for button in range(1, 6):
+        j.map_button(uid, button, j.profile.modes.first_mode, button)
+    search_index.default_index().rebuild_open(j.profile)
+    _safe(j, win + '.searchFor("Button")')
+    j.await_value(
+        lambda: (_safe(j, win + ".search.resultCount") or 0) >= 5, True, timeout=8.0
+    )
+    j.settle()
+    rows = _safe(
+        j,
+        "(function() { var out = []; for (var i = 0; i < _list.count "
+        "&& out.length < " + str(len(_COLUMN_ROWS)) + "; i++) "
+        "if (isResult(i)) out.push(i); return out })()",
+        window,
+    )
+    if not isinstance(rows, list) or len(rows) < len(_COLUMN_ROWS):
+        return "rows " + str(rows)
+    rows = [int(r) for r in rows]
+    for i, row in zip(rows, _COLUMN_ROWS, strict=True):
+        _safe(
+            j,
+            f"_list.itemAtIndex({i}).model = "
+            + json.dumps({"rowKind": "result", **row}),
+            window,
+        )
+    j.settle()
+    heads = {c: "searchSort:" + c for c in ("input", "mode", "action")}
+    return {
+        "wide": result_columns(j, window, heads, rows, 1430),
+        "narrow": result_columns(j, window, heads, rows, 700),
+    }
+
+
 def story(j: Journey) -> None:
     out = j.out
     j.settle()
@@ -281,6 +348,7 @@ def story(j: Journey) -> None:
     out["shown"] = _shown(j, win)
     out["fix"] = _fix(j, win)
     out["layout"] = _layout(j, win)
+    out["columns"] = _columns(j, win)
     # Nothing found, then Esc clears the box and Esc again closes the window.
     _safe(j, win + '.searchFor("zzqqxxw")')
     j.await_value(lambda: _safe(j, win + ".nothingFound"), True, timeout=8.0)
@@ -469,3 +537,22 @@ def test_search_layout_follows_s196(result: dict) -> None:
     assert layout["drop"]["count"] == layout["drop"]["lines"] + 1
     assert layout["dropOpen"] is True
     assert layout["clearShown"] is True
+
+
+def test_result_columns_line_up_under_the_headings(result: dict) -> None:
+    """01 S196: short, medium and long actions, inputs of every length and
+    an "Inherited from" chip; Mode and the action box don't drift right."""
+    found = result["columns"]
+    assert isinstance(found, dict), found
+    check_result_columns(found["wide"])
+    assert sum(1 for r in found["wide"]["rows"] if r["fits"]) >= 4, found["wide"]
+
+
+def test_a_narrow_window_cuts_a_long_action_in_the_middle(result: dict) -> None:
+    """01 S196: at ~700 px the long action is cut in the middle, not pushed
+    off the edge, and Mode stays under its heading."""
+    found = result["columns"]
+    assert isinstance(found, dict), found
+    check_result_columns(found["narrow"])
+    long = [r for r in found["narrow"]["rows"] if r["text"] == _LONG]
+    assert long and long[0]["cut"] is True, found["narrow"]

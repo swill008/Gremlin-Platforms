@@ -908,3 +908,81 @@ class Journey:
 
         output.refresh()
         InputModuleRuntime().reload()
+
+
+# +-------------------------------------------------------------------------
+# | Search and Health result columns (01 S196)
+
+
+def result_columns(
+    j: Journey,
+    window: Any,  # noqa: ANN401
+    heads: dict[str, str],
+    rows: list[int],
+    width: int,
+) -> Any:  # noqa: ANN401
+    """Search/Health result rows (01 S196) at one window width: each
+    heading's x, and for each row its Input, Mode and action x, the action
+    box's width, its text's width + 12 and whether it was cut (the rows'
+    searchRowMode / searchRowAction items)."""
+    from PySide6 import QtCore, QtGui
+
+    window.setWidth(width)
+    j.settle()
+
+    def sx(item: Any) -> float:  # noqa: ANN401
+        return round(item.mapToScene(QtCore.QPointF(0, 0)).x(), 1)
+
+    found: dict[str, Any] = {"heads": {}, "rows": []}
+    for column, name in heads.items():
+        head = j.item(window, name)
+        found["heads"][column] = None if head is None else sx(head)
+    pad = float(j.ev("Style.dp(12)", window))
+    for i in rows:
+        mode = j.item(window, f"searchRowMode:{i}")
+        box = j.item(window, f"searchRowAction:{i}")
+        if mode is None or box is None:
+            found["rows"].append(f"row {i}: no mode or action")
+            continue
+        row = mode.parentItem()
+        text = box.childItems()[0]
+        model = j.ev(f"_list.itemAtIndex({i}).model", window) or {}
+        advance = QtGui.QFontMetricsF(text.property("font")).horizontalAdvance(
+            str(model.get("text", ""))
+        )
+        found["rows"].append(
+            {
+                "text": str(model.get("text", "")),
+                "input": sx(row.childItems()[0]),
+                "mode": sx(mode),
+                "action": sx(box.parentItem()),
+                "box": sx(box),
+                "boxWidth": round(box.width(), 1),
+                "boxRight": round(sx(box) + box.width(), 1),
+                "rowRight": round(sx(row) + row.width(), 1),
+                "fitWidth": round(advance + pad, 1),
+                "fits": bool(text.property("fits")),
+                "cut": bool(text.property("truncated")),
+                "middle": bool(j.ev("elide === Text.ElideMiddle", text)),
+            }
+        )
+    return found
+
+
+def check_result_columns(found: Any) -> None:  # noqa: ANN401
+    """01 S196: every row's Input, Mode and action start under their
+    headings (within 1 px); a box is its text + 12 wide unless the text is
+    cut, and a cut one is cut in the middle inside the row."""
+    assert isinstance(found, dict), found
+    heads = found["heads"]
+    assert None not in heads.values(), heads
+    for row in found["rows"]:
+        assert isinstance(row, dict), row
+        for column in ("input", "mode", "action"):
+            assert abs(row[column] - heads[column]) <= 1, (column, heads, row)
+        if row["fits"]:
+            assert abs(row["boxWidth"] - row["fitWidth"]) <= 1, row
+        else:
+            assert row["cut"] is True and row["middle"] is True, row
+            assert row["boxWidth"] < row["fitWidth"], row
+        assert row["boxRight"] <= row["rowRight"] + 1, row

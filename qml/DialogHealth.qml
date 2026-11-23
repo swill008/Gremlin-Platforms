@@ -259,16 +259,19 @@ ApplicationWindow {
                             anchors.rightMargin: Style.dp(8)
                             spacing: Style.dp(8)
                             Label {
+                                objectName: "healthHead:input"
                                 Layout.preferredWidth: _list.inputWidth - Style.dp(38)
                                 Layout.minimumWidth: _list.inputWidth - Style.dp(38)
                                 text: "Input"; color: Style.fgStrong; font.bold: true
                             }
                             Label {
+                                objectName: "healthHead:mode"
                                 Layout.preferredWidth: _list.modeWidth
                                 Layout.minimumWidth: _list.modeWidth
                                 text: "Mode"; color: Style.fgStrong; font.bold: true
                             }
                             Label {
+                                objectName: "healthHead:action"
                                 Layout.fillWidth: true
                                 text: "Action"; color: Style.fgStrong; font.bold: true
                             }
