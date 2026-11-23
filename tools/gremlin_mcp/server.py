@@ -144,7 +144,9 @@ def gremlin_commands() -> str:
 @mcp.tool(structured_output=False)
 def gremlin_run_command(id: str) -> str:
     """Run a menu command by its id (from gremlin_commands), as if the user
-    chose it from the menu. Returns {"ran": true|false}.
+    chose it from the menu. Returns {"ran": true|false}: false when the
+    command can't be used now; an id that isn't a main window command is
+    an error.
 
     Args:
         id: The menu command id.

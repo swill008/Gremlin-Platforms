@@ -36,6 +36,7 @@ import os
 import secrets
 import sys
 import threading
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -136,13 +137,15 @@ def calls() -> list[dict]:
 
 
 def _short(args: dict) -> str:
+    """The call's arguments for its log line, with the space before them
+    ("" for none, so "API: state -> ok" has single spaces)."""
     if not args:
         return ""
     try:
         text = json.dumps(args, ensure_ascii=False, default=str)
     except Exception:
         text = repr(args)
-    return text if len(text) <= 120 else text[:117] + "..."
+    return " " + (text if len(text) <= 120 else text[:117] + "...")
 
 
 def _json_safe(value: Any) -> Any:  # noqa: ANN401 - any result
@@ -171,9 +174,9 @@ def dispatch(call: str, args: dict | None = None) -> dict:
             reply = _run(name, entry, args)
     # The client's version handshake before every call isn't logged (S8).
     if reply["ok"] and name != "hello":
-        _log.warning(f"API: {name} {_short(args)} -> ok")
+        _log.warning(f"API: {name}{_short(args)} -> ok")
     elif not reply["ok"]:
-        _log.warning(f"API: {name} {_short(args)} -> error: {reply['error']}")
+        _log.warning(f"API: {name}{_short(args)} -> error: {reply['error']}")
     return reply
 
 
@@ -647,6 +650,19 @@ def _state(_args: dict) -> dict:
     }
 
 
+def _device_id(value: object) -> str:
+    """A device id in the Library's form (store.guid_text of a uuid: lower
+    case, dashes, no braces), whether DILL's upper-case GUID text or a
+    stored one ("" for none; text that isn't a GUID as it is)."""
+    from gremlin.modules import store
+
+    text = store.guid_text(value)
+    try:
+        return str(uuid.UUID(text)) if text else ""
+    except ValueError:
+        return text
+
+
 def _devices(_args: dict) -> list[dict]:
     """The devices plugged in now, then the other hardware the program knows
     (the open profile's, saved module files: store.known_devices()), each
@@ -659,7 +675,7 @@ def _devices(_args: dict) -> list[dict]:
     found = []
     plugged: set[str] = set()
     for dev in device_initialization.joystick_devices():
-        guid = str(dev.device_guid)
+        guid = _device_id(dev.device_guid)
         plugged.add(store.stored_guid_key(guid))
         found.append(
             {
@@ -680,7 +696,7 @@ def _devices(_args: dict) -> list[dict]:
         _log.exception("API: the known devices could not be read")
         known = []
     for row in known:
-        guid = str(row.get("guid") or "")
+        guid = _device_id(row.get("guid"))
         key = store.stored_guid_key(guid)
         if row.get("connected") or not key or key in plugged:
             continue
@@ -970,7 +986,9 @@ def _register_own() -> None:
         summary="Version, profile, Run state, mode, tracing, Health count, "
         "Screen Saver Mode.",
     )
-    register("devices", _devices, main_thread=True, summary="Devices plugged in.")
+    register(
+        "devices", _devices, main_thread=True, summary="Devices, plugged in or not."
+    )
     register("run.start", _run_start, main_thread=True, summary="Run the open profile.")
     register("run.stop", _run_stop, main_thread=True, summary="Stop the Run.")
     register(

@@ -87,9 +87,11 @@ class _Registry:
         }
 
     def call(self, name: str, **args: Any) -> Any:  # noqa: ANN401
+        from gremlin.control_api import CallError
+
         try:
             return {"ok": self.calls[name]["handler"](args)}
-        except ValueError as e:
+        except CallError as e:
             return {"error": str(e)}
 
 
@@ -103,10 +105,13 @@ def _child(picture: str) -> dict:  # noqa: PLR0915
     from gremlin.ui import control_windows
 
     logged: list[str] = []
+    tracebacks: list[str] = []
 
     class _Keep(logging.Handler):
         def emit(self, record: logging.LogRecord) -> None:
             logged.append(record.getMessage())
+            if record.exc_info:
+                tracebacks.append(record.getMessage())
 
     system = logging.getLogger("system")
     system.setLevel(logging.INFO)
@@ -138,15 +143,11 @@ def _child(picture: str) -> dict:  # noqa: PLR0915
     out["read"] = reg.call("window.read", window="api test panel")  # any case
     out["press"] = reg.call("window.press", window=_TITLE, button="Apply")
     pump()
-    out["press-by-name"] = reg.call(
-        "window.press", window=_TITLE, button="applyButton"
-    )
+    out["press-by-name"] = reg.call("window.press", window=_TITLE, button="applyButton")
     pump()
     out["applied"] = window.property("applied")
     out["press-off"] = reg.call("window.press", window=_TITLE, button="Locked")
-    out["type"] = reg.call(
-        "window.type", window=_TITLE, field="Name", text="Pilot One"
-    )
+    out["type"] = reg.call("window.type", window=_TITLE, field="Name", text="Pilot One")
     out["finished"] = window.property("finished")
     out["screenshot"] = reg.call("window.screenshot", window=_TITLE, path=picture)
     out["dpr"] = window.devicePixelRatio()
@@ -156,6 +157,19 @@ def _child(picture: str) -> dict:  # noqa: PLR0915
         "window.screenshot", window=_TITLE, path=picture[:-4] + ".jpg"
     )
     out["unknown"] = reg.call("window.read", window="No Such Window")
+    # Through the real dispatch (decision 2a): a plain one-line answer and
+    # only the one-line "API: ..." log line, no traceback.
+    from gremlin import control_api
+
+    control_api.allowed = lambda: True  # this child process only
+    control_windows.register_api_calls(control_api)
+    out["api-unknown"] = control_api.dispatch(
+        "window.read", {"window": "No Such Window"}
+    )
+    out["api-no-button"] = control_api.dispatch(
+        "window.press", {"window": _TITLE, "button": "Nope"}
+    )
+    out["tracebacks"] = tracebacks
     out["close"] = reg.call("window.close", window=_TITLE)
     pump()
     out["visible-after-close"] = window.isVisible()
@@ -281,6 +295,27 @@ def test_window_screenshot_refuses_a_path_that_is_not_png(run: dict) -> None:
 
 def test_an_unknown_window_is_an_error(run: dict) -> None:
     assert "No window called" in run["unknown"]["error"]
+
+
+def test_window_call_errors_are_one_plain_line_without_a_traceback(
+    run: dict,
+) -> None:
+    """Decision 2a (user 2026-11-23): a window call's error comes back like
+    the other calls' ("window.read: No window called ..." on the command
+    line, no exception name) and logs only the one-line API line."""
+    assert run["api-unknown"] == {
+        "ok": False,
+        "error": "No window called 'No Such Window'",
+    }
+    assert run["api-no-button"] == {
+        "ok": False,
+        "error": f"No button 'Nope' in {_TITLE}",
+    }
+    assert run["tracebacks"] == []
+    assert (
+        'API: window.read {"window": "No Such Window"} -> error: '
+        "No window called 'No Such Window'"
+    ) in run["logged"]
 
 
 def test_window_close_closes_it(run: dict) -> None:

@@ -18,11 +18,13 @@ from typing import Any
 from PySide6 import QtCore, QtGui, QtQml, QtQuick
 
 from gremlin import threads
+from gremlin.control_api import CallError
 from gremlin.ui import window_titles
 
 
-class WindowError(Exception):
-    """A window call that can't be done; its text is the API's error."""
+class WindowError(CallError):
+    """A window call that can't be done; its text is the API's error (an
+    expected error: one plain line, no traceback)."""
 
 
 def _log(text: str) -> None:
@@ -349,14 +351,12 @@ def call_type(args: dict | None) -> dict[str, Any]:
 
 
 def _guard(fn: Any) -> Any:  # noqa: ANN401
-    """Turns WindowError into a plain error for control_api's reply."""
+    """Checks the call runs on the main thread (WindowError is already
+    control_api's CallError)."""
 
     def run(args: dict | None) -> Any:  # noqa: ANN401
         threads.assert_main(f"control_windows.{fn.__name__}")
-        try:
-            return fn(args)
-        except WindowError as e:
-            raise ValueError(str(e)) from None
+        return fn(args)
 
     run.__name__ = fn.__name__
     return run

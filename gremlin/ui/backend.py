@@ -765,9 +765,20 @@ class Backend(QtCore.QObject):
             main_thread=True,
             summary="The main window's menu commands: id, text and group.",
         )
+
+        def run(args: dict | None) -> dict:
+            # An id that isn't a main window command is an error; a known
+            # one that can't be used now answers ran false (13 S17).
+            from gremlin.control_api import CallError
+
+            command_id = str((args or {}).get("id", ""))
+            if command_id not in {row["id"] for row in self.command_list()}:
+                raise CallError(f"No command called {command_id!r}")
+            return {"ran": self.run_command_id(command_id)}
+
         register(
             "command.run",
-            lambda args: {"ran": self.run_command_id(str((args or {}).get("id", "")))},
+            run,
             main_thread=True,
             summary="Runs a menu command by its id, as the menus do.",
         )

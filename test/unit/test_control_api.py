@@ -434,7 +434,7 @@ def test_devices_lists_known_devices_that_are_not_plugged_in(
     assert by_name["Stick"]["buttons"] == 12
     assert by_name["Pedals"]["plugged_in"] is False
     assert by_name["Pedals"]["label"] == "My Pedals"
-    assert by_name["Pedals"]["guid"] == "{22222222-2222-2222-2222-222222222222}"
+    assert by_name["Pedals"]["guid"] == "22222222-2222-2222-2222-222222222222"
     assert by_name["Pedals"]["buttons"] is None
 
 
@@ -573,3 +573,145 @@ def test_profile_save_marks_its_history_entries_by_api(
     assert {e["kind"] for e in mine} >= {"profile"}
     assert all(e.get("by") == "api" for e in mine), mine
     assert all(e["title"].endswith("(by API)") for e in mine), mine
+
+
+def test_command_run_with_an_unknown_id_is_an_error(connected: ctl.Client) -> None:
+    """S17: an id that isn't a main window command fails the call ("No
+    command called ..."); a known one that can't run now answers ran false."""
+    from gremlin.ui.backend import Backend
+
+    ran: list[str] = []
+
+    class _Backend:
+        def command_list(self) -> list[dict]:
+            return [{"id": "view.home", "text": "Home", "group": "View"}]
+
+        def run_command_id(self, command_id: str) -> bool:
+            ran.append(command_id)
+            return False  # known, but not usable now
+
+    with control_api._calls_lock:  # noqa: SLF001
+        kept = {n: control_api._calls.get(n) for n in ("commands", "command.run")}  # noqa: SLF001
+    Backend.klass.register_api_calls(_Backend(), control_api)  # type: ignore[arg-type]
+    try:
+        with pytest.raises(ctl.CallError, match="No command called 'no.such.command'"):
+            _off_main(lambda: connected.call("command.run", id="no.such.command"))
+        assert ran == []
+        assert _off_main(lambda: connected.call("command.run", id="view.home")) == {
+            "ran": False
+        }
+        assert ran == ["view.home"]
+    finally:
+        with control_api._calls_lock:  # noqa: SLF001
+            for name, entry in kept.items():
+                if entry is None:
+                    control_api._calls.pop(name, None)  # noqa: SLF001
+                else:
+                    control_api._calls[name] = entry  # noqa: SLF001
+
+
+# --- FIX-B (user 2026-11-23, 2a and 3a) -------------------------------------------
+
+
+def _call_through_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    handler: Callable[[dict], Any],
+    args: dict | None = None,
+) -> tuple[dict, list[logging.LogRecord]]:
+    """dispatch() of a throwaway call with the switch on; its answer and
+    the API log records."""
+    monkeypatch.setattr(control_api, "allowed", lambda: True)
+    monkeypatch.setitem(
+        control_api._calls,  # noqa: SLF001
+        "test.fixb",
+        control_api._Call(handler, False, 5.0, ""),  # noqa: SLF001
+    )
+    with caplog.at_level(logging.INFO, logger="system"):
+        reply = control_api.dispatch("test.fixb", args)
+    records = [r for r in caplog.records if r.getMessage().startswith("API: ")]
+    return reply, records
+
+
+def test_a_call_without_arguments_logs_one_space(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """3a: "API: state -> ok", not "API: state  -> ok"."""
+    _, records = _call_through_dispatch(monkeypatch, caplog, lambda _a: 1)
+    assert [r.getMessage() for r in records] == ["API: test.fixb -> ok"]
+
+
+def test_a_call_with_arguments_logs_them_between_single_spaces(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _, records = _call_through_dispatch(monkeypatch, caplog, lambda _a: 1, {"a": 1})
+    assert [r.getMessage() for r in records] == ['API: test.fixb {"a": 1} -> ok']
+
+
+def test_a_call_error_is_one_line_without_a_traceback(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """2a: an expected error (CallError) answers its text alone and logs
+    only the one-line API line."""
+
+    def refuse(_args: dict) -> None:
+        raise control_api.CallError("No window called 'X'")
+
+    reply, records = _call_through_dispatch(monkeypatch, caplog, refuse)
+    assert reply == {"ok": False, "error": "No window called 'X'"}
+    assert [r.getMessage() for r in records] == [
+        "API: test.fixb -> error: No window called 'X'"
+    ]
+    assert not [r for r in records if r.exc_info]
+
+
+def test_an_unexpected_error_still_logs_its_traceback(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A real fault (not a CallError) keeps its traceback in the log."""
+
+    def broken(_args: dict) -> None:
+        raise ZeroDivisionError("boom")
+
+    reply, records = _call_through_dispatch(monkeypatch, caplog, broken)
+    assert reply == {"ok": False, "error": "ZeroDivisionError: boom"}
+    assert [r for r in records if r.exc_info]
+
+
+def test_devices_ids_are_in_one_form(monkeypatch: pytest.MonkeyPatch) -> None:
+    """3a: plugged-in rows (DILL's upper-case GUID text) and known rows
+    (the Library's lower-case form) both come back in the Library's form:
+    lower case, dashes, no braces."""
+    from types import SimpleNamespace
+
+    import dill
+    from gremlin import device_initialization
+    from gremlin.modules import store
+
+    stick = SimpleNamespace(
+        name="Stick",
+        device_guid=dill.GUID.from_str("{ABCDEF01-2345-6789-ABCD-EF0123456789}"),
+        is_virtual=False,
+        vjoy_id=0,
+        axis_count=3,
+        button_count=12,
+        hat_count=1,
+    )
+    monkeypatch.setattr(device_initialization, "joystick_devices", lambda: [stick])
+    monkeypatch.setattr(
+        store,
+        "known_devices",
+        lambda: [
+            {
+                "name": "Pedals",
+                "guid": "{22222222-AAAA-2222-2222-222222222222}",
+                "connected": False,
+                "label": "Pedals",
+            },
+        ],
+    )
+    rows = control_api._devices({})  # noqa: SLF001
+    assert [r["guid"] for r in rows] == [
+        "abcdef01-2345-6789-abcd-ef0123456789",
+        "22222222-aaaa-2222-2222-222222222222",
+    ]

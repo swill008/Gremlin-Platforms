@@ -307,3 +307,11 @@ def test_main_module_runs(
     with pytest.raises(SystemExit) as stop:
         runpy.run_module("gremlin_ctl", run_name="__main__")
     assert stop.value.code == 0
+
+
+def test_devices_help_says_plugged_in_or_not(endpoint: Path) -> None:
+    """S21: devices lists the known devices that aren't plugged in too."""
+    code, out, _ = _run("help")
+    assert code == cli.EXIT_OK
+    line = next(row for row in out.splitlines() if row.strip().startswith("devices"))
+    assert "devices, plugged in or not" in line

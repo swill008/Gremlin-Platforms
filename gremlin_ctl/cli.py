@@ -67,7 +67,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "program version, profile, mode, tracing, Health, Screen Saver Mode",
         lambda a: ("state", {}),
     )
-    add("devices", "devices and whether they are plugged in", lambda a: ("devices", {}))
+    add("devices", "devices, plugged in or not", lambda a: ("devices", {}))
 
     p = add("run", "start or stop the profile", lambda a: (f"run.{a.action}", {}))
     p.add_argument("action", choices=["start", "stop"])

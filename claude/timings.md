@@ -1385,3 +1385,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | CI for 75e9c325 (S17, devices/log, Search columns) | ci | ~23 min | 24 min | 07:30-07:54, FAILED: test_planes_print (1) + test_gesture_undo smoke stall (26 errors); both pass locally (35/35) |
 | 2026-11-23 | CI for 98cafdac (Health caps + minimum) | ci | ~23 min | 25 min | 07:56-08:21, FAILED 1 (new Health minimum test, row 2 not found); the two earlier CI failures passed this time |
 | 2026-11-23 | CI-FIX2: Health minimum test lost its row overrides when HealthModel rebuilt mid-test (re-apply + re-measure) | fix | no data; guess 10-15 min | 3 min | 08:22-08:25, 1 agent |
+| 2026-11-23 | SWEEP: every gremlin-ctl command + all 22 MCP tools on the installed program (181/182 pass) | test | no data; guess 10-15 min | 5 min | 08:33-08:38, 1 agent |
+| 2026-11-23 | CI for 29cf515b (Health test survives a rebuild) | ci | ~23 min | 22 min | 08:25-08:47, passed |
+| 2026-11-23 | Sweep fixes: FIX-A (unknown command id, help) + FIX-B (window errors, ids, log space) | fix | 3-8 min each | 3-5 min each | 08:43-08:48, 2 parallel agents |
+| 2026-11-23 | Build + silent install + live retest of the sweep fixes | build/test | ~3 min | 2 min | 08:48-08:50, lead |
