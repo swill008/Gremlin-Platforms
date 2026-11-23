@@ -39,7 +39,14 @@ ApplicationWindow {
 
     property bool leaveTextOnEscape: false
 
-    minimumWidth: Style.fitWidth(Style.dp(640), Screen)
+    // The narrowest window where a line with the ⚠ and a chip still has an
+    // action box of dp(120) (01 S197). Panels: margins 10+10, sidebar 220,
+    // Why 300, spacing 6+6, list border 1+1 = 554. A line: Input 120 + 8,
+    // Mode 70 + 8, ⚠ 14 + 4, box 120 + 4, 8, "Not plugged in" 99, right
+    // margin 8 = 463. 554 + 463 = 1017, +3 for text rounding at other scales.
+    // A screen narrower than that caps it (Style.fitWidth).
+    readonly property real lineRoomWidth: Style.dp(1020)
+    minimumWidth: Style.fitWidth(lineRoomWidth, Screen)
     minimumHeight: Style.fitHeight(Style.dp(420), Screen)
     color: Style.background
     U.Universal.theme: Style.theme

@@ -92,6 +92,75 @@ def _columns(j: Journey, win: Any, first: int, second: int) -> Any:  # noqa: ANN
     }
 
 
+def _at_minimum(j: Journey, win: Any, first: int, second: int) -> Any:  # noqa: ANN401
+    """01 S197: at the window's minimum width, a line with the ⚠, a long
+    action and "Used twice", and one with "Not plugged in" (the widest
+    chip): each action box, its right edge, where its chip starts and the
+    line's right edge."""
+    import json
+
+    lines = [
+        {"text": _LONG, "usedTwice": True, "notPlugged": False},
+        {"text": _LONG, "usedTwice": False, "notPlugged": True},
+    ]
+    for i, line in zip((first, second), lines, strict=True):
+        row = {
+            "rowKind": "result",
+            "inputLabel": "Button 2 of the left throttle",
+            "mode": "Air",
+            "notFound": True,
+            "why": "vJoy 3 isn't there",
+            **line,
+        }
+        _safe(j, f"_list.itemAtIndex({i}).model = " + json.dumps(row), win)
+        for flag in ("usedTwice", "notPlugged"):
+            value = str(line[flag]).lower()
+            _safe(j, f"_list.itemAtIndex({i}).{flag} = {value}", win)
+    # The off-screen screen is 800 px, which caps minimumWidth; the line
+    # room is checked at the uncapped minimum.
+    minimum = int(win.property("lineRoomWidth"))
+    win.setWidth(minimum)
+    j.settle()
+    from PySide6 import QtCore
+
+    def sx(item: Any) -> float:  # noqa: ANN401
+        return round(item.mapToScene(QtCore.QPointF(0, 0)).x(), 1)
+
+    rows = []
+    for i in (first, second):
+        box = j.item(win, f"searchRowAction:{i}")
+        chips = [
+            j.item(win, f"{name}:{i}:tag")
+            for name in ("searchRowUsedTwice", "searchRowNotPlugged")
+        ]
+        chips = [c for c in chips if c is not None and c.property("visible")]
+        row = j.item(win, f"searchRow:{i}")
+        warn = j.item(win, f"searchRowWarn:{i}")
+        if box is None or row is None or not chips:
+            rows.append(f"row {i}: no box, row or chip")
+            continue
+        rows.append(
+            {
+                "boxWidth": round(box.width(), 1),
+                "warnWidth": None if warn is None else round(warn.width(), 1),
+                "chipWidths": [round(c.width(), 1) for c in chips],
+                "listWidth": float(j.ev("_list.width", win)),
+                "boxRight": round(sx(box) + box.width(), 1),
+                "chipLeft": min(sx(c) for c in chips),
+                "chipsRight": max(round(sx(c) + c.width(), 1) for c in chips),
+                "rowRight": round(sx(row) + row.width(), 1),
+            }
+        )
+    return {
+        "capped": int(win.property("minimumWidth"))
+        == int(j.ev(f"Style.fitWidth({minimum}, Screen)", win)),
+        "minimum": minimum,
+        "width": int(win.property("width")),
+        "need": float(j.ev("Style.dp(120)", win)),
+        "rows": rows,
+    }
+
+
 def story(j: Journey) -> None:
     from PySide6 import QtCore
 
@@ -184,6 +253,7 @@ def story(j: Journey) -> None:
         menu,
     )
     out["columns"] = _columns(j, win, int(first), int(second))
+    out["minimum"] = _at_minimum(j, win, int(first), int(second))
     _safe(j, "escapePressed()", win)
     j.settle()
     out["closed"] = _safe(j, _WIN + " === null")
@@ -270,6 +340,22 @@ def test_narrow_health_window_keeps_lines_inside_the_list(result: dict) -> None:
     the line (before, Input and Mode pushed it past the edge), still under
     the headings."""
     check_result_columns(result["columns"]["narrow"])
+
+
+def test_minimum_width_leaves_every_action_box_room(result: dict) -> None:
+    """01 S197: at Health's minimum width a line with the ⚠ and a chip
+    ("Used twice" or "Not plugged in", the widest) still has an action box
+    of at least Style.dp(120), ending before the chip, the chip inside the
+    line (before, a 640 minimum left the box 0 px wide)."""
+    found = result["minimum"]
+    assert isinstance(found, dict), found
+    assert found["capped"] is True, found
+    assert found["width"] == found["minimum"], found
+    for row in found["rows"]:
+        assert isinstance(row, dict), row
+        assert row["boxWidth"] >= found["need"] - 0.5, found
+        assert row["boxRight"] <= row["chipLeft"] + 1, found
+        assert row["chipsRight"] <= row["rowRight"] + 1, found
 
 
 if __name__ == "__main__":
