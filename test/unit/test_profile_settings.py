@@ -178,12 +178,14 @@ QtTest.QTest.qWait(500)
 
 out = {}
 profile = shared_state.current_profile
-main = [w for w in control_windows._windows() if control_windows._is_main(w)][0]
-# Profile Settings is a page of the main window, not a window of its own:
-# its command runs as command.run does (window.open refuses it, 13 S29).
-out["open"] = control_windows._backend(None).run_command_id("view.settings")
+# Profile Settings is a window of its own (04 S96): window.open opens it
+# at General, window.press moves it to vJoy (13 S29).
+out["open"] = control_windows.call_open({"id": "tools.profileSettings"})
 QtTest.QTest.qWait(500)
-title = main.title()
+title = "Profile Settings"
+out["press"] = control_windows.call_press(
+    {"window": title, "button": "profileSettingsSection:vjoy"})
+QtTest.QTest.qWait(500)
 rows = control_windows.call_read({"window": title})["items"]
 out["boxes"] = {
     r["name"]: r["text"] for r in rows
@@ -210,8 +212,9 @@ os._exit(0)
 
 
 def test_initial_value_boxes_are_reachable_by_the_api(tmp_path: Path) -> None:
-    """The real program off-screen (stand-in vJoy 1): Profile Settings
-    opened by its menu command, window.read lists each initial value box
+    """The real program off-screen (stand-in vJoy 1): the Profile Settings
+    window opened by window.open tools.profileSettings and moved to its vJoy
+    section by window.press, window.read lists each initial value box
     as vjoyInitialValue:<vJoy>:<axis> with its value, and window.type sets
     the profile's initial value through the box."""
     import json
@@ -241,12 +244,13 @@ def test_initial_value_boxes_are_reachable_by_the_api(tmp_path: Path) -> None:
     assert lines, smoke_report.explain(done)
     out = json.loads(lines[-1][4:])
 
-    assert out["open"] is True
+    assert out["open"] == {"ran": True}
+    assert out["press"] == {"pressed": "vJoy"}
     # vJoy 1's six stand-in axes, each named and showing its value.
     assert len(out["boxes"]) == 6, out["boxes"]
     assert out["name"] in out["boxes"], out["boxes"]
-    assert float(out["boxes"][out["name"]]) == 0.0
+    assert out["boxes"][out["name"]] == "0.00"  # two decimals (04 S98)
     assert "type-error" not in out, out["type-error"]
     assert out["before"] == 0.0
     assert out["after"] == 0.5
-    assert float(out["boxes-after"][out["name"]]) == 0.5
+    assert out["boxes-after"][out["name"]] == "0.50"

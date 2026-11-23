@@ -612,7 +612,7 @@ pump(lambda: run('_optionsButton.x > _logicalButton.x'))
 TOOLBAR = ('[_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, '
            '_searchButton, '
            '_deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, '
-           '_optionsButton]')
+           '_optionsButton, _profileSettingsButton, _scriptsButton]')
 out['captions'] = run(TOOLBAR + '.map(function(b) { return b.caption })')
 out['inputTesterGlyph'] = run('_inputTesterButton.text.charCodeAt(0)')
 out['order'] = run('(function() { var xs = ' + TOOLBAR + '.map(function(b) { '
@@ -747,6 +747,7 @@ def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
     assert main_window["captions"] == [
         "Home", "Run", "vJoy Viewer", "Input Tester", "Search", "Mapping Editor",
         "Device Library", "Logical Device", "Options",
+        "Profile Settings", "Scripts",  # 04 S96
     ]
     assert main_window["order"] is True
     # D-01-INPUT-TESTER-BUTTON: the crosshair icon (Bootstrap Icons U+F769).
@@ -774,12 +775,13 @@ def test_s65_s66_s67_menus_come_from_the_command_list(main_window: dict) -> None
     ]
     # Home is shown: View > Home can't be used, so it isn't listed (S66).
     assert menus["View"] == [
-        "Device Bindings", "Home Layout >", "Scripts", "Profile Settings",
+        "Device Bindings", "Home Layout >",  # 04 S96: no Scripts / Settings
         "Command Palette… (Ctrl+K)",
     ]
     assert menus["Tools"] == [
         "Viewers >", "Device Setup >", "Mapping >", "OSC Monitor",
         "Screen Saver Mode…", "Drivers…", "History", "Options",  # 12 S1; 06 S185
+        "Profile Settings…", "Scripts…",  # 04 S96
     ]
     assert menus["Debug"] == ["Live Log Reader", "Tracing", "Save Window State"]  # S178
     assert menus["Help"] == [

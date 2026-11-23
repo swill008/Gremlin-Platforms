@@ -1,0 +1,4 @@
+# The suite's scripts follow the project's lint rules, except bad_syntax.py,
+# which can't be parsed on purpose (a script that can't load).
+extend = "../../../pyproject.toml"
+extend-exclude = ["bad_syntax.py"]

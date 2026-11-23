@@ -1423,3 +1423,27 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent CORE: codes, declared args, one deadline, never-late jobs, too_large, per-call fixes, 19 tests | refactor | 5-10 min | 8 min | 16:18-16:26, CORE |
 | 2026-11-23 | Quick tests --changed (ran 6 parts, near-full: backend.py/main_commands.js touched) + 4 reruns + pyright | test | ~3 min | 10 min | 16:27-16:37, lead: 4 fails = 2 tests pinning command row text (fixed: window flag after group) + 2 picture-load flakes under load (pass alone) |
 | 2026-11-23 | Build + silent install + live test (31 gremlin-ctl cases) + 2 wording fixes + rebuild/reinstall + run start + tracing on | build/test | ~3 min | 6 min | 16:38-16:44, lead: two builds |
+| 2026-11-23 | Map finalise + guard tests + commit 5656d5ad + push | commit | ~2 min | 2 min | 16:44-16:46, lead |
+| 2026-11-23 | Profile Settings mock-up on real screenshots (API screenshots + PIL) | mock-up | rough 5 min (no data) | 5 min | 16:46-16:51, lead |
+| 2026-11-23 | Planning: Profile Settings window (name, icon, place, layout) | lead planning | - | 8 min | 16:46-16:54, lead, 4 rounds of questions |
+| 2026-11-23 | Spec 04 S96-S98 + 01 S58/S65 + contract for the Profile Settings window | lead planning | ~5 min | 4 min | 16:57-17:01, lead |
+| 2026-11-23 | Agent WINDOW: Profile Settings window + General/vJoy sections | agent fix | 3-8 min | 3 min | 16:58-17:01, WINDOW |
+| 2026-11-23 | Agent SCRIPTS: Scripts section restyled (ScriptManager, ScriptConfiguration) | agent fix | 3-8 min | 3 min | 16:58-17:01, SCRIPTS |
+| 2026-11-23 | Agent WINDOW follow-up: FloatSpinBox shows 0.00 at value 0 + test | agent fix | 3-8 min | 1 min | 17:02-17:02, WINDOW |
+| 2026-11-23 | Agent SHELL: toolbar buttons, Tools menu, one window, old pages removed | agent fix | 3-8 min | 5 min | 16:58-17:03, SHELL |
+| 2026-11-23 | Agent DOCS3: Help links/text, map 01/04/13/09, README counts | agent fix | 3-8 min | 4 min | 16:59-17:03, DOCS3 |
+| 2026-11-23 | Spec S96 split into two windows + 5 follow-up briefs | lead planning | ~3 min | 2 min | 17:09-17:11, lead |
+| 2026-11-23 | Agent TESTS: ~12 tests updated + test_profile_settings_window.py (7) | agent fix | 3-8 min | 10 min | 16:59-17:09, TESTS: waited on UI files |
+| 2026-11-23 | Agent WINDOW: Scripts section removed from Profile Settings | agent fix | 3-8 min | 1 min | 17:09-17:10, WINDOW |
+| 2026-11-23 | Agent SCRIPTS: DialogScripts.qml, list left / variables right | agent fix | 3-8 min | 1 min | 17:09-17:10, SCRIPTS |
+| 2026-11-23 | Agent SHELL follow-up: openScripts(), Scripts button/Tools open the Scripts window | agent fix | 3-8 min | 1 min | 17:10-17:11, SHELL |
+| 2026-11-23 | Agent DOCS3 follow-up: Help and map for two windows | agent fix | 3-8 min | 2 min | 17:10-17:12, DOCS3 |
+| 2026-11-23 | CI for 5656d5ad (API batch) | ci | ~25 min | 26 min | 16:46-17:12, FAILED: test_help_lists_every_call_with_its_summary (test calls leaked across tests in random order); fixed with an autouse fixture |
+| 2026-11-23 | Build + silent install + live check of both windows (API open/press/screenshot) + run start + tracing on | build/test | ~3 min | 3 min | 17:15-17:18, lead |
+| 2026-11-23 | Agent R-SCRIPTS: upstream/GremlinEx/gist script search, licences, compatibility, 5 files copied | review | 5-10 min | 5 min | 17:20-17:25, R-SCRIPTS |
+| 2026-11-23 | Agent E2E: test_scripts_window_e2e.py (7 tests, real program) | agent fix | 3-8 min | 8 min | 17:19-17:27, E2E: waited 5 min for the manifest |
+| 2026-11-23 | Quick tests --changed for the windows batch | test | ~10 min | 12 min | 17:17-17:29, lead: 9 failed |
+| 2026-11-23 | Agent FIX-B: xbox test cut fixed; 5 search tests were load flakes | agent fix | 3-8 min | 1 min | 17:30-17:31, FIX-B |
+| 2026-11-23 | Agent SUITE: 19 example scripts + manifest + test_script_suite.py (44 pass, 1 xfail) | agent fix | 3-8 min | 12 min | 17:19-17:31, SUITE: incl. upstream follow-up |
+| 2026-11-23 | Agent FIX-A: guards skip test/fixtures/scripts; SSM Tools order | agent fix | 3-8 min | 1 min | 17:30-17:31, FIX-A |
+| 2026-11-23 | Agent ST-SCRIPT: upstream script interface since the fork, Event move | review | 5-10 min | 3 min | 17:31-17:34, ST-SCRIPT |

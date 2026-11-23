@@ -259,7 +259,7 @@ def test_help_lists_every_call_with_its_summary(connected: ctl.Client) -> None:
         "trace.status",
         "log",
     } <= names
-    assert all(r["summary"] for r in rows)
+    assert all(r["summary"] for r in rows), [r for r in rows if not r["summary"]]
 
 
 @pytest.fixture
@@ -907,9 +907,11 @@ def _throwaway(
     handler: Callable[[dict], Any],
     **kw: Any,  # noqa: ANN401 - register's keywords
 ) -> None:
-    kept = dict(control_api._calls)  # noqa: SLF001
+    # Register into a copy: registering first and then swapping in a copy
+    # left the call in the real list, where it failed the help test (no
+    # summary) whenever that ran later (CI run 45282828410).
+    monkeypatch.setattr(control_api, "_calls", dict(control_api._calls))  # noqa: SLF001
     control_api.register(name, handler, **kw)
-    monkeypatch.setattr(control_api, "_calls", {**kept, name: control_api._calls[name]})  # noqa: SLF001
 
 
 def test_each_kind_of_error_answers_its_code(

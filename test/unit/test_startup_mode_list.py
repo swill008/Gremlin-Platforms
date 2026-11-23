@@ -6,8 +6,9 @@
 Active and every mode by name, no Use Heuristic; a setting that isn't listed
 shows as Last Active; picking a mode sets the profile's Startup Mode.
 
-Loads the real ProfileSettings.qml in the running program off-screen
-(stand-in hardware), in its own process, and drives its Startup Mode box."""
+Opens the real Profile Settings window (04 S96) at General in the running
+program off-screen (stand-in hardware), in its own process, and drives its
+Startup Mode box."""
 
 from __future__ import annotations
 
@@ -45,15 +46,27 @@ for name in ("Space", "Ground"):
 profile.settings.startup_mode = "Use Heuristic"
 
 out = {}
-url = QtCore.QUrl.fromLocalFile(os.path.join(ROOT, "qml", "ProfileSettings.qml"))
-component = QtQml.QQmlComponent(app.engine, url)
-page = component.create() if component.isReady() else None
+from PySide6 import QtGui
+win = app.main_window
+QtQml.QQmlExpression(
+    QtQml.qmlContext(win), win, '_root.openProfileSettings("general")').evaluate()
+QtTest.QTest.qWait(500)
+found = [w for w in QtGui.QGuiApplication.allWindows()
+         if w.objectName() == "profileSettingsWindow"]
+page = found[0].contentItem() if found else None
 if page is None:
-    out["error"] = component.errorString()
+    out["error"] = "no Profile Settings window"
 else:
-    QtTest.QTest.qWait(200)
-    box = page.findChild(QtCore.QObject, "startupModeBox")
-    help_text = page.findChild(QtCore.QObject, "startupModeHelp")
+    def walk(item):
+        yield item
+        for child in item.childItems():
+            yield from walk(child)
+
+    box = next(it for it in walk(page) if it.objectName() == "startupModeBox")
+    # The explanation is its OptionEntryCard's (04 S96).
+    card = box.parentItem()
+    while card is not None and card.property("explanation") is None:
+        card = card.parentItem()
 
     def ev(code):
         return QtQml.QQmlExpression(QtQml.qmlContext(box), box, code).evaluate()[0]
@@ -62,7 +75,7 @@ else:
     out["labels"] = json.loads(
         ev("JSON.stringify([...Array(count).keys()].map(i => textAt(i)))"))
     out["shown"] = ev("displayText")
-    out["help"] = help_text.property("text")
+    out["help"] = card.property("explanation") if card is not None else ""
     picks = {}
     for i, label in enumerate(out["labels"]):
         ev(f"currentIndex = {i}; activated({i})")

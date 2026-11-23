@@ -70,7 +70,13 @@ Item {
                     Number.fromLocaleString(locale, text) * decimalFactor)
             }
 
-            item.value = toInt(_root.value)
+            // Setting textFromValue doesn't redraw the shown text, and
+            // setting the value it already has (0) doesn't either: "0"
+            // showed instead of "0.00" (04 S98). Step off the value once
+            // so the text is drawn with the format above.
+            var start = toInt(_root.value)
+            item.value = start + 1 <= item.to ? start + 1 : start - 1
+            item.value = start
 
             item.valueChanged.connect(() => {
                 if (_root._internalUpdate)

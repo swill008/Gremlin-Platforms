@@ -55,6 +55,8 @@ def test_tools_item_sits_in_the_bottom_group_and_opens_the_window() -> None:
         "tools.drivers",  # 06 S185
         "tools.history",
         "tools.options",
+        "tools.profileSettings",  # 01 S65, D-04-PROFILE-WINDOW
+        "tools.scripts",  # 01 S65
     ]
     js = _text("qml/main_commands.js")
     entry = js[js.index('id: "tools.screenSaverMode"') :]

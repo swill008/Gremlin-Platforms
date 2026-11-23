@@ -562,7 +562,7 @@ function topics() {
                 + "<p>For example, a key that repeats while you hold a button: add a Keyboard step set to Press, then one for the same key set to Release. Choose Repeat Mode <b>Hold</b> and set <b>Delay (sec)</b> for the gap between key presses.</p>"
                 + _good([
                     "<b>Delay (sec)</b> comes after the last step, before the steps play again. It doesn't change the wait between steps.",
-                    "Between steps without a <b>Pause</b>, the macro waits for <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a> <a href=\"show:menu/View/Profile Settings\">Show me ›</a>.",
+                    "Between steps without a <b>Pause</b>, the macro waits for <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a> <a href=\"show:toolbar/Profile Settings\">Show me ›</a>.",
                     "If the profile doesn't set one, it uses <b>Default delay</b> in Options <a href=\"show:option/Default delay\">Show me ›</a>.",
                     "A Joystick step acts like the stick itself. It only works for controls ticked in the stick's Module Setup.",
                     "New Joystick, Keyboard, Logical Device, Mouse Button and vJoy button steps start on <b>Press</b>.",

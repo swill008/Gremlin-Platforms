@@ -10,13 +10,14 @@
 // Commands (qml/main_commands.js) that only open a window or a page. Never
 // anything that saves, loads, runs, deletes, clears, restores or quits.
 var _allowedOpen = [
-    "view.home", "view.deviceBindings", "view.scripts", "view.settings",
+    "view.home", "view.deviceBindings",
     "view.xboxOutput", "tools.vjoyViewer",
     "tools.calibration", "tools.hidhide", "tools.drivers", "tools.configureInput",
     "tools.configureOutput", "tools.deviceInfo", "tools.deviceLibrary",
     "tools.devicePack",
     "tools.logical", "tools.deviceMappingEditor", "tools.autoMappingTool", "tools.manageModes",
     "tools.history", "tools.screenSaverMode", "tools.options",
+    "tools.profileSettings", "tools.scripts",
     "debug.liveLog",
     "help.about"
 ]

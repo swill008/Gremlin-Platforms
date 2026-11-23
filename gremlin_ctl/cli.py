@@ -456,7 +456,7 @@ def _run(
             result = conn.call(call, **call_args)
     except KeyboardInterrupt:
         raise _Fail(
-            EXIT_CALL_ERROR, "Stopped. The call may have run.", "stopped"
+            EXIT_CALL_ERROR, "Stopped. The call may have run.", "stopped_answering"
         ) from None
     except _client.VersionMismatch as e:
         raise _Fail(EXIT_VERSION, str(e), e.code) from None

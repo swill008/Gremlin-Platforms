@@ -87,13 +87,10 @@ def test_working_set_trim_is_safe_to_call() -> None:
 
 def test_pages_load_only_while_needed() -> None:
     main = (_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
-    # Scripts and Profile Settings load while shown; Home unloads in the tray.
-    for page, room in (("ScriptManager", "scripts"), ("ProfileSettings", "settings")):
-        assert re.search(
-            rf'active: !!uiState && uiState.currentRoom === "{room}"[\s\S]{{0,200}}'
-            rf"sourceComponent: {page} \{{",
-            main,
-        ), page
+    # Scripts and Profile Settings are a window of their own (04 S96), not
+    # main-window pages; Home unloads in the tray.
+    assert "sourceComponent: ScriptManager" not in main
+    assert "sourceComponent: ProfileSettings" not in main
     home = r"active: !_root.trayed[\s\S]{0,200}sourceComponent: StatusPage"
     assert re.search(home, main)
     # The configuration room's pages, one loader per tab, and none in the tray unless

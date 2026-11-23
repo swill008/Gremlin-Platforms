@@ -48,14 +48,24 @@ def story(j: Journey) -> None:
     (folder / "loops.py").write_text(LOOPS, encoding="utf-8")
     (folder / "good.py").write_text(GOOD, encoding="utf-8")
 
-    j.backend.ui_state.setCurrentRoom("scripts")
-    j.backend.ui_state.setCurrentTab("scripts")
+    # The Scripts window (04 S96).
+    j.ev("_root.openScripts()")
+    window = j.window("Scripts")
     j.settle()
+
+    def _scripts_page():  # noqa: ANN202
+        for it in j.walk(window.contentItem()):
+            if it.metaObject().className().startswith("ScriptManager"):
+                return it
+        return None
+
+    # The page's own list (backend.scriptListModel makes a new one each read).
+    scripts_page = j.wait_until(_scripts_page, "the Scripts page")
 
     def rows() -> dict[str, dict]:
         """Each script row: its texts and whether its settings button is on."""
         found: dict[str, dict] = {}
-        for item in j.walk(j.win.contentItem()):
+        for item in j.walk(window.contentItem()):
             if item.property("loadError") is None or item.property("path") is None:
                 continue
             texts = [
@@ -74,7 +84,7 @@ def story(j: Journey) -> None:
     timer.timeout.connect(lambda: ticks.__setitem__(0, ticks[0] + 1))
     timer.start(20)
 
-    model = j.ev("_scriptLoader.item.scriptListModel")
+    model = j.ev("scriptListModel", scripts_page)
     url = QtCore.QUrl.fromLocalFile(str(folder / "loops.py")).toString()
     started = time.monotonic()
     model.addScript(url)

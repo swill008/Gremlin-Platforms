@@ -1,0 +1,225 @@
+{
+  "about": "Dummy scripts for testing the Scripts feature (04 S29, S84-S95). test/unit/test_script_suite.py checks every entry; the end-to-end agent drives the real program from it. 'variables' maps each variable name to its class in gremlin/user_script.py. 'configured_when_added': whether Run would run the script before any variable is set (every required variable valid). 'expected_error_contains': text the Scripts window's load error contains (load failures only).",
+  "scripts": [
+    {
+      "file": "vars_all_types.py",
+      "purpose": "One variable of each of the 11 variable types, with defaults and limits.",
+      "variables": {
+        "Flag": "BoolVariable",
+        "Gain": "FloatVariable",
+        "Count": "IntegerVariable",
+        "Hotkey": "KeyboardVariable",
+        "Logical button": "LogicalDeviceVariable",
+        "OSC input": "OscInputVariable",
+        "Active mode": "ModeVariable",
+        "Choice": "SelectionVariable",
+        "Label": "StringVariable",
+        "Stick axis": "PhysicalInputVariable",
+        "vJoy hat": "VirtualInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": true,
+      "checks": "Loads with no error and all 11 variables shown. Defaults: Flag on; Gain 0.5 (limits -2.0 to 2.0, a value past a limit is held at it); Count 3 (limits 0 to 10); Hotkey none; OSC input none chosen; Active mode the profile's first mode; Choice 'Medium' of Low/Medium/High; Label 'hello'; Stick axis none; vJoy hat vJoy 1 hat 1. All are optional, so it is configured at once. It registers no callbacks."
+    },
+    {
+      "file": "button_to_vjoy.py",
+      "purpose": "A stick button presses vJoy 1 button 1 through the script's vjoy object.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Button": "PhysicalInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Button is set (required). With Button set and the profile running, pressing the stick button sets vJoy 1 button 1 pressed and releasing it releases vJoy 1 button 1 (only when vJoy 1 button 1 is claimed by its output module)."
+    },
+    {
+      "file": "axis_to_vjoy.py",
+      "purpose": "A stick axis drives a vJoy axis, multiplied by a Scale variable.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Stick axis": "PhysicalInputVariable",
+        "vJoy axis": "VirtualInputVariable",
+        "Scale": "FloatVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Stick axis is set (required). Scale is 0.5 by default (limits 0.0 to 2.0). While running, vJoy 1 axis 1 gets the stick axis value times Scale: 0.8 with Scale 0.5 gives 0.4; set Scale to 0.25 before Run and 0.8 gives 0.2."
+    },
+    {
+      "file": "mode_switch.py",
+      "purpose": "A stick button changes the mode to the one named in a Mode variable.",
+      "variables": {
+        "Works in": "ModeVariable",
+        "Switch to": "ModeVariable",
+        "Button": "PhysicalInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Button is set. With a second mode (for example 'Second') chosen as Switch to and the profile running in 'Default', pressing the button makes 'Second' the current mode; releasing it changes nothing."
+    },
+    {
+      "file": "periodic_counter.py",
+      "purpose": "A periodic callback counts ticks while the profile runs.",
+      "variables": {
+        "Interval": "FloatVariable"
+      },
+      "loads": true,
+      "configured_when_added": true,
+      "checks": "Interval 0.05 s by default (limits 0.01 to 1.0). While running, ticks keep coming (about 20 a second at the default); none before Run; after Stop no more ticks."
+    },
+    {
+      "file": "keyboard_reader.py",
+      "purpose": "Reacts to the key chosen in a Keyboard variable; reads only, never sends a key.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Key": "KeyboardVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Key is chosen (required). While running, pressing and releasing the chosen key (tests use F13) records a press and a release; any other key records nothing. It never sends a key."
+    },
+    {
+      "file": "osc_input.py",
+      "purpose": "An OSC button input presses a vJoy button.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "OSC button": "OscInputVariable",
+        "vJoy button": "VirtualInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until an OSC button input is chosen (a new OSC input variable starts with none). While running, the OSC input pressed sets vJoy 1 button 1 pressed and released releases it."
+    },
+    {
+      "file": "two_instances.py",
+      "purpose": "Added twice, each instance with its own stick button and vJoy button number.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Button": "PhysicalInputVariable",
+        "vJoy button": "IntegerVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Adding the file twice gives 'Instance 1' and 'Instance 2'. With Instance 1 on stick button 1 and vJoy button 3, and Instance 2 on stick button 2 and vJoy button 5, pressing stick button 1 presses only vJoy 1 button 3 and stick button 2 presses only vJoy 1 button 5."
+    },
+    {
+      "file": "bad_syntax.py",
+      "purpose": "Can't load: a syntax error.",
+      "variables": {},
+      "loads": false,
+      "expected_error_contains": "Syntax error, line 8",
+      "checks": "Stays in the profile with no variables; the Scripts window shows the reason starting \"Can't load:\" with 'Syntax error, line 8'. Run skips it and runs the rest of the profile."
+    },
+    {
+      "file": "bad_import.py",
+      "purpose": "Can't load: imports a module that doesn't exist.",
+      "variables": {},
+      "loads": false,
+      "expected_error_contains": "ModuleNotFoundError: No module named 'gremlin_test_no_such_module'",
+      "checks": "Stays in the profile with no variables and shows the ModuleNotFoundError reason; Run skips it and runs the rest of the profile."
+    },
+    {
+      "file": "raises_at_start.py",
+      "purpose": "Can't load: its top-level code raises an error.",
+      "variables": {},
+      "loads": false,
+      "expected_error_contains": "RuntimeError: raised on purpose at start",
+      "checks": "Stays in the profile with no variables (the one it defines before raising is not kept) and shows the RuntimeError reason; Run skips it."
+    },
+    {
+      "file": "required_var_unset.py",
+      "purpose": "Loads, but a required variable starts unset, so Run skips it.",
+      "variables": {
+        "Callsign": "StringVariable",
+        "Repeat": "IntegerVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Loads with no error; Callsign (required) is empty, so the script is not configured and Run doesn't run it: its periodic callback never ticks. Set Callsign (for example 'Alpha') and Run again: it ticks with 'Alpha'."
+    },
+    {
+      "file": "upstream_example.py",
+      "purpose": "Upstream Joystick Gremlin R14 user_scripts/example.py, code unchanged (GPL-3.0-only, source in its header).",
+      "variables": {},
+      "loads": false,
+      "expected_error_contains": "AttributeError: module 'gremlin.types' has no attribute 'Event'",
+      "decision_pending": "Whether to accept upstream's types.Event annotation (decision pending with the user). Today it can't load; test_script_suite.py has a strict expected-failure test that it loads.",
+      "checks": "Today: stays in the profile with no variables and the reason \"AttributeError: module 'gremlin.types' has no attribute 'Event'\"; Run skips it. If the decision is to accept it, it loads with upstream's 14 variables (one of each type but OSC input, three each of physical and virtual input)."
+    },
+    {
+      "file": "axes_merge.py",
+      "purpose": "Two stick axes merged into one vJoy axis (sum, held to -1.0..1.0).",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Axis A": "PhysicalInputVariable",
+        "Axis B": "PhysicalInputVariable",
+        "Merged axis": "VirtualInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Axis A and Axis B are set. While running, vJoy 1 axis 1 gets A + B: A at 0.3 gives 0.3, then B at 0.5 gives 0.8, then A at 0.9 gives 1.0 (held at the limit)."
+    },
+    {
+      "file": "short_long_press.py",
+      "purpose": "One stick button: a short press taps one vJoy button, a long press another.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Button": "PhysicalInputVariable",
+        "Long press (s)": "FloatVariable",
+        "Short button": "IntegerVariable",
+        "Long button": "IntegerVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Button is set. Long press 0.5 s by default; Short button 1, Long button 2. While running, a press released after 0.1 s taps (press then release) vJoy 1 button 1; one held 1 s taps vJoy 1 button 2. Nothing is sent on the press itself."
+    },
+    {
+      "file": "encoder_periodic.py",
+      "purpose": "A rotary encoder (two stick buttons) paced by a periodic callback.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Clockwise": "PhysicalInputVariable",
+        "Counter-clockwise": "PhysicalInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until both buttons are set. While running, each clockwise click becomes one tap of vJoy 1 button 1 and each counter-clockwise click one tap of button 2, sent one per 0.02 s tick in the order clicked (3 quick clockwise clicks then 1 counter-clockwise: taps 1, 1, 1, 2)."
+    },
+    {
+      "file": "macro_from_button.py",
+      "purpose": "A stick button queues a macro (vJoy press, 0.05 s pause, release) on the program's macro scheduler.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Button": "PhysicalInputVariable",
+        "Macro button": "IntegerVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Button is set. While running, pressing the button presses vJoy 1 button 7 (Macro button), then about 0.05 s later releases it. Releasing the stick button does nothing. No keys are sent."
+    },
+    {
+      "file": "three_position_switch.py",
+      "purpose": "An ON/OFF/ON switch (two stick buttons) as three vJoy buttons, with its start state set by its top-level code.",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Up": "PhysicalInputVariable",
+        "Down": "PhysicalInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Up and Down are set. At Run, with the switch in the middle, it sends vJoy 1 button 1 off, button 2 on, button 3 off (start state). Pressing Up then gives 1 on, 2 off, 3 off; releasing it the middle again. When added or loaded (no Run) its vJoy writes are refused, by design (06 S4)."
+    },
+    {
+      "file": "r13_migrated_plugin.py",
+      "purpose": "An R13-style user plugin after upstream's three documented R13 to R14 edits (star import, is_optional, vjoy by vjoy_id/input_id).",
+      "variables": {
+        "Mode": "ModeVariable",
+        "Physical button": "PhysicalInputVariable",
+        "Virtual button": "VirtualInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": false,
+      "checks": "Not configured until Physical button is set. While running, pressing it presses vJoy 1 button 1 (Virtual button) and releasing it releases it."
+    }
+  ]
+}

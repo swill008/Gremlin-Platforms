@@ -115,12 +115,18 @@ def problems(src: str) -> list[str]:
     return sorted(set(out), key=lambda p: int(p.split(":")[0]))
 
 
+# Example user scripts for the Scripts feature: data, not tests; some are
+# broken on purpose (bad syntax) and never start a child process.
+_SCRIPT_FIXTURES = _TEST / "fixtures" / "scripts"
+
+
 def _files() -> list[pathlib.Path]:
     return sorted(
         p for p in _TEST.rglob("*.py")
         if "hang_trace" not in p.parts
         and "__pycache__" not in p.parts
         and p.name != "proc_tree.py"
+        and not p.is_relative_to(_SCRIPT_FIXTURES)
     )
 
 

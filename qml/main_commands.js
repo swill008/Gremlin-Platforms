@@ -13,15 +13,6 @@ function _room() {
     return uiState ? String(uiState.currentRoom || "") : ""
 }
 
-function _openRoom(room) {
-    leaveDisplayThen(function() {
-        if (uiState) {
-            uiState.setCurrentRoom(room)
-            uiState.setCurrentTab(room)
-        }
-    })
-}
-
 function _layout(mode) {
     return function() { return _moduleModel.splitMode === mode }
 }
@@ -57,12 +48,6 @@ function commandList() {
           checked: _layout("vertical"), run: function() { _moduleModel.setSplitMode("vertical") } },
         { id: "view.layout.stacked", text: "Stacked", group: "View › Home Layout",
           checked: _layout("horizontal"), run: function() { _moduleModel.setSplitMode("horizontal") } },
-        { id: "view.scripts", text: "Scripts", group: "View",
-          enabled: function() { return _room() !== "scripts" },
-          run: function() { _openRoom("scripts") } },
-        { id: "view.settings", text: "Profile Settings", group: "View",
-          enabled: function() { return _room() !== "settings" },
-          run: function() { _openRoom("settings") } },
         // The Xbox output's Output View (live pads and its controls); Help's
         // Open links use it. Not a menu item or a palette entry.
         { id: "view.xboxOutput", text: "Xbox Output View", group: "View",
@@ -139,6 +124,14 @@ function commandList() {
           run: function() { openToolWith("DialogHistory.qml", { filter: "" }) } },
         { id: "tools.options", text: "Options", group: "Tools", window: true, keywords: "settings preferences",
           run: function() { openTool("DialogOptions.qml") } },
+        // The profile's own settings and its scripts (04 S96): the Profile
+        // Settings window (at General) and the Scripts window.
+        { id: "tools.profileSettings", text: "Profile Settings…", group: "Tools", window: true,
+          keywords: "profile startup mode macro delay vjoy initial values behavior",
+          run: function() { openProfileSettings("general") } },
+        { id: "tools.scripts", text: "Scripts…", group: "Tools", window: true,
+          keywords: "profile scripts python plugins variables",
+          run: function() { openScripts() } },
 
         // Debug
         { id: "debug.liveLog", text: "Live Log Reader", group: "Debug", window: true,

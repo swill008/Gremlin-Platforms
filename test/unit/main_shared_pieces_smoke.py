@@ -186,11 +186,27 @@ def quick_item() -> type:
 def scripts() -> None:
     script = work / "demo_script.py"
     script.write_text("import gremlin\n", encoding="utf-8")
-    ev(win, "uiState.setCurrentRoom('scripts'); true")
-    wait_until(lambda: bool(ev(win, "_scriptLoader.item !== null")), 5000)
-    outer = ev(win, "_scriptLoader.item")
+    # The Scripts window (04 S96).
+    ev(win, "_root.openScripts(); true")
+
+    def walk(item):  # noqa: ANN001, ANN202
+        yield item
+        for child in item.childItems():
+            yield from walk(child)
+
+    def scripts_page():  # noqa: ANN202
+        for w in QtGui.QGuiApplication.allWindows():
+            if w.objectName() == "scriptsWindow" and w.isVisible():
+                for it in walk(w.contentItem()):
+                    if it.metaObject().className().startswith("ScriptManager"):
+                        return it
+        return None
+
+    wait_until(lambda: scripts_page() is not None, 5000)
+    outer = scripts_page()
     assert outer is not None, "no Scripts page"
-    page = inner(outer)
+    page = inner(outer)  # a child made by ScriptManager.qml: its ids are in scope
+    win_ps = outer.window()
     out["script_kind"] = ev(page, "_selectScript.kind")
     url = QtCore.QUrl.fromLocalFile(str(script)).toString()
     ev(page, (
@@ -200,37 +216,32 @@ def scripts() -> None:
     wait_until(lambda: ev(page, "scriptListModel.rowCount()") == 1, 3000)
     out["script_rows_added"] = ev(page, "scriptListModel.rowCount()")
     out["script_start"] = str(ev(page, "String(_selectScript.prepare().currentFolder)"))
-    # The row's trash button, clicked as a click would (its own handler).
-    click_js = (
-        "(function(){var t=bsi.icons.trash;"
-        "function find(it){if(!it)return null;"
-        "if(it.text===t&&typeof it.clicked==='function')return it;"
-        "var c=it.children||[];"
-        "for(var i=0;i<c.length;++i){var f=find(c[i]);if(f)return f}"
-        "return null}"
-        "_view.forceLayout();var b=find(_view.itemAtIndex(0));if(!b)return false;"
-        "b.clicked();return true})()"
-    )
+    # The row's trash button (scriptRemove), clicked as a click would (its
+    # own handler).
     wait_until(lambda: False, 300)
 
     def click_trash() -> None:
-        assert ev(page, click_js), "no trash button"
+        button = next(
+            (it for it in walk(outer)
+             if it.objectName() == "scriptRemove" and it.isVisible()), None)
+        assert button is not None, "no trash button"
+        ev(button, "clicked(); true")
 
     click_trash()
-    wait_until(lambda: question(win) is not None, 3000)
-    out["script_question"] = describe(question(win))
-    key(win, QtCore.Qt.Key.Key_Return)
-    out["script_enter_closed"] = question(win) is None
+    wait_until(lambda: question(win_ps) is not None, 3000)
+    out["script_question"] = describe(question(win_ps))
+    key(win_ps, QtCore.Qt.Key.Key_Return)
+    out["script_enter_closed"] = question(win_ps) is None
     out["script_rows_after_enter"] = ev(page, "scriptListModel.rowCount()")
     click_trash()
-    wait_until(lambda: question(win) is not None, 3000)
-    dlg = question(win)
+    wait_until(lambda: question(win_ps) is not None, 3000)
+    dlg = question(win_ps)
     assert dlg is not None, "no question the second time"
     # A click on the red button (its own handler).
     ev(dlg, "_go.clicked(); true")
     wait_until(lambda: ev(page, "scriptListModel.rowCount()") == 0, 3000)
     out["script_rows_after_remove"] = ev(page, "scriptListModel.rowCount()")
-    ev(win, "uiState.setCurrentRoom('status'); true")
+    win_ps.close()
     wait_until(lambda: False, 300)
 
 

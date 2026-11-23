@@ -1,4 +1,4 @@
-﻿// -*- coding: utf-8; -*-
+// -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
@@ -13,12 +13,23 @@ import Gremlin.Script
 import Gremlin.Style
 
 
-JGListView {
-    model: []
-    delegate: _variableRenderer
-    spacing: Style.dp(10)
+// A script's variables (04 S85), one row each in the Options look: the
+// name, its description under it and its control on the right; a red bar
+// marks a value that isn't valid. Sits in a card (ScriptManager.qml); the
+// page around it scrolls.
+ColumnLayout {
+    id: _root
 
-    readonly property int labelWidth: Style.dp(250)
+    property alias model: _repeater.model
+
+    spacing: 0
+
+    Repeater {
+        id: _repeater
+
+        model: []
+        delegate: _variableRenderer
+    }
 
     DelegateChooser {
         id: _variableRenderer
@@ -27,22 +38,9 @@ JGListView {
         DelegateChoice {
             roleValue: "bool"
 
-            RowLayout {
-                id: _layout
-
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 Switch {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignTop | Qt.AlignRight
+                    Layout.alignment: Qt.AlignRight
 
                     checked: modelData.value
                     text: checked ? "On" : "Off"
@@ -55,17 +53,7 @@ JGListView {
         DelegateChoice {
             roleValue: "float"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 FloatSpinBox {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignRight
@@ -84,17 +72,7 @@ JGListView {
         DelegateChoice {
             roleValue: "int"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 JGSpinBox {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignRight
@@ -113,17 +91,7 @@ JGListView {
         DelegateChoice {
             roleValue: "keyboard"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 InputListener {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignRight
@@ -139,17 +107,7 @@ JGListView {
         DelegateChoice {
             roleValue: "logical-device"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 LogicalDeviceSelector {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignRight
@@ -167,17 +125,7 @@ JGListView {
         DelegateChoice {
             roleValue: "osc-input"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 TooltipComboBox {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignRight
@@ -195,17 +143,7 @@ JGListView {
         DelegateChoice {
             roleValue: "mode"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 TooltipComboBox {
                     id: _mode
 
@@ -228,17 +166,7 @@ JGListView {
         DelegateChoice {
             roleValue: "selection"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 TooltipComboBox {
                     id: _selection
 
@@ -272,17 +200,7 @@ JGListView {
         DelegateChoice {
             roleValue: "string"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 JGTextField {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignRight
@@ -297,17 +215,7 @@ JGListView {
         DelegateChoice {
             roleValue: "physical-input"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 InputListener {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignRight
@@ -323,17 +231,7 @@ JGListView {
         DelegateChoice {
             roleValue: "vjoy"
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: Style.dp(10)
-
-                DescriptiveText {
-                    text: modelData.name
-                    description: modelData.description
-                    isValid: modelData.isValid
-                }
-
+            VariableRow {
                 VJoySelector {
                     Layout.fillWidth: true
                     // Never squeezed (to-do 98): the name gives way instead.
@@ -361,45 +259,77 @@ JGListView {
 
     }
 
-    // Up to labelWidth wide; when the row is short of room the name narrows
-    // and wraps so the setting's control keeps its width (to-do 98).
-    component DescriptiveText : RowLayout {
-        Layout.fillWidth: true
-        Layout.maximumWidth: labelWidth
+    // One variable: modelData's name ("(req)" when it must be set) and
+    // description, the control (the row's children) on the right. The name
+    // gives way so the control keeps its width (to-do 98).
+    component VariableRow : Item {
+        id: _row
 
-        property string text: ""
-        property alias description: _tooltip.text
-        property bool isValid: false
+        default property alias control: _control.data
+
+        Layout.fillWidth: true
+        implicitHeight: _layout.implicitHeight + Style.dp(20)
 
         Rectangle {
-            id: _marker
-
-            width: Style.dp(5)
-            Layout.fillHeight: true
-            color: parent.isValid ? "transparent" : Style.error
+            visible: index > 0
+            width: parent.width
+            height: Style.dp(1)
+            color: Style.line
         }
 
-        JGText {
-            id: _text
+        // Not valid yet: a red bar on the left edge.
+        Rectangle {
+            objectName: "scriptVariableInvalid"
+            visible: !modelData.isValid
+            x: Style.dp(1)
+            y: Style.dp(8)
+            width: Style.dp(4)
+            height: parent.height - Style.dp(16)
+            radius: Style.dp(2)
+            color: Style.error
+        }
 
-            font.pixelSize: Style.dp(15)
-            text: `${parent.text} ${modelData.isOptional ? '' : '(req)'}`
-            wrapMode: Text.WordWrap
+        GridLayout {
+            id: _layout
 
-            Layout.fillWidth: true
-            Layout.minimumWidth: Style.dp(80)
-            Layout.preferredWidth: labelWidth
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: Style.dp(14)
+            anchors.rightMargin: Style.dp(14)
+            columns: 2
+            columnSpacing: Style.dp(16)
 
-            ToolTip {
-                id: _tooltip
-                visible: _hoverHandler.hovered
-                x: _hoverHandler.point.position.x - width / 2
-                y: _hoverHandler.point.position.y - height - Style.dp(8)
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(80)
+                spacing: Style.dp(2)
+
+                Label {
+                    objectName: "scriptVariableName"
+                    Layout.fillWidth: true
+                    text: modelData.name + (modelData.isOptional ? "" : " (req)")
+                    color: Style.fgStrong
+                    font.pixelSize: Style.dp(14)
+                    wrapMode: Text.WordWrap
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    text: modelData.description || ""
+                    color: Style.fgMuted
+                    font.pixelSize: Style.dp(12)
+                    wrapMode: Text.WordWrap
+                }
             }
 
-            HoverHandler {
-                id: _hoverHandler
-                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+            ColumnLayout {
+                id: _control
+
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                Layout.preferredWidth: Style.dp(300)
+                // A control that needs more (the vJoy picker's minimum) gets it.
+                Layout.maximumWidth: Style.dp(360)
             }
         }
     }

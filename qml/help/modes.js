@@ -120,7 +120,7 @@ function topics() {
                 + "<li>Actions you add belong to the mode shown.</li>"
                 + "</ul>"
                 + _good([
-                    "When a profile is loaded, it opens in its <b>Startup Mode</b>, set in <b>View › Profile Settings</b> <a href=\"open:view.settings\">Open ›</a>. See <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>.",
+                    "When a profile is loaded, it opens in its <b>Startup Mode</b>, set in <b>Tools › Profile Settings…</b> <a href=\"open:tools.profileSettings\">Open ›</a>. See <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>.",
                     "An action editor with changes stays open when you pick another mode. Its title says which mode it edits."
                 ]),
             related: ["modes-modes", "modes-while-running", "getting-started-run", "options-profile-profile-settings"]
@@ -202,7 +202,7 @@ function topics() {
             id: "modes-q-start-mode",
             section: "Common questions",
             title: "How do I choose the mode a profile starts in?",
-            body: "<p>When you load a profile, it opens in its <b>Startup Mode</b>, in <b>View › Profile Settings</b> <a href=\"open:view.settings\">Open ›</a>. <b>Run</b> starts in whatever mode the <b>Mode</b> box shows. See <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>.</p>",
+            body: "<p>When you load a profile, it opens in its <b>Startup Mode</b>, in <b>Tools › Profile Settings…</b> <a href=\"open:tools.profileSettings\">Open ›</a>. <b>Run</b> starts in whatever mode the <b>Mode</b> box shows. See <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>.</p>",
             related: ["modes-mode-box", "options-profile-profile-settings"]
         }
     ]

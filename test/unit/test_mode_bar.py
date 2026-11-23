@@ -183,11 +183,15 @@ if out['scale'] == 100 and out['home'] and out['home']['layoutCombo']:
     click('_deviceLibraryButton')
     pump(lambda: run('Helpers.windowOf("WindowDeviceLibrary.qml") !== null'), 5.0)
     out['libraryOpen'] = run('Helpers.windowOf("WindowDeviceLibrary.qml") !== null')
-    # Another page: Profile Settings. The bar stays, its page part is empty.
-    run('uiState.setCurrentRoom("settings"); uiState.setCurrentTab("settings")')
-    pump(lambda: run('uiState.currentRoom') == 'settings', 3.0)
+    # Profile Settings is a window of its own (04 S96): its toolbar button
+    # opens it and the main window's bar keeps Home's controls.
+    click('_profileSettingsButton')
+    pump(lambda: run('Helpers.windowOf("DialogProfileSettings.qml") !== null'), 5.0)
     pump(lambda: False, 0.5)
+    out['settingsWindow'] = run(
+        'Helpers.windowOf("DialogProfileSettings.qml") !== null')
     out['settings'] = bar_state()
+    out['settingsRoom'] = run('uiState.currentRoom')
     # And back Home: the controls come back.
     click('_homeButton')
     pump(lambda: run('uiState.currentRoom') == 'status', 3.0)
@@ -262,12 +266,16 @@ def test_the_toolbar_device_library_button_opens_the_window(normal: dict) -> Non
     assert normal["libraryOpen"] is True
 
 
-def test_another_page_keeps_the_mode_bar_without_page_controls(normal: dict) -> None:
+def test_profile_settings_opens_its_window_and_the_bar_keeps_homes_controls(
+    normal: dict,
+) -> None:
+    assert normal["settingsWindow"] is True
+    assert normal["settingsRoom"] == "status"
     settings = normal["settings"]
     assert settings is not None, "no modeBar"
     assert settings["visible"] and settings["holdsMode"] and settings["modeShown"]
-    assert settings["loaderInBar"] and not settings["loaderItem"]
-    assert not settings["layoutCombo"]
+    assert settings["loaderInBar"] and settings["loaderItem"]
+    assert settings["layoutCombo"]
     back = normal["backHome"]
     assert back["loaderItem"] and back["layoutCombo"]
 

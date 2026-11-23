@@ -55,7 +55,9 @@ def test_main_opens_xbox_setup_from_the_card_palette_and_output_view() -> None:
     handler = handler[: handler.index("onOpenAutoMappingTool")]
     assert "openXboxSetup()" in handler
     loader = main[main.index("id: _xboxLoader") :]
-    loader = loader[: loader.index("Loader {")]
+    # Up to the next page loader, or the end when Xbox is the last page.
+    end = loader.find("Loader {")
+    loader = loader if end < 0 else loader[:end]
     assert "target: _xboxLoader.item" in loader
     assert "function onXboxSetupRequested() { _root.openXboxSetup() }" in loader
     commands = _text("qml/main_commands.js")

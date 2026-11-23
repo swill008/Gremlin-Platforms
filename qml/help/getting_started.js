@@ -81,6 +81,8 @@ function topics() {
                 + "<li><b>Device Library</b>: every device and its saved setups.</li>"
                 + "<li><b>Logical Device</b>: the Logical Device's page.</li>"
                 + "<li><b>Options</b>: the program's settings.</li>"
+                + "<li><b>Profile Settings</b>: the profile's startup mode, macro delay and vJoy settings, saved with the profile (also <b>Tools › Profile Settings…</b>).</li>"
+                + "<li><b>Scripts</b>: the profile's scripts and their variables, in a window of their own (also <b>Tools › Scripts…</b>).</li>"
                 + "</ul></li>"
                 + "<li>Mode bar, under the toolbar on every page: the <b>Mode</b> box and <b>Manage Modes</b> <a href=\"show:modebar/Manage Modes\">Show me ›</a> on the left. The open page's own controls follow, such as <b>Compact view</b> and <b>Layout</b> on Home.</li>"
                 + "<li>Bottom bar: the status (Running or Stopped) and what the last save wrote.</li>"

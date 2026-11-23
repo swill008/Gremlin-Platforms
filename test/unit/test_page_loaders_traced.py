@@ -24,7 +24,8 @@ def _page_loader_ids() -> list[str]:
 
 def test_every_page_loader_has_a_trace_name() -> None:
     ids = _page_loader_ids()
-    assert len(ids) == 9
+    # Scripts and Profile Settings left for their own window (04 S96).
+    assert len(ids) == 7
     names = []
     for loader in ids:
         pattern = rf"(\w+) \{{\s*id: {loader}\s*\n\s*traceName: \"([^\"]+)\""

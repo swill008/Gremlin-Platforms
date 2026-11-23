@@ -1126,7 +1126,17 @@ class Backend(QtCore.QObject):
 
     @QtCore.Property(type=ScriptListModel, notify=profileChanged)
     def scriptListModel(self) -> ScriptListModel:
-        return ScriptListModel(self.profile.scripts, self)
+        """One model per profile's script list: every read used to make a
+        new one, so a script added through one never showed in another
+        (the Scripts window and a test each read it, 04 S96)."""
+        scripts = self.profile.scripts
+        cached = getattr(self, "_script_list_model", None)
+        if cached is None or cached[0] is not scripts:
+            if cached is not None:
+                cached[1].deleteLater()
+            cached = (scripts, ScriptListModel(scripts, self))
+            self._script_list_model = cached
+        return cached[1]
 
     @QtCore.Property(type=str, notify=propertyChanged)
     def currentMode(self) -> str:

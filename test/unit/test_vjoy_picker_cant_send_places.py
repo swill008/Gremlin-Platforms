@@ -15,7 +15,8 @@ Run as a script, this file is the child process: the real program
 off-screen (journey harness: temporary home, fake hardware), printing
 RESULT. ``argv[1]`` is the folder for the screenshots, ``argv[2]`` the
 UI scale (default 100); at 150 and 200 % only the Script settings page is
-checked, in a window of the same size in UI units (to-do 98).
+checked, in the Scripts window (04 S96) at 1000 x 700 in UI units
+(to-do 98).
 """
 
 from __future__ import annotations
@@ -46,10 +47,12 @@ SCRIPT = (
 # | Child process
 
 
-def _measure(j, selector, shot: pathlib.Path, frame) -> dict:  # noqa: ANN001
+def _measure(j, selector, shot: pathlib.Path, frame, win=None) -> dict:  # noqa: ANN001
     """What the picker shows; saves a screenshot with the tooltip shown."""
     from PySide6 import QtCore
 
+    # The window holding the picker: the main window, or Scripts.
+    win = win or j.win
     combos = [
         it
         for it in j.walk(selector)
@@ -80,14 +83,20 @@ def _measure(j, selector, shot: pathlib.Path, frame) -> dict:  # noqa: ANN001
     # The box's right edge, the editor's (or page's) and the window's.
     found["boxRight"] = box.mapToScene(QtCore.QPointF(box.width(), 0)).x()
     found["frameRight"] = frame.mapToScene(QtCore.QPointF(frame.width(), 0)).x()
-    found["window"] = j.win.contentItem().width()
+    found["window"] = win.contentItem().width()
     found["tooltipsOn"] = box.property("enableTooltips")
-    # The Script settings row: the name gives way so the picker fits.
-    row = selector.parentItem()
-    name = next(
-        (it for it in j.walk(row) if it.metaObject().className().startswith("JGText")),
-        None,
-    )
+    # The Script settings row: the name gives way so the picker fits. The
+    # row is the picker's nearest parent holding the variable's name.
+    row, name = selector.parentItem(), None
+    while row is not None and name is None:
+        name = next(
+            (it for it in j.walk(row) if it.objectName() == "scriptVariableName"),
+            None,
+        )
+        if name is None:
+            row = row.parentItem()
+            if row is not None and row is frame:
+                row = None
     if row is not None and name is not None:
         found["row"] = {
             "rowRight": row.mapToScene(QtCore.QPointF(row.width(), 0)).x(),
@@ -100,7 +109,7 @@ def _measure(j, selector, shot: pathlib.Path, frame) -> dict:  # noqa: ANN001
         }
     # Hover the box (a Qt event to the off-screen window): the ⚠ tooltip.
     centre = box.mapToScene(QtCore.QPointF(box.width() / 2, box.height() / 2))
-    j.QTest.mouseMove(j.win, QtCore.QPoint(int(centre.x()), int(centre.y())))
+    j.QTest.mouseMove(win, QtCore.QPoint(int(centre.x()), int(centre.y())))
 
     def tooltips() -> list[QtCore.QObject]:
         return [
@@ -120,7 +129,7 @@ def _measure(j, selector, shot: pathlib.Path, frame) -> dict:  # noqa: ANN001
     found["tooltip"] = [
         {"text": t.property("text"), "visible": t.property("visible")} for t in tips
     ]
-    img = j.win.grabWindow()
+    img = win.grabWindow()
     r = frame.mapRectToScene(QtCore.QRectF(0, 0, frame.width(), frame.height()))
     s = selector.mapRectToScene(
         QtCore.QRectF(0, 0, selector.width(), selector.height())
@@ -135,7 +144,7 @@ def _measure(j, selector, shot: pathlib.Path, frame) -> dict:  # noqa: ANN001
     )
     img.copy(QtCore.QRect(left, top, right - left, bottom - top)).save(str(shot))
     found["shot"] = str(shot)
-    j.QTest.mouseMove(j.win, QtCore.QPoint(2, 2))
+    j.QTest.mouseMove(win, QtCore.QPoint(2, 2))
     j.QTest.qWait(100)
     return found
 
@@ -224,14 +233,27 @@ def _script_page(j, shots: pathlib.Path, scale: int) -> None:  # noqa: ANN001
     from gremlin import util
 
     out = j.out
-    # The Script settings page: a script's vJoy setting.
+    # The Script settings, in the Scripts window (04 S96): a script's vJoy
+    # setting.
     folder = pathlib.Path(util.scripts_dir())
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "press.py").write_text(SCRIPT, encoding="utf-8")
-    j.backend.ui_state.setCurrentRoom("scripts")
-    j.backend.ui_state.setCurrentTab("scripts")
+    j.ev("_root.openScripts()")
+    window = j.window("Scripts")
+    # 1000 x 700 in UI units.
+    window.setWidth(1000 * scale // 100)
+    window.setHeight(700 * scale // 100)
     j.settle()
-    scripts = j.ev("_scriptLoader.item.scriptListModel")
+
+    def _scripts_page():  # noqa: ANN202
+        for it in j.walk(window.contentItem()):
+            if it.metaObject().className().startswith("ScriptManager"):
+                return it
+        return None
+
+    # The page's own list (backend.scriptListModel makes a new one each read).
+    scripts_page = j.wait_until(_scripts_page, "the Scripts page")
+    scripts = j.ev("scriptListModel", scripts_page)
     scripts.addScript(QtCore.QUrl.fromLocalFile(str(folder / "press.py")).toString())
     script = j.wait_until(
         lambda: next(
@@ -246,19 +268,11 @@ def _script_page(j, shots: pathlib.Path, scale: int) -> None:  # noqa: ANN001
     )
     variable = script.shown_variables["Output"]
     variable._vjoy_id, variable._input_id = VJOY, BUTTON
-    configure = j.ev("bsi.icons.configure")
 
     def button():  # noqa: ANN202
-        for row in j.walk(j.win.contentItem()):
-            if row.property("loadError") is None or row.property("path") is None:
-                continue
-            for it in j.walk(row):
-                if (
-                    it.metaObject().className().startswith("IconButton")
-                    and it.property("text") == configure
-                    and it.property("enabled")
-                ):
-                    return it
+        for it in j.walk(window.contentItem()):
+            if it.objectName() == "scriptConfigure" and it.property("enabled"):
+                return it
         return None
 
     QtCore.QMetaObject.invokeMethod(j.wait_until(button, "its settings"), "clicked")
@@ -266,7 +280,7 @@ def _script_page(j, shots: pathlib.Path, scale: int) -> None:  # noqa: ANN001
         lambda: next(
             (
                 it
-                for it in j.walk(j.win.contentItem())
+                for it in j.walk(window.contentItem())
                 if it.metaObject().className().startswith("ScriptConfiguration")
             ),
             None,
@@ -276,7 +290,9 @@ def _script_page(j, shots: pathlib.Path, scale: int) -> None:  # noqa: ANN001
     selector = j.wait_until(lambda: _selector_in(j, page), "the vJoy setting")
     j.QTest.qWait(400)
     suffix = "" if scale == 100 else f"_{scale}"
-    out["script"] = _measure(j, selector, shots / f"cond95_script{suffix}.png", page)
+    out["script"] = _measure(
+        j, selector, shots / f"cond95_script{suffix}.png", page, window
+    )
     out["script"]["saved"] = [variable.vjoy_id, variable.input_id]
 
 

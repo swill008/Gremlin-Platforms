@@ -75,7 +75,8 @@ for key in sys.argv[2].split(','):
         'manageRight': run(
             '_manageModesButton.mapToItem(null, _manageModesButton.width, 0).x'),
         'optionsRight': run(
-            '_optionsButton.x + _optionsButton.width + _toolbarRow.x'),
+            # The last button is Scripts (01 S58, 04 S96).
+            '_scriptsButton.x + _scriptsButton.width + _toolbarRow.x'),
         'content': run('_toolbarFlick.contentWidth'),
         'view': run('_toolbarFlick.width'),
         'modeList': run('_modeSelector.width'),
@@ -117,16 +118,16 @@ def test_the_minimum_size_fits_the_screen(tmp_path: pathlib.Path) -> None:
 def test_captions_hide_before_anything_goes_off_the_window(
     tmp_path: pathlib.Path,
 ) -> None:
-    out = _window(tmp_path, 175, "full-1,2200")
+    out = _window(tmp_path, 175, "full-1,2600")
     # Too narrow for the captions: icons only, and everything still in view.
     narrow = out["widths"]["full-1"]
     assert narrow["compact"] and not narrow["caption"] and not narrow["scroll"]
     assert narrow["optionsRight"] <= narrow["width"]
     assert narrow["manageRight"] <= narrow["width"]
     # Room for the captions: they come back.
-    wide = out["widths"]["2200"]
+    wide = out["widths"]["2600"]  # 11 buttons since 04 S96
     assert not wide["compact"] and wide["caption"]
-    assert wide["manageRight"] <= 2200 and wide["optionsRight"] <= 2200
+    assert wide["manageRight"] <= 2600 and wide["optionsRight"] <= 2600
 
 
 def test_when_even_the_icons_dont_fit_the_toolbar_scrolls(
