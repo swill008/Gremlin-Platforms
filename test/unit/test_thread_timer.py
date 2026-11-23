@@ -213,11 +213,12 @@ def test_main_call_wait_times_out_while_main_is_blocked(
     input_thread_running: None,
 ) -> None:
     out: dict[str, object] = {}
+    ran: list[bool] = []
 
     def job() -> None:
         started = time.monotonic()
         try:
-            threads.main_call_wait(lambda: None, timeout=0.1)
+            threads.main_call_wait(lambda: ran.append(True), timeout=0.1)
         except TimeoutError as error:
             out["error"] = error
         out["took"] = time.monotonic() - started
@@ -226,7 +227,9 @@ def test_main_call_wait_times_out_while_main_is_blocked(
     time.sleep(0.4)  # the main thread runs no events: the call can't run
     assert isinstance(out.get("error"), TimeoutError)
     assert float(out["took"]) < 0.35  # type: ignore[arg-type]
-    QtCore.QCoreApplication.processEvents()  # the late call runs, dropped
+    # The main thread frees up: a timed-out call never runs later.
+    QtCore.QCoreApplication.processEvents()
+    assert ran == []
 
 
 def test_main_call_wait_is_inline_on_main(qapp: object) -> None:

@@ -196,6 +196,7 @@ Item {
                             }
 
                             OutputVJoyInitialValueEntryDelegate {
+                                vjoyId: model.vjoyId
                                 dataModel: initialValuesModel
                             }
                         }
@@ -233,7 +234,10 @@ Item {
     }
 
     component OutputVJoyInitialValueEntryDelegate : ColumnLayout {
+        id: _entry
         property alias dataModel : _repeater.model
+        // Names the boxes for the control API (13 D-13-INITIAL-VALUES).
+        property int vjoyId: 0
 
         Repeater {
             id: _repeater
@@ -245,6 +249,7 @@ Item {
                 }
 
                 FloatSpinBox {
+                    objectName: `vjoyInitialValue:${_entry.vjoyId}:${label}`
                     minValue: -1.0
                     maxValue: 1.0
                     stepSize: 0.05

@@ -7,7 +7,7 @@
 While "Allow control from other programs" is on, the program writes
 %USERPROFILE%/Gremlin Platforms/api/endpoint.json with the pipe address and
 key. A request is UTF-8 JSON {"call", "args"}; the answer is {"ok": true,
-"result"} or {"ok": false, "error"}. One call at a time per connection.
+"result"} or {"ok": false, "error", "code"}. One call at a time per connection.
 
     with connect() as client:
         print(client.call("state"))
@@ -34,30 +34,69 @@ ENDPOINT_ENV = "GREMLIN_CTL_ENDPOINT"
 DEFAULT_CALL_TIMEOUT_S = 40.0
 
 NOT_RUNNING_TEXT = "Gremlin-Platforms isn't running"
-OFF_TEXT = (
-    "Gremlin-Platforms isn't running, or control from other programs is off "
-    "in Options › General"
+START_TEXT = "Start Gremlin-Platforms and try again."
+OFF_TEXT = "Gremlin-Platforms isn't running, or control from other programs is off"
+TURN_ON_TEXT = (
+    "Start Gremlin-Platforms and turn on Options › General › Control › "
+    "Allow control from other programs."
 )
+STOPPED_TEXT = "The program stopped answering; the call may have run."
 
 
-class GremlinCtlError(Exception):
-    """Base of every error this module raises."""
+def _not_running(reason: str = "") -> str:
+    """'Gremlin-Platforms isn't running (reason). Start ... again.'"""
+    head = f"{NOT_RUNNING_TEXT} ({reason})" if reason else NOT_RUNNING_TEXT
+    return f"{head}. {START_TEXT}"
 
 
-class NotRunning(GremlinCtlError):
-    """The program isn't running or its pipe is gone."""
+def _off(reason: str = "") -> str:
+    head = f"{OFF_TEXT} ({reason})" if reason else OFF_TEXT
+    return f"{head}. {TURN_ON_TEXT}"
+
+
+class ClientError(Exception):
+    """Base of every error this module raises; `code` is the error code
+    (the program's S25 code for CallError, the client's own otherwise)."""
+
+    code = "failed"
+
+
+class NotRunning(ClientError):
+    """The program couldn't be reached at the start: not running, its pipe
+    gone or silent, or the endpoint file out of date."""
+
+    code = "not_running"
 
 
 class Off(NotRunning):
     """No endpoint file: the program isn't running or the switch is off."""
 
+    code = "control_off"
 
-class VersionMismatch(GremlinCtlError):
+
+class VersionMismatch(ClientError):
     """The program speaks another protocol version."""
 
+    code = "version_mismatch"
 
-class CallError(GremlinCtlError):
-    """The program refused or failed the call; the text is its error."""
+
+class StoppedAnswering(ClientError):
+    """The program was reached but stopped answering or closed during the
+    call; the call may have run."""
+
+    code = "stopped_answering"
+
+    def __init__(self, text: str = STOPPED_TEXT) -> None:
+        super().__init__(text)
+
+
+class CallError(ClientError):
+    """The program refused or failed the call; the text is its error and
+    `code` its error code (S25)."""
+
+    def __init__(self, text: str, code: str = "failed") -> None:
+        super().__init__(text)
+        self.code = code
 
 
 def endpoint_path() -> Path:
@@ -75,11 +114,11 @@ def read_endpoint(path: Path | None = None) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        raise Off(OFF_TEXT) from None
+        raise Off(_off()) from None
     except (OSError, ValueError) as e:
-        raise Off(f"{OFF_TEXT} (endpoint file unreadable: {e})") from None
+        raise Off(_off(f"endpoint file unreadable: {e}")) from None
     if not isinstance(data, dict) or not data.get("address") or not data.get("key"):
-        raise Off(f"{OFF_TEXT} (endpoint file incomplete)")
+        raise Off(_off("endpoint file incomplete"))
     return data
 
 
@@ -118,18 +157,19 @@ def _open_pipe(address: str, key: bytes, timeout_s: float) -> Connection:
     thread.start()
     thread.join(timeout_s)
     if thread.is_alive():
-        raise NotRunning(f"{NOT_RUNNING_TEXT} (no answer within {timeout_s:g} s)")
+        raise NotRunning(_not_running(f"no answer within {timeout_s:g} s"))
     error = box.get("error")
     if error is not None:
         if isinstance(error, (FileNotFoundError, ConnectionError, EOFError)):
-            raise NotRunning(NOT_RUNNING_TEXT) from None
+            raise NotRunning(_not_running()) from None
         if type(error).__name__ == "AuthenticationError":
             raise NotRunning(
-                f"{NOT_RUNNING_TEXT} (the pipe refused the key; the endpoint "
-                "file is out of date)"
+                "The endpoint file is out of date (the pipe refused the key). "
+                "Turn Options › General › Control › Allow control from other "
+                "programs off and on again, or restart Gremlin-Platforms."
             ) from None
         if isinstance(error, OSError):
-            raise NotRunning(f"{NOT_RUNNING_TEXT} ({error})") from None
+            raise NotRunning(_not_running(str(error))) from None
         raise error
     return box["conn"]
 
@@ -146,32 +186,34 @@ class Client:
         self.program_version = ""
 
     def call(self, name: str, **args: Any) -> Any:  # noqa: ANN401
-        """Makes one call; returns its result or raises CallError/NotRunning."""
+        """Makes one call; returns its result or raises CallError or
+        StoppedAnswering (no answer within call_timeout_s, or the program
+        closed the pipe during the call)."""
         with self._lock:
             conn = self._conn
             if conn is None:
-                raise NotRunning(f"{NOT_RUNNING_TEXT} (connection closed)")
+                raise StoppedAnswering()
             request = json.dumps({"call": name, "args": args}).encode("utf-8")
             try:
                 conn.send_bytes(request)
                 if not conn.poll(self.call_timeout_s):
                     self._drop()
-                    raise NotRunning(
-                        f"{NOT_RUNNING_TEXT} (no answer to {name} within "
-                        f"{self.call_timeout_s:g} s)"
-                    )
+                    raise StoppedAnswering()
                 raw = conn.recv_bytes()
             except (OSError, EOFError):
                 self._drop()
-                raise NotRunning(NOT_RUNNING_TEXT) from None
+                raise StoppedAnswering() from None
         try:
             reply = json.loads(raw.decode("utf-8"))
         except ValueError as e:
-            raise CallError(f"unreadable answer to {name}: {e}") from None
+            raise CallError(f"Unreadable answer to '{name}': {e}.") from None
         if not isinstance(reply, dict) or "ok" not in reply:
-            raise CallError(f"unreadable answer to {name}")
+            raise CallError(f"Unreadable answer to '{name}'.")
         if not reply["ok"]:
-            raise CallError(str(reply.get("error") or "unknown error"))
+            raise CallError(
+                str(reply.get("error") or "Unknown error."),
+                str(reply.get("code") or "failed"),
+            )
         return reply.get("result")
 
     def _drop(self) -> None:
@@ -196,24 +238,29 @@ class Client:
 def connect(timeout_s: float = 5.0, *, endpoint: Path | str | None = None) -> Client:
     """Connects to the running program and checks its protocol version.
 
-    Raises Off (no endpoint file), NotRunning (pipe gone or silent) or
-    VersionMismatch.
+    Raises Off (no endpoint file), NotRunning (pipe gone, silent, or the
+    file left over or out of date) or VersionMismatch.
     """
     path = Path(endpoint) if endpoint is not None else endpoint_path()
     info = read_endpoint(path)
+    # Alive first: a file left over by any version means not running.
+    pid = info.get("pid")
+    if isinstance(pid, int) and not _process_alive(pid):
+        raise NotRunning(_not_running("its endpoint file is left over"))
     file_version = info.get("version")
     if file_version is not None and file_version != PROTOCOL_VERSION:
         raise VersionMismatch(_mismatch_text(file_version))
-    pid = info.get("pid")
-    if isinstance(pid, int) and not _process_alive(pid):
-        raise NotRunning(f"{NOT_RUNNING_TEXT} (its endpoint file is left over)")
     try:
         key = bytes.fromhex(str(info["key"]))
     except ValueError:
-        raise Off(f"{OFF_TEXT} (endpoint key unreadable)") from None
+        raise Off(_off("endpoint key unreadable")) from None
     client = Client(_open_pipe(str(info["address"]), key, timeout_s))
     try:
         hello = client.call("hello")
+    except StoppedAnswering:
+        # Reached the pipe but no handshake: couldn't be reached at the start.
+        client.close()
+        raise NotRunning(_not_running("it didn't answer the handshake")) from None
     except BaseException:
         client.close()
         raise
@@ -227,6 +274,7 @@ def connect(timeout_s: float = 5.0, *, endpoint: Path | str | None = None) -> Cl
 
 def _mismatch_text(version: object) -> str:
     return (
-        f"Gremlin-Platforms speaks control protocol {version}; this gremlin-ctl "
-        f"speaks {PROTOCOL_VERSION}. Use the gremlin-ctl that came with the program."
+        f"Gremlin-Platforms speaks control protocol {version}; this client "
+        f"speaks {PROTOCOL_VERSION}. Use a client from the same "
+        "Gremlin-Platforms version."
     )

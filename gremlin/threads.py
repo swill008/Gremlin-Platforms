@@ -308,17 +308,25 @@ def _main_poster_or_none() -> _Poster | None:
 def main_call_wait(fn: Callable[..., _R], *args: object, timeout: float) -> _R:
     """Runs fn(*args) on the main thread and returns its result, waiting at
     most timeout seconds (inline when already there or with no Qt
-    application). Past the limit TimeoutError is raised and logged (fn may
-    still run later; its result is dropped); fn's own exception is raised
-    here. A queued call, never a blocking Qt connection: a main thread that
-    is waiting on the caller only delays this up to timeout."""
+    application); fn's own exception is raised here. Past the limit
+    TimeoutError is raised and logged, with .started saying which case it
+    is: a job that hadn't started is dropped and never runs; one already
+    running may still finish (its result is dropped). A queued call, never
+    a blocking Qt connection: a main thread that is waiting on the caller
+    only delays this up to timeout."""
     poster = _main_poster_or_none()
     if poster is None:
         return fn(*args)
     done = threading.Event()
+    lock = threading.Lock()
     outcome: dict[str, Any] = {}
+    flags = {"started": False, "gave_up": False}
 
     def job() -> None:
+        with lock:
+            if flags["gave_up"]:
+                return  # the caller has gone: never run late
+            flags["started"] = True
         try:
             outcome["result"] = fn(*args)
         except BaseException as error:
@@ -328,10 +336,25 @@ def main_call_wait(fn: Callable[..., _R], *args: object, timeout: float) -> _R:
 
     poster.posted.emit(job)
     if not done.wait(timeout):
-        name = getattr(fn, "__qualname__", repr(fn))
-        text = f"Main thread call {name} took over {timeout:.1f} s"
-        logging.getLogger("system").warning(text)
-        raise TimeoutError(text)
+        with lock:
+            started = flags["started"]
+            flags["gave_up"] = True
+        if not (started and done.is_set()):
+            name = getattr(fn, "__qualname__", repr(fn))
+            if started:
+                text = (
+                    f"Main thread call {name} took over {timeout:.1f} s; "
+                    "it may still finish."
+                )
+            else:
+                text = (
+                    f"Main thread call {name} didn't start within "
+                    f"{timeout:.1f} s; it was dropped."
+                )
+            logging.getLogger("system").warning(text)
+            error = TimeoutError(text)
+            error.started = started  # type: ignore[attr-defined]
+            raise error
     if "error" in outcome:
         raise outcome["error"]
     return outcome["result"]

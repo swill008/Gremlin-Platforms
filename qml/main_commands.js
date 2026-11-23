@@ -3,7 +3,9 @@
 
 // The main window's commands (Gremlin.Menus commands.js): each one defined
 // once, with its name, shortcut and when it can be used. The menu bar, the
-// shortcuts and the command palette are built from this list.
+// shortcuts and the command palette are built from this list. window: true
+// marks a command that opens a window of its own (not a page of this one);
+// the control API's window.open needs it (13 S29).
 // Code-behind for Main.qml (imported without .pragma library): it uses the
 // window's ids and functions directly.
 
@@ -69,57 +71,57 @@ function commandList() {
           palette: false, run: function() { _commandPalette.open() } },
 
         // Tools
-        { id: "tools.vjoyViewer", text: "vJoy Viewer", group: "Tools › Viewers",
+        { id: "tools.vjoyViewer", text: "vJoy Viewer", group: "Tools › Viewers", window: true,
           run: function() { openTool("DialogInputViewer.qml") } },
         // The Input Tester (D-02-INPUT-TESTER): what a game sees through HidHide.
         { id: "tools.inputTester", text: "Input Tester…", group: "Tools › Viewers",
           keywords: "hidhide game sees hidden visible check test devices",
           run: function() { openInputTester() } },
-        { id: "tools.calibration", text: "Calibration", group: "Tools › Device Setup",
+        { id: "tools.calibration", text: "Calibration", group: "Tools › Device Setup", window: true,
           run: function() { openTool("DialogCalibration.qml") } },
-        { id: "tools.hidhide", text: "HidHide", group: "Tools › Device Setup", keywords: "hide devices",
+        { id: "tools.hidhide", text: "HidHide", group: "Tools › Device Setup", window: true, keywords: "hide devices",
           run: function() { openTool("DialogHardwareHide.qml") } },
         // Xbox Setup (D-XBOX-PADS): the ViGEmBus check and how many Xbox
         // pads are on. Its menu place is the Xbox card's menu.
-        { id: "tools.xboxSetup", text: "Xbox Setup…", group: "Tools › Device Setup",
+        { id: "tools.xboxSetup", text: "Xbox Setup…", group: "Tools › Device Setup", window: true,
           keywords: "xbox pads vigem vigembus driver controllers count",
           menu: false, run: function() { openXboxSetup() } },
         // Drivers (06 S185, D-06-DRIVERS): install, update and set up vJoy,
         // ViGEmBus and HidHide through Gremlin Device Helper.
-        { id: "tools.drivers", text: "Drivers…", group: "Tools",
+        { id: "tools.drivers", text: "Drivers…", group: "Tools", window: true,
           keywords: "vjoy vigembus hidhide driver install update",
           run: function() { openDrivers() } },
-        { id: "tools.configureInput", text: "Input Module Setup", group: "Tools › Device Setup",
+        { id: "tools.configureInput", text: "Input Module Setup", group: "Tools › Device Setup", window: true,
           run: function() { openConfigureModule("source") } },
-        { id: "tools.configureOutput", text: "Output Module Setup", group: "Tools › Device Setup",
+        { id: "tools.configureOutput", text: "Output Module Setup", group: "Tools › Device Setup", window: true,
           run: function() { openConfigureModule("dest") } },
-        { id: "tools.deviceInfo", text: "Device Information", group: "Tools › Device Setup",
+        { id: "tools.deviceInfo", text: "Device Information", group: "Tools › Device Setup", window: true,
           run: function() { openTool("DialogDeviceInformation.qml") } },
         // The Device Library (10 S2): every device and its saved setups.
-        { id: "tools.deviceLibrary", text: "Device Library…", group: "Tools › Device Setup",
+        { id: "tools.deviceLibrary", text: "Device Library…", group: "Tools › Device Setup", window: true,
           keywords: "saved setup autosave copy swap change vjoy output replace stick",
           run: function() { openDeviceLibrary("", "", "") } },
         // Export / Import Device (08 S111, D-FIXLIST-B2): one window for
         // .gmap files; from here it opens on its Export tab.
-        { id: "tools.devicePack", text: "Export / Import Device", group: "Tools › Device Setup",
+        { id: "tools.devicePack", text: "Export / Import Device", group: "Tools › Device Setup", window: true,
           run: function() { openToolWith("DialogDevicePack.qml", { mode: "export" }) } },
         { id: "tools.logical", text: "Logical Device", group: "Tools › Mapping",
           enabled: function() {
               return !(uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical")
           },
           run: function() { openLogicalDevice() } },
-        { id: "tools.deviceMappingEditor", text: "Device Mapping Editor", group: "Tools › Mapping",
+        { id: "tools.deviceMappingEditor", text: "Device Mapping Editor", group: "Tools › Mapping", window: true,
           run: function() { openBlankDeviceMappingEditor() } },
-        { id: "tools.autoMappingTool", text: "Auto Mapping Tool", group: "Tools › Mapping",
+        { id: "tools.autoMappingTool", text: "Auto Mapping Tool", group: "Tools › Mapping", window: true,
           run: function() { openTool("DialogAutoMappingTool.qml") } },
-        { id: "tools.manageModes", text: "Manage Modes", group: "Tools › Mapping",
+        { id: "tools.manageModes", text: "Manage Modes", group: "Tools › Mapping", window: true,
           run: function() { openTool("DialogManageModes.qml") } },
         // Search (D-01-SEARCH): every use of an input, output, mode or action type.
-        { id: "tools.search", text: "Search…", group: "Tools › Mapping", shortcut: "Ctrl+Shift+F",
+        { id: "tools.search", text: "Search…", group: "Tools › Mapping", window: true, shortcut: "Ctrl+Shift+F",
           keywords: "search find index type key keys action name profile profiles uses where used vjoy xbox osc mouse mode device listen",
           run: function() { openSearch(null) } },
         // Health (01 S197, D-01-HEALTH): bindings with a problem, why, and the fix.
-        { id: "tools.health", text: "Health…", group: "Tools › Mapping",
+        { id: "tools.health", text: "Health…", group: "Tools › Mapping", window: true,
           keywords: "health problems broken missing not found used twice no bindings not plugged unplugged vjoy check fix",
           run: function() { openTool("DialogHealth.qml") } },
         // The OSC Monitor (D-09-OSC-MONITOR, 09 S138): the OSC page with
@@ -129,17 +131,17 @@ function commandList() {
           run: function() { openOscMonitor() } },
         // Screen Saver Mode (12 S1): Gremlin's own keyboard-and-mouse idle
         // clock that starts the screen saver or powers off the displays.
-        { id: "tools.screenSaverMode", text: "Screen Saver Mode…", group: "Tools",
+        { id: "tools.screenSaverMode", text: "Screen Saver Mode…", group: "Tools", window: true,
           keywords: "screen saver idle display off power oled burn-in awake monitor sleep",
           run: function() { openTool("WindowScreenSaverMode.qml") } },
-        { id: "tools.history", text: "History", group: "Tools",
+        { id: "tools.history", text: "History", group: "Tools", window: true,
           keywords: "undo restore versions changes saved",
           run: function() { openToolWith("DialogHistory.qml", { filter: "" }) } },
-        { id: "tools.options", text: "Options", group: "Tools", keywords: "settings preferences",
+        { id: "tools.options", text: "Options", group: "Tools", window: true, keywords: "settings preferences",
           run: function() { openTool("DialogOptions.qml") } },
 
         // Debug
-        { id: "debug.liveLog", text: "Live Log Reader", group: "Debug",
+        { id: "debug.liveLog", text: "Live Log Reader", group: "Debug", window: true,
           run: function() { openTool("DialogLiveLog.qml") } },
         // Control tracing (D-01-TRACE): the same switch as the Live Log
         // Reader's Trace tab; it keeps running with the window closed.
@@ -156,25 +158,25 @@ function commandList() {
           } },
 
         // Help
-        { id: "help.guide", text: "Help", group: "Help", shortcut: "F1",
+        { id: "help.guide", text: "Help", group: "Help", window: true, shortcut: "F1",
           run: function() { openToolWith("DialogHelp.qml", { chapter: "" }) } },
-        { id: "help.updates", text: "Check for Updates", group: "Help",
+        { id: "help.updates", text: "Check for Updates", group: "Help", window: true,
           run: function() {
               openTool("DialogUpdate.qml")
               if (updater && updater.state !== "downloading" && updater.state !== "ready")
                   updater.check(true)
           } },
-        { id: "help.whatsNew", text: "What's New…", group: "Help",
+        { id: "help.whatsNew", text: "What's New…", group: "Help", window: true,
           keywords: "release notes changes version",
           run: function() {
               if (whatsNew)
                   whatsNew.showCurrentNotes()
               openTool("WindowWhatsNew.qml")
           } },
-        { id: "help.diagnostics", text: "Save Diagnostics…", group: "Help",
+        { id: "help.diagnostics", text: "Save Diagnostics…", group: "Help", window: true,
           keywords: "zip logs report problem support",
           run: function() { openTool("DialogSaveDiagnostics.qml") } },
-        { id: "help.about", text: "About", group: "Help",
+        { id: "help.about", text: "About", group: "Help", window: true,
           run: function() { openTool("DialogAbout.qml") } }
     ]
 }

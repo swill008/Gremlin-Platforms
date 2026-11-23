@@ -101,7 +101,7 @@ cli.py: commands mirror the calls (`gremlin-ctl state`, `run start|stop`,
 `commands`, `run-command <id>`, `option get|set`, `options`, `trace on|off|status`,
 `log`, `windows`, `window open|close|read|screenshot|press|type`, `help`);
 readable text by default, `--json` raw. Exit codes 0 ok, 1 call error,
-2 not running/off, 3 version mismatch. Built as gremlin-ctl.exe
+2 not running/off, 3 version mismatch (renumbered 2026-11-23, see the evening batch below). Built as gremlin-ctl.exe
 (console) next to gremlin_platforms.exe, shipped by the installer.
 
 ## MCP server (tools/gremlin_mcp/server.py)
@@ -123,3 +123,40 @@ TRACE: output trace line at each keep-alive reset "vJoy N keep-alive reset
 (idle 60 s)"; system log "Profile started (<name>)" / "Profile stopped
 (<name>)" in code_runner; trace.py writes "--- YYYY-MM-DD ---" when tracing
 turns on and at the first line after midnight; plus output.last_write_age_s().
+
+## Batch 2026-11-23 evening: research answers (D-13-RESEARCH, S25-S31)
+
+Shared names every agent works to:
+
+- `control_api.CallError(text, code="failed")`; `.code` in
+  {"bad_args", "unknown_call", "not_found", "not_ready", "refused", "busy",
+  "timeout", "too_large", "failed"} (`control_api.CODES`). Error answer:
+  {"ok": false, "error": text, "code": code}. `WindowError(CallError)` keeps
+  its name and takes a code.
+- `control_api.register(name, handler, *, main_thread, timeout_s, summary,
+  args=None)`; `args` is `{name: control_api.Arg(...)}` with
+  `Arg(type, required=False, help="", min=None, max=None, choices=None)`,
+  type one of "str", "int", "float", "bool", "object", "list", "any".
+  control_api checks args before the handler: unknown, missing, wrong type,
+  out of range -> CallError(..., "bad_args"). `calls()` / `help` give
+  [{"name", "summary", "args": {name: {"type", "required", "help", "min",
+  "max", "choices"}}}].
+- Message style (S27): one sentence ending in ".", names in 'quotes',
+  missing argument "<call> needs <argument>.".
+- `threads.main_call_wait`: a job not started when the caller gives up is
+  dropped (never runs); a running one -> TimeoutError whose text ends
+  "it may still finish." -> code "timeout".
+- gremlin-ctl exits: 0 ok, 1 failed (incl. stopped answering / closed mid
+  call), 2 typed wrong, 3 version, 4 not running / control off.
+  `cli.EXIT_OK, EXIT_CALL_ERROR, EXIT_USAGE = 2, EXIT_VERSION = 3,
+  EXIT_NOT_RUNNING = 4`. `client.ClientError` subclasses keep their names;
+  `client.CallError` (its existing name) carries `.code`; a new `client.StoppedAnswering`
+  (exit 1).
+- `--json` error on stdout: {"ok": false, "code", "error", "exit"}.
+- window.open argument renamed `command` -> `id`.
+- Backend gives the API public reasons (no private reads):
+  `Backend.last_load_problem() -> str` (the reason the last load failed, ""
+  if none) and `Backend.last_save_problem() -> str` (why the last save
+  failed). control_api.profile.load / profile.save put them in the error.
+- `commands` / `command.run` before the menu bridge is ready -> `not_ready`;
+  a command that throws in QML -> `failed` with its text.

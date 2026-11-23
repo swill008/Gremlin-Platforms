@@ -13,10 +13,12 @@ device helper (gremlin/device_disable.py); both are written to
 <user folder>/api/endpoint.json, which goes when the pipe closes.
 
 One JSON request per message, {"call", "args"}; the answer is {"ok": true,
-"result"} or {"ok": false, "error"}. Calls come from register(): the ones
-here, and the window and menu command ones registered at attach_ui(). A
-call that needs the window runs on the main thread with a time limit; past
-it the answer is an error and the program carries on. Nothing in the
+"result"} or {"ok": false, "error", "code"} (CODES). Calls come from
+register(), each declaring its arguments (Arg), checked before it runs: the
+ones here, and the window and menu command ones registered at attach_ui().
+One limit covers the wait for a busy API and the call; a call that needs
+the window runs on the main thread, and one that hasn't started by then
+never runs (threads.main_call_wait); the program carries on. Nothing in the
 program waits on a client: each connection has its own thread, every wait
 on it is bounded, and a client that stops answering is dropped.
 
@@ -32,6 +34,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import math
 import os
 import secrets
 import sys
@@ -72,8 +75,47 @@ RUN_WAIT_S = DEFAULT_TIMEOUT_S
 _log = logging.getLogger("system")
 
 
+# The answer's error code (S25): clients read it, not the text.
+CODES = (
+    "bad_args",
+    "unknown_call",
+    "not_found",
+    "not_ready",
+    "refused",
+    "busy",
+    "timeout",
+    "too_large",
+    "failed",
+)
+
+
 class CallError(Exception):
-    """A call that can't be done; its text is the answer's error."""
+    """A call that can't be done; its text is the answer's error, code one
+    of CODES (an unknown one counts as "failed")."""
+
+    def __init__(self, text: str, code: str = "failed") -> None:
+        super().__init__(text)
+        self.code = code if code in CODES else "failed"
+
+
+def _error(text: str, code: str) -> dict:
+    return {"ok": False, "error": text, "code": code}
+
+
+def _error_answer(name: str, error: BaseException, limit: float = 0.0) -> dict:
+    """Every exception to its answer, in one place: CallError keeps its
+    code, a main-thread time-out is "timeout", anything else is a fault
+    ("failed", traceback logged)."""
+    if isinstance(error, CallError):
+        return _error(str(error), error.code)
+    if isinstance(error, TimeoutError):
+        if getattr(error, "started", False):
+            text = f"{name} took over {limit:g} s; it may still finish."
+        else:
+            text = f"{name} took over {limit:g} s and was not done."
+        return _error(text, "timeout")
+    _log.error(f"API: {name} failed", exc_info=error)
+    return _error(f"{type(error).__name__}: {error}", "failed")
 
 
 # --- the switch ---------------------------------------------------------------
@@ -102,17 +144,62 @@ def allowed() -> bool:
 # --- the call registry ---------------------------------------------------------
 
 
+ARG_TYPES = ("str", "int", "float", "bool", "object", "list", "any")
+_TYPE_WORDS = {
+    "str": "text",
+    "int": "a whole number",
+    "float": "a number",
+    "bool": "true or false",
+    "object": "an object",
+    "list": "a list",
+    "any": "any value",
+}
+
+
+@dataclass(frozen=True)
+class Arg:
+    """One argument a call takes (S26): its type (ARG_TYPES), whether it
+    must be given, its help line, and limits checked before the handler.
+    A required "str" refuses "" unless allow_empty (e.g. text that clears
+    a field)."""
+
+    type: str
+    required: bool = False
+    help: str = ""
+    min: float | None = None
+    max: float | None = None
+    choices: tuple | None = None
+    allow_empty: bool = False
+
+    def __post_init__(self) -> None:
+        if self.type not in ARG_TYPES:
+            raise ValueError(f"Arg type {self.type!r} isn't one of {ARG_TYPES}")
+        if self.choices is not None:
+            object.__setattr__(self, "choices", tuple(self.choices))
+
+    def describe(self) -> dict:
+        return {
+            "type": self.type,
+            "required": self.required,
+            "help": self.help,
+            "min": self.min,
+            "max": self.max,
+            "choices": list(self.choices) if self.choices is not None else None,
+        }
+
+
 @dataclass(frozen=True)
 class _Call:
     handler: Callable[[dict], Any]
     main_thread: bool
     timeout_s: float
     summary: str
+    args: dict[str, Arg] = dataclasses.field(default_factory=dict)
 
 
 _calls: dict[str, _Call] = {}
 _calls_lock = threading.Lock()
-# One call at a time (a second waits for the first, up to its own limit).
+# One call at a time (a second waits for the first, within its own limit).
 _busy = threading.Lock()
 
 
@@ -123,19 +210,111 @@ def register(
     main_thread: bool = False,
     timeout_s: float = DEFAULT_TIMEOUT_S,
     summary: str = "",
+    args: dict[str, Arg] | None = None,
 ) -> None:
     """Adds a call (the owning module registers its own; a second one with
-    the same name replaces the first). handler(args) returns a JSON-able
-    result or raises CallError with the answer's text."""
+    the same name replaces the first). args declares every argument it
+    takes (None: none); dispatch refuses others before handler(args) runs.
+    The handler returns a JSON-able result or raises CallError."""
+    declared = dict(args or {})
+    for key, arg in declared.items():
+        if not isinstance(arg, Arg):
+            raise TypeError(f"{name}: argument {key!r} isn't an Arg")
     with _calls_lock:
-        _calls[str(name)] = _Call(handler, bool(main_thread), float(timeout_s), summary)
+        _calls[str(name)] = _Call(
+            handler, bool(main_thread), float(timeout_s), summary, declared
+        )
 
 
 def calls() -> list[dict]:
-    """Every call: [{"name", "summary"}], by name."""
+    """Every call: [{"name", "summary", "args": {name: {...}}}], by name."""
     with _calls_lock:
         items = sorted(_calls.items())
-    return [{"name": name, "summary": call.summary} for name, call in items]
+    return [
+        {
+            "name": name,
+            "summary": call.summary,
+            "args": {key: arg.describe() for key, arg in call.args.items()},
+        }
+        for name, call in items
+    ]
+
+
+def _takes(name: str, declared: dict[str, Arg]) -> str:
+    if not declared:
+        return f"{name} takes no arguments"
+    return f"it takes: {', '.join(declared)}"
+
+
+def _type_ok(kind: str, value: Any) -> bool:  # noqa: ANN401 - any argument
+    if kind == "any":
+        return True
+    if kind == "bool":
+        return isinstance(value, bool)
+    if isinstance(value, bool):
+        return False
+    if kind == "int":
+        return isinstance(value, int) or (
+            isinstance(value, float) and math.isfinite(value) and value.is_integer()
+        )
+    if kind == "float":
+        return isinstance(value, (int, float)) and math.isfinite(value)
+    expected = {"str": str, "object": dict, "list": list}[kind]
+    return isinstance(value, expected)
+
+
+def _checked_args(name: str, declared: dict[str, Arg], args: dict) -> dict:
+    """args as the call declared them (S26); CallError "bad_args" when one
+    is unknown, missing, of the wrong type or out of range. A null value
+    counts as not given."""
+    unknown = [key for key in args if key not in declared]
+    if unknown:
+        if not declared:
+            raise CallError(
+                f"{name} takes no arguments ('{unknown[0]}' given).", "bad_args"
+            )
+        raise CallError(
+            f"{name} has no argument '{unknown[0]}' ({_takes(name, declared)}).",
+            "bad_args",
+        )
+    result = {}
+    for key, arg in declared.items():
+        value = args.get(key)
+        empty = arg.type == "str" and value == "" and not arg.allow_empty
+        if value is None or (empty and arg.required):
+            if arg.required:
+                raise CallError(
+                    f"{name} needs {key} ({_takes(name, declared)}).", "bad_args"
+                )
+            continue
+        if not _type_ok(arg.type, value):
+            raise CallError(f"{name}: '{key}' is {_TYPE_WORDS[arg.type]}.", "bad_args")
+        if arg.type in ("int", "float"):
+            number = int(value) if arg.type == "int" else float(value)
+            low, high = arg.min, arg.max
+            if (low is not None and number < low) or (
+                high is not None and number > high
+            ):
+                raise CallError(f"{name}: '{key}' is {_range_text(arg)}.", "bad_args")
+            value = number
+        if arg.choices is not None and value not in arg.choices:
+            raise CallError(
+                f"{name}: '{key}' is one of: {', '.join(map(str, arg.choices))}.",
+                "bad_args",
+            )
+        result[key] = value
+    return result
+
+
+def _range_text(arg: Arg) -> str:
+    def shown(number: float) -> str:
+        return f"{number:g}"
+
+    if arg.min is not None and arg.max is not None:
+        return f"{shown(arg.min)} to {shown(arg.max)}"
+    if arg.min is not None:
+        return f"at least {shown(arg.min)}"
+    return f"at most {shown(arg.max)}"  # type: ignore[arg-type]
 
 
 def _short(args: dict) -> str:
@@ -155,23 +334,23 @@ def _json_safe(value: Any) -> Any:  # noqa: ANN401 - any result
 
 
 def dispatch(call: str, args: dict | None = None) -> dict:
-    """Runs one call; returns the answer {"ok", "result"|"error"}. Never
-    raises. With the switch off nothing runs."""
+    """Runs one call; returns the answer {"ok": true, "result"} or {"ok":
+    false, "error", "code"}. Never raises. With the switch off nothing
+    runs."""
     args = {} if args is None else args
     name = str(call)
     reply: dict
     if not allowed():
-        reply = {"ok": False, "error": OFF_TEXT}
+        reply = _error(OFF_TEXT, "refused")
     elif not isinstance(args, dict):
-        reply = {"ok": False, "error": "args must be an object."}
+        reply = _error("The request's args is an object.", "bad_args")
     else:
         with _calls_lock:
             entry = _calls.get(name)
         if entry is None:
-            reply = {
-                "ok": False,
-                "error": f"Unknown call: {name}. The call 'help' lists them.",
-            }
+            reply = _error(
+                f"No call '{name}' (the call 'help' lists them).", "unknown_call"
+            )
         else:
             reply = _run(name, entry, args)
     # The client's version handshake before every call isn't logged (S8).
@@ -182,44 +361,65 @@ def dispatch(call: str, args: dict | None = None) -> dict:
     return reply
 
 
+# The deadline of the call this thread runs (one limit for the busy wait
+# and the call, S9/S28); handlers that wait read it through time_left().
+_local = threading.local()
+
+
+def time_left(default: float = DEFAULT_TIMEOUT_S) -> float:
+    """Seconds left before the running call's limit (default outside one)."""
+    deadline = getattr(_local, "deadline", None)
+    if deadline is None:
+        return default
+    return max(0.0, deadline - clock.monotonic())
+
+
 def _run(name: str, entry: _Call, args: dict) -> dict:
+    deadline = clock.monotonic() + entry.timeout_s
+    try:
+        checked = _checked_args(name, entry.args, args)
+    except CallError as error:
+        return _error_answer(name, error)
     if not _busy.acquire(timeout=entry.timeout_s):
-        return {"ok": False, "error": "Busy with another call; try again."}
+        return _error("Busy with another call; try again.", "busy")
+    _local.deadline = deadline
     try:
         if entry.main_thread:
             result = threads.main_call_wait(
-                entry.handler, args, timeout=entry.timeout_s
+                entry.handler, checked, timeout=max(0.0, deadline - clock.monotonic())
             )
         else:
-            result = entry.handler(args)
+            result = entry.handler(checked)
         return {"ok": True, "result": _json_safe(result)}
-    except TimeoutError:
-        return {
-            "ok": False,
-            "error": f"{name} took over {entry.timeout_s:g} s; the program "
-            "carried on without it.",
-        }
-    except CallError as error:
-        return {"ok": False, "error": str(error)}
     except Exception as error:
-        _log.exception(f"API: {name} failed")
-        return {"ok": False, "error": f"{type(error).__name__}: {error}"}
+        return _error_answer(name, error, entry.timeout_s)
     finally:
+        _local.deadline = None
         _busy.release()
 
 
 def handle_bytes(data: bytes) -> bytes:
     """One request message to its answer message (UTF-8 JSON both)."""
-    try:
-        request = json.loads(bytes(data).decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
-        reply: dict = {"ok": False, "error": "The request isn't JSON."}
+    if len(data) > MAX_REQUEST_BYTES:
+        reply: dict = _too_large()
     else:
-        if not isinstance(request, dict) or not isinstance(request.get("call"), str):
-            reply = {"ok": False, "error": 'A request is {"call": name, "args": {}}.'}
+        try:
+            request = json.loads(bytes(data).decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            reply = _error("The request isn't JSON.", "bad_args")
         else:
-            reply = dispatch(request["call"], request.get("args") or {})
+            if not isinstance(request, dict) or not isinstance(
+                request.get("call"), str
+            ):
+                reply = _error('A request is {"call": name, "args": {}}.', "bad_args")
+            else:
+                reply = dispatch(request["call"], request.get("args"))
     return json.dumps(reply, ensure_ascii=False).encode("utf-8")
+
+
+def _too_large() -> dict:
+    _log.warning("API: a request over 1 MB was refused")
+    return _error("The request is over 1 MB.", "too_large")
 
 
 # --- the pipe -------------------------------------------------------------------
@@ -410,7 +610,9 @@ class _Server:
                     if clock.monotonic() - idle_from > IDLE_S:
                         return
                     continue
-                data = conn.recv_bytes(MAX_REQUEST_BYTES)
+                # No maxlength: past it multiprocessing closes the pipe
+                # unanswered; handle_bytes answers "too_large" instead (S9).
+                data = conn.recv_bytes()
                 if self._stop.is_set():
                     return
                 conn.send_bytes(handle_bytes(data))
@@ -596,7 +798,7 @@ def _backend() -> Any:  # noqa: ANN401 - gremlin.ui.backend.Backend
 
     instance = backend.Backend.instance
     if instance is None:
-        raise CallError("The program's window isn't ready yet.")
+        raise CallError("The program's window isn't ready yet.", "not_ready")
     return instance
 
 
@@ -677,10 +879,9 @@ def _devices(_args: dict) -> list[dict]:
     found = []
     plugged: set[str] = set()
     for dev in device_initialization.joystick_devices():
-        guid = _device_id(dev.device_guid)
-        plugged.add(store.stored_guid_key(guid))
-        found.append(
-            {
+        try:
+            guid = _device_id(dev.device_guid)
+            row = {
                 "name": dev.name,
                 "label": dev.name,
                 "guid": guid,
@@ -691,18 +892,28 @@ def _devices(_args: dict) -> list[dict]:
                 "hats": dev.hat_count,
                 "plugged_in": True,
             }
-        )
+            plugged.add(store.stored_guid_key(guid))
+        except Exception:
+            # One device that can't be read is left out, not the answer.
+            _log.exception("API: a plugged-in device could not be read")
+            continue
+        found.append(row)
     try:
         known = store.known_devices()
     except Exception:
         _log.exception("API: the known devices could not be read")
         known = []
     for row in known:
-        guid = _device_id(row.get("guid"))
-        key = store.stored_guid_key(guid)
-        if row.get("connected") or not key or key in plugged:
-            continue
-        if not device_class.can("library_device", guid, str(row.get("name") or "")):
+        try:
+            guid = _device_id(row.get("guid"))
+            key = store.stored_guid_key(guid)
+            if row.get("connected") or not key or key in plugged:
+                continue
+            name = str(row.get("name") or "")
+            if not device_class.can("library_device", guid, name):
+                continue
+        except Exception:
+            _log.exception("API: a known device could not be read")
             continue
         plugged.add(key)
         found.append(
@@ -756,9 +967,32 @@ def _run_send(backend: Any, run: bool) -> tuple[bool, str]:  # noqa: ANN401
     return False, state
 
 
+RUN_HEADING = "Could not run the profile"
+
+
 def _run_last_error(backend: Any) -> str:  # noqa: ANN401
     runner = getattr(backend, "runner", None)
     return str(getattr(runner, "last_error", "") or "")
+
+
+def _run_failed(reason: str) -> CallError:
+    """A Run that didn't start, under the heading the program shows
+    (code_runner's error box): "Could not run the profile: <reason>."."""
+    reason = str(reason or "").strip()
+    if reason.startswith(RUN_HEADING):
+        text = reason
+    elif reason:
+        text = f"{RUN_HEADING}: {reason}"
+    else:
+        text = f"{RUN_HEADING}."
+    if not text.endswith("."):
+        text += "."
+    return CallError(text, "failed")
+
+
+def _run_late(run: bool) -> CallError:
+    word = "start" if run else "stop"
+    return CallError(f"The Run didn't {word} within {RUN_WAIT_S:g} s.", "timeout")
 
 
 def _run_set(run: bool) -> dict:
@@ -767,7 +1001,8 @@ def _run_set(run: bool) -> dict:
     from PySide6 import QtCore
 
     backend = _backend()
-    limit = float(RUN_WAIT_S)
+    # One limit for the busy wait and the Run's answer (S9, S24).
+    limit = min(float(RUN_WAIT_S), time_left(RUN_WAIT_S))
     deadline = clock.monotonic() + limit
     waiter = _RunWaiter()
     # Armed before the request, so the answer can't come first; direct: the
@@ -776,16 +1011,18 @@ def _run_set(run: bool) -> dict:
     slot = waiter.started if run else waiter.stopped
     answered.connect(slot, QtCore.Qt.ConnectionType.DirectConnection)
     try:
-        done, state = threads.main_call_wait(_run_send, backend, run, timeout=limit)
+        try:
+            done, state = threads.main_call_wait(_run_send, backend, run, timeout=limit)
+        except TimeoutError:
+            raise _run_late(run) from None
         if done:
             if run and state != "running":
-                raise CallError(_run_last_error(backend) or "The Run didn't start.")
+                raise _run_failed(_run_last_error(backend))
             return {"run": state}
         if not waiter.done.wait(max(0.0, deadline - clock.monotonic())):
-            word = "start" if run else "stop"
-            raise CallError(f"The Run didn't {word} within {limit:g} s.")
+            raise _run_late(run)
         if run and not waiter.ok:
-            raise CallError(waiter.error or "The Run didn't start.")
+            raise _run_failed(waiter.error)
         return {"run": "running" if run else "stopped"}
     finally:
         try:
@@ -802,24 +1039,46 @@ def _run_stop(_args: dict) -> dict:
     return _run_set(False)
 
 
+def _problem(backend: Any, name: str) -> str:  # noqa: ANN401
+    """Backend's reason for the last load or save failing ("" if none)."""
+    try:
+        return str(getattr(backend, name, lambda: "")() or "").strip().rstrip(".")
+    except Exception:
+        _log.exception(f"API: {name} could not be read")
+        return ""
+
+
 def _profile_load(args: dict) -> dict:
     from gremlin import util
 
-    path = str(args.get("path") or "")
-    if not path:
-        raise CallError("profile.load needs a path.")
-    path = os.path.abspath(path)
+    path = args["path"]
+    if not os.path.isabs(path):
+        raise CallError("Give the full path.", "bad_args")
+    path = os.path.normpath(path)
     if not os.path.isfile(path):
-        raise CallError(f"No profile file at {path}.")
+        raise CallError(f"No profile file '{path}'.", "not_found")
     backend = _backend()
     if backend.profileContainsUnsavedChanges:
         raise CallError(
-            "The open profile has unsaved changes; save or discard them in "
-            "the program first."
+            "The open profile has unsaved changes, so save or discard them in "
+            "the program first.",
+            "not_ready",
         )
+    before = str(backend.profilePath() or "")
     backend.loadProfile(path)
-    if not util.same_path(backend.profilePath(), path):
-        raise CallError("The profile didn't open (the program says why).")
+    now = str(backend.profilePath() or "")
+    if not util.same_path(now, path):
+        reason = _problem(backend, "last_load_problem")
+        text = f"The profile '{path}' didn't open"
+        if reason:
+            text += f": {reason}"
+        if before and util.same_path(now, before):
+            text += f"; '{before}' is still open."
+        elif now:
+            text += f"; '{now}' is open instead."
+        else:
+            text += "; a new, empty profile is open instead."
+        raise CallError(text, "failed")
     return {"profile": path}
 
 
@@ -828,8 +1087,9 @@ def _profile_save(_args: dict) -> dict:
     path = backend.profilePath()
     if not path:
         raise CallError(
-            "The open profile has no file yet: save it in the program first "
-            "(File › Save As)."
+            "The open profile has no file yet, so save it in the program first "
+            "(File › Save As).",
+            "not_ready",
         )
     # Not grouped in History: a profile save is several entries (each
     # input, the whole-profile copy), which a group would fold into one;
@@ -839,17 +1099,30 @@ def _profile_save(_args: dict) -> dict:
     with history.made_by("api"):
         saved = backend.saveProfile(path)
     if not saved:
-        raise CallError(backend.saveProblem() or "The profile was not saved.")
+        reason = _problem(backend, "last_save_problem") or _problem(
+            backend, "saveProblem"
+        )
+        raise CallError(
+            f"The profile was not saved: {reason}."
+            if reason
+            else "The profile was not saved.",
+            "failed",
+        )
     return {"profile": path, "saved": True}
 
 
 def _parse_key(args: dict) -> tuple[str, str, str]:
-    key = str(args.get("key") or "")
+    key = args["key"]
     parts = tuple(key.split("/"))
     if len(parts) != 3 or not all(parts):
-        raise CallError('A setting key is "section/group/name" (options.list).')
+        raise CallError(
+            'A setting key is "section/group/name" (options.list lists them).',
+            "bad_args",
+        )
     if parts not in _option_keys():
-        raise CallError(f"No Options setting {key} (options.list lists them).")
+        raise CallError(
+            f"No Options setting '{key}' (options.list lists them).", "not_found"
+        )
     return parts  # type: ignore[return-value]
 
 
@@ -910,7 +1183,8 @@ _FALSE = {"false", "off", "no", "0"}
 
 
 def _converted(key: tuple[str, str, str], value: Any) -> Any:  # noqa: ANN401
-    """value (often text from the command line) as the setting's type."""
+    """value (often text from the command line) as the setting's type;
+    CallError "bad_args" naming the setting when it isn't one."""
     from gremlin.config import Configuration
     from gremlin.types import PropertyType
     from gremlin.ui import option
@@ -918,39 +1192,50 @@ def _converted(key: tuple[str, str, str], value: Any) -> Any:  # noqa: ANN401
     cfg = Configuration()
     data_type = cfg.data_type(*key)
     props = cfg.properties(*key) or {}
+    title = option.entry_title(key[2], "/".join(key))
+
+    def refuse(what: str) -> CallError:
+        return CallError(f"'{title}' is {what}.", "bad_args")
+
     if data_type == PropertyType.Bool:
         if isinstance(value, bool):
             return value
-        text = str(value).strip().lower()
+        text = str(value).strip().lower() if isinstance(value, (str, int)) else ""
         if text in _TRUE:
             return True
         if text in _FALSE:
             return False
-        raise CallError("This setting is on or off: true or false.")
+        raise refuse("on or off: true or false")
     if data_type in (PropertyType.Int, PropertyType.Float):
-        kind = int if data_type == PropertyType.Int else float
+        whole = data_type == PropertyType.Int
+        word = "a whole number" if whole else "a number"
         try:
-            if isinstance(value, bool):
+            if isinstance(value, bool) or not isinstance(value, (str, int, float)):
                 raise ValueError
-            number = kind(str(value).strip()) if isinstance(value, str) else kind(value)
-        except (TypeError, ValueError):
-            raise CallError(f"This setting is a number ({kind.__name__}).") from None
+            number = float(value.strip()) if isinstance(value, str) else float(value)
+        except ValueError:
+            raise refuse(word) from None
+        if not math.isfinite(number) or (whole and not number.is_integer()):
+            raise refuse(word)
+        result = int(number) if whole else number
         low, high = props.get("min"), props.get("max")
-        if (low is not None and number < low) or (high is not None and number > high):
-            raise CallError(f"This setting is from {low} to {high}.")
-        return number
+        if (low is not None and result < low) or (high is not None and result > high):
+            if low is not None and high is not None:
+                raise refuse(f"from {low} to {high}")
+            raise refuse(f"at least {low}" if low is not None else f"at most {high}")
+        return result
     if data_type == PropertyType.Selection:
-        text = str(value)
+        if not isinstance(value, str):
+            raise refuse("text")
         choices = [option.shown_choice(key, v) for v in props.get("valid_options", [])]
-        if choices and text not in choices:
-            raise CallError("Choose one of: " + ", ".join(map(str, choices)) + ".")
-        return text
+        if choices and value not in choices:
+            raise refuse("one of: " + ", ".join(map(str, choices)))
+        return value
     if data_type in (PropertyType.String, PropertyType.Path):
-        return str(value)
-    raise CallError(
-        f"This setting ({PropertyType.to_string(data_type)}) is changed in "
-        "Options only."
-    )
+        if not isinstance(value, str):
+            raise refuse("text")
+        return value
+    raise CallError(f"'{title}' is changed in Options only.", "refused")
 
 
 def _option_set(args: dict) -> dict:
@@ -959,14 +1244,12 @@ def _option_set(args: dict) -> dict:
 
     key = _parse_key(args)
     if key == SWITCH_KEY:
-        raise CallError(SWITCH_REFUSED_TEXT)
-    if "value" not in args:
-        raise CallError("option.set needs a value.")
+        raise CallError(SWITCH_REFUSED_TEXT, "refused")
     value = _converted(key, args["value"])
     title = settings_history_title(["/".join(key)])
     done = _by_api(title, "settings", lambda: option.change_setting(key, value))
     if not done:
-        raise CallError("The setting was not changed (Windows kept its own).")
+        raise CallError("The setting was not changed (Windows kept its own).", "failed")
     return _describe(key, _option_keys()[key])
 
 
@@ -981,14 +1264,15 @@ def _trace_categories() -> dict[str, tuple[Callable[[], bool], Callable[[bool], 
 def _trace_switch(args: dict, on: bool) -> dict:
     from gremlin import trace
 
-    category = str(args.get("category") or "")
+    category = args.get("category") or ""
     if not category:
         trace.set_enabled(on)
     else:
         found = _trace_categories()
         if category not in found:
             raise CallError(
-                f"No trace category {category}; one of: " + ", ".join(found) + "."
+                f"No trace category '{category}' (one of: " + ", ".join(found) + ").",
+                "bad_args",
             )
         found[category][1](on)
     return _trace_status({})
@@ -1032,24 +1316,19 @@ def _tail(path: Path, count: int) -> list[str]:
 def _log_lines(args: dict) -> dict:
     from gremlin import trace, util
 
-    which = str(args.get("which") or "system")
-    try:
-        count = int(args.get("lines") or 50)
-    except (TypeError, ValueError):
-        raise CallError("lines is a number.") from None
-    count = max(1, min(count, LOG_LINES_MAX))
+    # which and lines are checked by their Arg (choices, 1 to LOG_LINES_MAX).
+    which = args.get("which", "system")
+    count = args.get("lines", 50)
     if which == "system":
         path = Path(util.logs_dir()) / "system.log"
-    elif which == "trace":
-        path = Path(trace.file_path())
     else:
-        raise CallError('which is "system" or "trace".')
+        path = Path(trace.file_path())
     return {"file": str(path), "lines": _tail(path, count)}
 
 
 def _register_own() -> None:
     register("hello", _hello, summary="The API and program versions.")
-    register("help", _help, summary="Every call.")
+    register("help", _help, summary="Every call with its arguments.")
     register(
         "state",
         _state,
@@ -1062,51 +1341,67 @@ def _register_own() -> None:
     )
     # Off the main thread: only the request goes there; the answer is
     # waited for here (RUN_WAIT_S).
-    register("run.start", _run_start, summary="Run the open profile.")
-    register("run.stop", _run_stop, summary="Stop the Run.")
+    register("run.start", _run_start, summary="Runs the open profile.")
+    register("run.stop", _run_stop, summary="Stops the Run.")
     register(
         "profile.load",
         _profile_load,
         main_thread=True,
         timeout_s=LONG_TIMEOUT_S,
-        summary="Open a profile {path}.",
+        summary="Opens a profile file {path}.",
+        args={"path": Arg("str", required=True, help="The profile file's full path.")},
     )
     register(
         "profile.save",
         _profile_save,
         main_thread=True,
         timeout_s=LONG_TIMEOUT_S,
-        summary="Save the open profile to its file.",
+        summary="Saves the open profile to its file.",
+    )
+    key = Arg(
+        "str",
+        required=True,
+        help='The setting\'s key "section/group/name" (options.list lists them).',
     )
     register(
         "option.get",
         _option_get,
         main_thread=True,
-        summary='One Options setting {key: "section/group/name"}.',
+        summary="Reads one Options setting {key}.",
+        args={"key": key},
     )
     register(
         "option.set",
         _option_set,
         main_thread=True,
-        summary="Change an Options setting {key, value}.",
+        summary="Changes an Options setting {key, value}.",
+        args={
+            "key": key,
+            "value": Arg("any", required=True, help="The new value."),
+        },
     )
     register(
         "options.list",
         _options_list,
         main_thread=True,
-        summary="Every Options setting.",
+        summary="Lists every Options setting.",
+    )
+    category = Arg(
+        "str", help="One category (trace.status lists them); none: all of tracing."
     )
     register(
         "trace.on",
         _trace_on,
         main_thread=True,
-        summary="Tracing on, or one category {category}.",
+        summary="Turns tracing on, or one category {category}.",
+        args={"category": category},
     )
     register(
         "trace.off",
         _trace_off,
         main_thread=True,
-        summary="Tracing off, or one category {category}.",
+        summary="Turns tracing off, or one category {category}.",
+        args={"category": category},
     )
     register(
         "trace.status",
@@ -1117,7 +1412,18 @@ def _register_own() -> None:
     register(
         "log",
         _log_lines,
-        summary='The last lines of a log {which: "system"|"trace", lines}.',
+        summary="The last lines of a log {which, lines}.",
+        args={
+            "which": Arg(
+                "str", help="The system or trace log.", choices=("system", "trace")
+            ),
+            "lines": Arg(
+                "int",
+                help="How many lines (50 if not given).",
+                min=1,
+                max=LOG_LINES_MAX,
+            ),
+        },
     )
 
 

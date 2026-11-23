@@ -187,16 +187,16 @@ def test_json_may_follow_the_command(run: dict) -> None:
     assert json.loads(cli["stdout"])["api_version"] == 1
 
 
-def test_with_the_switch_off_the_cli_exits_2_with_the_message(run: dict) -> None:
+def test_with_the_switch_off_the_cli_exits_4_with_the_message(run: dict) -> None:
     assert step(run, "switch-off") is True
     assert step(run, "endpoint-after-off") is False
     cli = step(run, "cli-off")
-    assert cli["code"] == 2, cli
+    assert cli["code"] == 4, cli
     assert "isn't running" in cli["stderr"]
     assert "Options › General" in cli["stderr"]
 
 
-def test_the_cli_exits_2_when_the_program_is_not_running(
+def test_the_cli_exits_4_when_the_program_is_not_running(
     tmp_path: pathlib.Path,
 ) -> None:
     """No program, no endpoint.json: exit 2 with the message."""
@@ -219,7 +219,7 @@ def test_the_cli_exits_2_when_the_program_is_not_running(
         errors="replace",
         timeout=45,
     )
-    assert done.returncode == 2, (done.stdout, done.stderr)
+    assert done.returncode == 4, (done.stdout, done.stderr)
     assert "Gremlin-Platforms isn't running" in done.stderr
     assert done.stdout == ""
 

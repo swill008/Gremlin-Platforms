@@ -318,6 +318,14 @@ def _internal_unsaved() -> bool:
     return _logical_unsaved() or _osc_unsaved()
 
 
+def _commands_not_ready() -> Exception:
+    """The control API's answer while Main.qml hasn't handed over its menu
+    commands yet (13 S25)."""
+    from gremlin.control_api import CallError
+
+    return CallError("The menu commands aren't ready yet.", "not_ready")
+
+
 def _switch_mode(name: str) -> None:
     """The toolbar's mode pick, on the input thread."""
     mm = mode_manager.ModeManager()
@@ -383,6 +391,8 @@ class Backend(QtCore.QObject):
         self._command_run_fn: QtQml.QJSValue | None = None
         # Why the last _load_profile(report=False) failed.
         self._load_problem = ""
+        # Why the last saveProfile's own write failed (last_save_problem).
+        self._save_failure = ""
         # Read by main() after the event loop ends; set only by the quit path.
         self.restart_on_exit = False
         self._action_state = {}
@@ -726,12 +736,15 @@ class Backend(QtCore.QObject):
         return list_fn, run_fn
 
     def command_list(self) -> list[dict]:
-        """The main window's menu commands: [{"id", "text", "group"}], in
-        menu order. Empty before Main.qml is up. Main thread only."""
+        """The main window's menu commands: [{"id", "text", "group",
+        "window"}] in menu order; window is True for one that opens a window
+        of its own (main_commands.js). Before Main.qml is up: CallError
+        not_ready (13 S25).
+        Main thread only."""
         threads.assert_main("Backend.command_list")
         bridge = self._command_bridge()
         if bridge is None:
-            return []
+            raise _commands_not_ready()
         value = bridge[0].call([])
         rows = value.toVariant() if not value.isError() else None
         if not isinstance(rows, list):
@@ -741,6 +754,7 @@ class Backend(QtCore.QObject):
                 "id": str(row.get("id", "")),
                 "text": str(row.get("text", "")),
                 "group": str(row.get("group", "")),
+                "window": bool(row.get("window")),
             }
             for row in rows
             if isinstance(row, dict) and row.get("id")
@@ -749,23 +763,27 @@ class Backend(QtCore.QObject):
     def run_command_id(self, command_id: str) -> bool:
         """Runs a main window menu command by its id (main_commands.js), as
         the menus and the command palette do. False when there is no such
-        command or it can't be used now. Main thread only."""
+        command or it can't be used now. CallError not_ready before Main.qml
+        is up, failed (with its text) when the command throws in QML.
+        Main thread only."""
         threads.assert_main("Backend.run_command_id")
         bridge = self._command_bridge()
         if bridge is None:
-            return False
+            raise _commands_not_ready()
         value = bridge[1].call([QtQml.QJSValue(str(command_id))])
         if value.isError():
-            logging.getLogger("system").warning(
-                f"Command {command_id} failed: {value.toString()}"
-            )
-            return False
+            from gremlin.control_api import CallError
+
+            text = str(value.toString()).strip().rstrip(".")
+            raise CallError(f"The command '{command_id}' failed: {text}.", "failed")
         return bool(value.toBool())
 
     def register_api_calls(self, control_api: object) -> None:
         """The control API's command calls (claude/plans/control-api-contract.md):
         "commands" and "command.run" {id}."""
         register = getattr(control_api, "register")
+        arg = getattr(control_api, "Arg")
+        call_error = getattr(control_api, "CallError")
         register(
             "commands",
             lambda args: self.command_list(),
@@ -775,19 +793,41 @@ class Backend(QtCore.QObject):
 
         def run(args: dict | None) -> dict:
             # An id that isn't a main window command is an error; a known
-            # one that can't be used now answers ran false (13 S17).
-            from gremlin.control_api import CallError
-
-            command_id = str((args or {}).get("id", ""))
+            # one that can't be used now answers ran false (13 S17, S25, S27).
+            command_id = str((args or {}).get("id") or "").strip()
+            if not command_id:
+                raise call_error("command.run needs id.", "bad_args")
             if command_id not in {row["id"] for row in self.command_list()}:
-                raise CallError(f"No command called {command_id!r}")
+                raise call_error(f"No command called '{command_id}'.", "not_found")
             return {"ran": self.run_command_id(command_id)}
 
         register(
             "command.run",
             run,
             main_thread=True,
-            summary="Runs a menu command by its id, as the menus do.",
+            summary="Runs a main window menu command by its id, as the menus do.",
+            args={
+                "id": arg(
+                    "str",
+                    required=True,
+                    help="The menu command id, from 'commands'.",
+                ),
+            },
+        )
+
+    def last_load_problem(self) -> str:
+        """Why the last profile load failed ("" if it didn't), for the
+        control API's profile.load answer."""
+        return str(getattr(self, "_load_problem", "") or "")
+
+    def last_save_problem(self) -> str:
+        """Why the last saveProfile returned False ("" if it saved): the
+        file it could not write, or why the profile's own write failed, for
+        the control API's profile.save answer."""
+        return str(
+            getattr(self, "_save_problem", "")
+            or getattr(self, "_save_failure", "")
+            or ""
         )
 
     @QtCore.Slot(str)
@@ -943,9 +983,13 @@ class Backend(QtCore.QObject):
         profile still counts as saved at path (title, Recent, recovery) and
         the message naming that file is shown and kept in saveProblem."""
         self._save_problem = ""
+        # Why the profile itself wasn't written, for last_save_problem only
+        # (the save dialogs keep their own wording when saveProblem is "").
+        self._save_failure = ""
         try:
             path = to_local_path(qml_url)
             if str(path) in ("", "."):
+                self._save_failure = "The profile wasn't saved: it has no file."
                 return False
             # Written first: a save that fails leaves the profile on its file.
             incomplete: profile.SaveIncomplete | None = None
@@ -956,6 +1000,9 @@ class Backend(QtCore.QObject):
             self.profile.fpath = path
             if not os.path.isfile(str(self.profile.fpath)):
                 persist_log(f"Persist profile save failed path={path!r} reason='file missing after write'")
+                self._save_failure = (
+                    f"The profile wasn't saved: '{path}' isn't there after writing."
+                )
                 return False
             self._record_profile_use(path)
             self._recovery.saved(path)
@@ -970,9 +1017,11 @@ class Backend(QtCore.QObject):
                 return False
             persist_log(f"Persist profile save ok path={path}")
             return True
-        except Exception:
+        except Exception as error:
             persist_log(f"Persist profile save failed path={qml_url!r}")
             logging.getLogger("system").exception("Failed to save profile")
+            reason = str(error).strip().rstrip(".") or type(error).__name__
+            self._save_failure = f"The profile wasn't saved: {reason}."
             return False
 
     @QtCore.Slot(result=str)

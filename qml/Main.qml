@@ -153,7 +153,9 @@ ApplicationWindow {
     // commands, and running one by id as a menu click does.
     function _apiCommandList() {
         return Commands.all().filter(function(c) { return c.owner === "main" })
-            .map(function(c) { return { id: c.id, text: c.text, group: c.group || "" } })
+            .map(function(c) {
+                return { id: c.id, text: c.text, group: c.group || "", window: c.window === true }
+            })
     }
 
     function _apiRunCommand(id) {

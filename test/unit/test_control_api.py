@@ -169,7 +169,7 @@ def test_switch_off_closes_the_pipe_and_removes_the_endpoint(
     _switch(False)
     assert control_api.running() is False
     assert not api.exists()
-    with pytest.raises(ctl.NotRunning):
+    with pytest.raises((ctl.NotRunning, ctl.StoppedAnswering)):
         _off_main(lambda: connected.call("hello"))
     with pytest.raises(ctl.Off):
         ctl.connect(endpoint=api)
@@ -212,13 +212,14 @@ def test_a_wrong_key_is_refused_and_the_right_one_still_works(
 
 
 def test_an_unknown_call_answers_not_ok(connected: ctl.Client) -> None:
-    with pytest.raises(ctl.CallError, match="Unknown call: no.such.call"):
+    with pytest.raises(ctl.CallError, match="No call 'no.such.call'"):
         _off_main(lambda: connected.call("no.such.call"))
     reply = json.loads(
         control_api.handle_bytes(b'{"call": "no.such.call", "args": {}}')
     )
     assert reply["ok"] is False
-    assert "Unknown call" in reply["error"]
+    assert reply["code"] == "unknown_call"
+    assert "No call 'no.such.call'" in reply["error"]
 
 
 def test_with_the_switch_off_a_call_does_nothing(qapp: object) -> None:
@@ -234,7 +235,7 @@ def test_with_the_switch_off_a_call_does_nothing(qapp: object) -> None:
         cfg.set(*_SWITCH, before)
         with control_api._calls_lock:  # noqa: SLF001
             control_api._calls.pop("test.never", None)  # noqa: SLF001
-    assert reply == {"ok": False, "error": control_api.OFF_TEXT}
+    assert reply == {"ok": False, "error": control_api.OFF_TEXT, "code": "refused"}
     assert ran == []
 
 
@@ -286,7 +287,9 @@ def test_a_slow_main_thread_call_times_out_and_the_program_keeps_answering(
     connected: ctl.Client, slow_call: list[str]
 ) -> None:
     started = time.monotonic()
-    with pytest.raises(ctl.CallError, match=r"test\.slow took over 0\.3 s"):
+    with pytest.raises(
+        ctl.CallError, match=r"test\.slow took over 0\.3 s; it may still finish\."
+    ):
         _off_main(lambda: connected.call("test.slow"))
     assert time.monotonic() - started < 5.0
     _pump(100)
@@ -351,8 +354,7 @@ def test_every_call_writes_an_api_line_to_the_system_log(
         r.getMessage() for r in caplog.records if r.getMessage().startswith("API: ")
     ]
     assert any(
-        t.startswith("API: no.such.call") and "-> error: Unknown call" in t
-        for t in lines
+        t.startswith("API: no.such.call") and "-> error: No call" in t for t in lines
     )
     assert any(
         t.startswith("API: option.get") and "keep-alive" in t and t.endswith("-> ok")
@@ -625,7 +627,9 @@ def _call_through_dispatch(
     monkeypatch.setitem(
         control_api._calls,  # noqa: SLF001
         "test.fixb",
-        control_api._Call(handler, False, 5.0, ""),  # noqa: SLF001
+        control_api._Call(  # noqa: SLF001
+            handler, False, 5.0, "", {k: control_api.Arg("any") for k in args or {}}
+        ),
     )
     with caplog.at_level(logging.INFO, logger="system"):
         reply = control_api.dispatch("test.fixb", args)
@@ -658,7 +662,7 @@ def test_a_call_error_is_one_line_without_a_traceback(
         raise control_api.CallError("No window called 'X'")
 
     reply, records = _call_through_dispatch(monkeypatch, caplog, refuse)
-    assert reply == {"ok": False, "error": "No window called 'X'"}
+    assert reply == {"ok": False, "error": "No window called 'X'", "code": "failed"}
     assert [r.getMessage() for r in records] == [
         "API: test.fixb -> error: No window called 'X'"
     ]
@@ -674,7 +678,7 @@ def test_an_unexpected_error_still_logs_its_traceback(
         raise ZeroDivisionError("boom")
 
     reply, records = _call_through_dispatch(monkeypatch, caplog, broken)
-    assert reply == {"ok": False, "error": "ZeroDivisionError: boom"}
+    assert reply == {"ok": False, "error": "ZeroDivisionError: boom", "code": "failed"}
     assert [r for r in records if r.exc_info]
 
 
@@ -802,7 +806,9 @@ def test_a_run_that_fails_to_start_is_an_error_with_its_text(
     connected: ctl.Client, run_backend: Callable[..., _RunBackend]
 ) -> None:
     backend = run_backend(fail="No vJoy device 3.")
-    with pytest.raises(ctl.CallError, match=r"No vJoy device 3\."):
+    with pytest.raises(
+        ctl.CallError, match=r"^Could not run the profile: No vJoy device 3\.$"
+    ):
         _off_main(lambda: connected.call("run.start"))
     assert backend.listeners() == 0
 
@@ -884,3 +890,285 @@ def test_backend_says_when_it_has_handled_the_runs_answer(qapp: object) -> None:
     assert stub._starting is False  # noqa: SLF001
     Backend.klass._on_run_stopped(stub)  # type: ignore[arg-type]  # noqa: SLF001
     assert seen == [("stop",), ("start", False, "It failed."), ("stop",)]
+
+
+# --- research batch: codes, declared arguments, one deadline (S25-S30) ------------
+
+
+@pytest.fixture
+def switched_on(qapp: object, monkeypatch: pytest.MonkeyPatch) -> None:
+    """dispatch() with the switch on, without opening a pipe."""
+    monkeypatch.setattr(control_api, "allowed", lambda: True)
+
+
+def _throwaway(
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    handler: Callable[[dict], Any],
+    **kw: Any,  # noqa: ANN401 - register's keywords
+) -> None:
+    kept = dict(control_api._calls)  # noqa: SLF001
+    control_api.register(name, handler, **kw)
+    monkeypatch.setattr(control_api, "_calls", {**kept, name: control_api._calls[name]})  # noqa: SLF001
+
+
+def test_each_kind_of_error_answers_its_code(
+    switched_on: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S25: the answer's code, beside its text, for every kind."""
+
+    def refuse(_args: dict) -> None:
+        raise control_api.CallError("No window called 'X'.", "not_found")
+
+    def broken(_args: dict) -> None:
+        raise ZeroDivisionError("boom")
+
+    _throwaway(monkeypatch, "test.refuse", refuse)
+    _throwaway(monkeypatch, "test.broken", broken)
+    _throwaway(monkeypatch, "test.quick", lambda _a: 1, timeout_s=0.2)
+    assert control_api.dispatch("no.such.call")["code"] == "unknown_call"
+    assert control_api.dispatch("state", {"x": 1})["code"] == "bad_args"
+    assert control_api.dispatch("test.refuse")["code"] == "not_found"
+    assert control_api.dispatch("test.broken")["code"] == "failed"
+    assert control_api.dispatch("test.quick", [])["code"] == "bad_args"  # type: ignore[arg-type]
+    control_api._busy.acquire()  # noqa: SLF001
+    try:
+        busy = control_api.dispatch("test.quick")
+    finally:
+        control_api._busy.release()  # noqa: SLF001
+    assert busy == {
+        "ok": False,
+        "error": "Busy with another call; try again.",
+        "code": "busy",
+    }
+    big = json.loads(
+        control_api.handle_bytes(b" " * (control_api.MAX_REQUEST_BYTES + 1))
+    )
+    assert big["code"] == "too_large"
+    assert json.loads(control_api.handle_bytes(b"{nope"))["code"] == "bad_args"
+    monkeypatch.setattr(control_api, "allowed", lambda: False)
+    assert control_api.dispatch("test.quick")["code"] == "refused"
+    assert set(control_api.CODES) == {
+        "bad_args",
+        "unknown_call",
+        "not_found",
+        "not_ready",
+        "refused",
+        "busy",
+        "timeout",
+        "too_large",
+        "failed",
+    }
+
+
+def test_an_unknown_argument_is_refused_before_the_call_runs(switched_on: None) -> None:
+    """S26: a misspelled key used to turn all of tracing on."""
+    from gremlin import trace
+
+    before = trace.enabled()
+    reply = control_api.dispatch("trace.on", {"categroy": "osc"})
+    assert reply == {
+        "ok": False,
+        "error": "trace.on has no argument 'categroy' (it takes: category).",
+        "code": "bad_args",
+    }
+    assert trace.enabled() == before
+
+
+def test_a_missing_argument_is_refused(switched_on: None) -> None:
+    reply = control_api.dispatch("profile.load", {})
+    assert reply["code"] == "bad_args"
+    assert reply["error"].startswith("profile.load needs path")
+    assert reply["error"].endswith(".")
+
+
+def test_arguments_out_of_range_or_of_the_wrong_type_are_refused(
+    switched_on: None,
+) -> None:
+    for args in ({"lines": 0}, {"lines": 2001}, {"lines": "x"}, {"which": "System"}):
+        reply = control_api.dispatch("log", args)
+        assert reply["code"] == "bad_args", (args, reply)
+        assert reply["error"].startswith("log: '"), reply
+    assert control_api.dispatch("log", {"lines": 3})["ok"] is True
+
+
+def test_help_gives_each_calls_arguments(switched_on: None) -> None:
+    rows = {r["name"]: r for r in control_api.dispatch("help")["result"]}
+    assert rows["state"]["args"] == {}
+    lines = rows["log"]["args"]["lines"]
+    assert (lines["type"], lines["min"], lines["max"]) == ("int", 1, 2000)
+    assert rows["log"]["args"]["which"]["choices"] == ["system", "trace"]
+    assert rows["profile.load"]["args"]["path"]["required"] is True
+    assert set(rows["option.set"]["args"]) == {"key", "value"}
+
+
+def test_trace_on_with_an_unknown_category_lists_them(switched_on: None) -> None:
+    reply = control_api.dispatch("trace.on", {"category": "nope"})
+    assert reply["code"] == "bad_args"
+    assert "'nope'" in reply["error"] and "hidhide" in reply["error"]
+
+
+def test_a_timed_out_main_thread_job_never_runs_later(
+    switched_on: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S28: the main thread was busy past the limit; the job is dropped."""
+    ran: list[str] = []
+    _throwaway(
+        monkeypatch,
+        "test.late",
+        lambda _a: ran.append("ran"),
+        main_thread=True,
+        timeout_s=0.2,
+    )
+    box: dict[str, dict] = {}
+    worker = threading.Thread(
+        target=lambda: box.setdefault("reply", control_api.dispatch("test.late")),
+        daemon=True,
+    )
+    worker.start()
+    worker.join(5.0)  # this (main) thread runs no events meanwhile
+    assert not worker.is_alive()
+    _pump(100)  # the queued job's turn comes: it must not run
+    assert ran == []
+    assert box["reply"]["code"] == "timeout"
+    assert box["reply"]["error"] == "test.late took over 0.2 s and was not done."
+
+
+def test_one_deadline_covers_the_busy_wait_and_the_call(
+    switched_on: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S9: time spent waiting for a busy API comes off the call's limit."""
+    seen: list[float] = []
+    _throwaway(
+        monkeypatch,
+        "test.left",
+        lambda _a: seen.append(control_api.time_left()),
+        timeout_s=1.0,
+    )
+    control_api._busy.acquire()  # noqa: SLF001
+    releaser = threading.Timer(0.4, control_api._busy.release)  # noqa: SLF001
+    releaser.start()
+    try:
+        assert control_api.dispatch("test.left")["ok"] is True
+    finally:
+        releaser.join()
+    assert seen and seen[0] <= 0.65, seen
+
+
+def test_a_request_over_1_mb_is_answered_too_large(
+    connected: ctl.Client, caplog: pytest.LogCaptureFixture
+) -> None:
+    """S9: through the real pipe it used to be dropped without a word."""
+    with caplog.at_level(logging.WARNING, logger="system"):
+        with pytest.raises(ctl.CallError, match="over 1 MB") as caught:
+            _off_main(lambda: connected.call("hello", pad="x" * (1100 * 1024)))
+    assert getattr(caught.value, "code", "too_large") == "too_large"
+    assert any("over 1 MB" in r.getMessage() for r in caplog.records)
+    assert _off_main(lambda: connected.call("hello"))["version"] == 1
+
+
+def test_profile_load_refuses_a_relative_path(switched_on: None) -> None:
+    """S30."""
+    reply = control_api.dispatch("profile.load", {"path": "my profile.xml"})
+    assert reply == {"ok": False, "error": "Give the full path.", "code": "bad_args"}
+
+
+def test_a_profile_that_did_not_open_says_why_and_what_is_open(
+    switched_on: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    target = tmp_path / "broken.xml"
+    target.write_text("<not a profile", encoding="utf-8")
+    before = str(tmp_path / "before.xml")
+
+    class _Backend:
+        profileContainsUnsavedChanges = False
+
+        def profilePath(self) -> str:
+            return before
+
+        def loadProfile(self, _path: str) -> None:
+            pass  # failed: the one before is read again
+
+        def last_load_problem(self) -> str:
+            return "not well-formed (invalid token): line 1, column 0"
+
+    monkeypatch.setattr(control_api, "_backend", lambda: _Backend())
+    reply = control_api.dispatch("profile.load", {"path": str(target)})
+    assert reply["code"] == "failed"
+    assert reply["error"] == (
+        f"The profile '{target}' didn't open: not well-formed (invalid token): "
+        f"line 1, column 0; '{before}' is still open."
+    )
+
+
+def test_devices_survives_one_bad_device(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from gremlin import device_initialization
+    from gremlin.modules import store
+
+    class _Broken:
+        name = "Broken"
+        device_guid = "{33333333-3333-3333-3333-333333333333}"
+        is_virtual = False
+
+        @property
+        def axis_count(self) -> int:
+            raise OSError("device went away")
+
+    good = SimpleNamespace(
+        name="Stick",
+        device_guid="{11111111-1111-1111-1111-111111111111}",
+        is_virtual=False,
+        vjoy_id=0,
+        axis_count=3,
+        button_count=12,
+        hat_count=1,
+    )
+    monkeypatch.setattr(
+        device_initialization, "joystick_devices", lambda: [_Broken(), good]
+    )
+    monkeypatch.setattr(store, "known_devices", lambda: [{"guid": None}, 5])
+    rows = control_api._devices({})  # noqa: SLF001
+    assert [r["name"] for r in rows] == ["Stick"]
+
+
+def _setting_of(kind: str) -> str:
+    """An Options setting of that kind (text: plain text, a path or a
+    choice, which all take text only)."""
+    from gremlin.types import PropertyType
+
+    wanted = {
+        "int": (PropertyType.Int,),
+        "float": (PropertyType.Float,),
+        "text": (PropertyType.String, PropertyType.Path, PropertyType.Selection),
+    }[kind]
+    cfg = Configuration()
+    for key in control_api._option_keys():  # noqa: SLF001
+        if cfg.data_type(*key) in wanted:
+            return "/".join(key)
+    pytest.skip(f"no {kind} setting in Options")
+
+
+@pytest.mark.parametrize(
+    ("kind", "value"),
+    [
+        ("int", 1.7),
+        ("int", "2.5"),
+        ("float", "nan"),
+        ("float", "inf"),
+        ("text", 5),
+        ("text", ["a"]),
+    ],
+)
+def test_option_set_refuses_a_value_of_the_wrong_kind(
+    switched_on: None, kind: str, value: object
+) -> None:
+    key = _setting_of(kind)
+    cfg = Configuration()
+    parts = tuple(key.split("/"))
+    before = cfg.value(*parts)
+    reply = control_api.dispatch("option.set", {"key": key, "value": value})
+    assert reply["code"] == "bad_args", reply
+    assert reply["error"].startswith("'") and reply["error"].endswith("."), reply
+    assert cfg.value(*parts) == before

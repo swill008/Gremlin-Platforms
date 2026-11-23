@@ -55,9 +55,53 @@ Window {
             placeholderText: "Name"
             onEditingFinished: root.finished = text
         }
+        TextField {
+            objectName: "ageField"
+            text: "42"
+            validator: IntValidator { bottom: 0; top: 99 }
+        }
     }
 }
 """
+# A window that asks before closing, as the dialogs with unsaved changes do.
+_ASKS_TITLE = "Asks Panel"
+_ASKS_QML = b"""
+import QtQuick
+
+Window {
+    title: "Asks Panel"
+    width: 200
+    height: 100
+    visible: true
+    onClosing: (close) => { close.accepted = false }
+}
+"""
+
+
+class _Backend:
+    """Stands in for Backend's command_list / run_command_id."""
+
+    def __init__(self) -> None:
+        self.ran: list[str] = []
+        self.rows = [
+            {"id": "tools.panel", "text": "Panel", "group": "Tools", "window": True},
+            {"id": "debug.toggle", "text": "Toggle", "group": "Debug", "window": False},
+            {"id": "tools.locked", "text": "Locked", "group": "Tools", "window": True},
+            {"id": "tools.broken", "text": "Broken", "group": "Tools", "window": True},
+        ]
+
+    def command_list(self) -> list[dict]:
+        return self.rows
+
+    def run_command_id(self, command_id: str) -> bool:
+        if command_id == "tools.locked":
+            return False
+        if command_id == "tools.broken":
+            from gremlin.control_api import CallError
+
+            raise CallError("The command 'tools.broken' failed: oops.", "failed")
+        self.ran.append(command_id)
+        return True
 
 
 # +-------------------------------------------------------------------------
@@ -78,12 +122,14 @@ class _Registry:
         main_thread: bool = False,
         timeout_s: float = 10.0,
         summary: str = "",
+        args: dict | None = None,
     ) -> None:
         self.calls[name] = {
             "handler": handler,
             "main_thread": main_thread,
             "timeout_s": timeout_s,
             "summary": summary,
+            "args": {k: v.describe() for k, v in (args or {}).items()},
         }
 
     def call(self, name: str, **args: Any) -> Any:  # noqa: ANN401
@@ -92,7 +138,7 @@ class _Registry:
         try:
             return {"ok": self.calls[name]["handler"](args)}
         except CallError as e:
-            return {"error": str(e)}
+            return {"error": str(e), "code": e.code}
 
 
 def _child(picture: str) -> dict:  # noqa: PLR0915
@@ -105,11 +151,13 @@ def _child(picture: str) -> dict:  # noqa: PLR0915
     from gremlin.ui import control_windows
 
     logged: list[str] = []
+    levels: dict[str, str] = {}
     tracebacks: list[str] = []
 
     class _Keep(logging.Handler):
         def emit(self, record: logging.LogRecord) -> None:
             logged.append(record.getMessage())
+            levels[record.getMessage()] = record.levelname
             if record.exc_info:
                 tracebacks.append(record.getMessage())
 
@@ -123,7 +171,8 @@ def _child(picture: str) -> dict:  # noqa: PLR0915
             app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 10)
 
     reg = _Registry()
-    control_windows.register_api_calls(reg)
+    backend = _Backend()
+    control_windows.register_api_calls(reg, backend)
     out: dict[str, Any] = {
         "platform": QtGui.QGuiApplication.platformName(),
         "registered": {
@@ -149,6 +198,29 @@ def _child(picture: str) -> dict:  # noqa: PLR0915
     out["press-off"] = reg.call("window.press", window=_TITLE, button="Locked")
     out["type"] = reg.call("window.type", window=_TITLE, field="Name", text="Pilot One")
     out["finished"] = window.property("finished")
+    out["type-no-text"] = reg.call("window.type", window=_TITLE, field="Name")
+    out["type-refused"] = reg.call(
+        "window.type", window=_TITLE, field="ageField", text="abc"
+    )
+    out["type-out-of-range"] = reg.call(
+        "window.type", window=_TITLE, field="ageField", text="250"
+    )
+    out["type-number"] = reg.call(
+        "window.type", window=_TITLE, field="ageField", text="17"
+    )
+    out["type-clear"] = reg.call("window.type", window=_TITLE, field="Name", text="")
+    out["after-clear"] = window.property("finished")
+    out["open"] = reg.call("window.open", id="tools.panel")
+    out["open-unknown"] = reg.call("window.open", id="tools.nope")
+    out["open-no-window"] = reg.call("window.open", id="debug.toggle")
+    out["open-locked"] = reg.call("window.open", id="tools.locked")
+    out["open-broken"] = reg.call("window.open", id="tools.broken")
+    out["ran"] = list(backend.ran)
+    backend.rows = []
+    out["open-not-ready"] = reg.call("window.open", id="tools.panel")
+    out["screenshot-relative"] = reg.call(
+        "window.screenshot", window=_TITLE, path="panel.png"
+    )
     out["screenshot"] = reg.call("window.screenshot", window=_TITLE, path=picture)
     out["dpr"] = window.devicePixelRatio()
     image = QtGui.QImage(picture)
@@ -157,12 +229,30 @@ def _child(picture: str) -> dict:  # noqa: PLR0915
         "window.screenshot", window=_TITLE, path=picture[:-4] + ".jpg"
     )
     out["unknown"] = reg.call("window.read", window="No Such Window")
+    asks_component = QtQml.QQmlComponent(engine)
+    asks_component.setData(_ASKS_QML, QtCore.QUrl())
+    asks = asks_component.create()
+    pump()
+    out["close-asks"] = reg.call("window.close", window=_ASKS_TITLE)
+    pump()
+    out["asks-visible"] = asks.isVisible()
     # Through the real dispatch (decision 2a): a plain one-line answer and
     # only the one-line "API: ..." log line, no traceback.
     from gremlin import control_api
 
     control_api.allowed = lambda: True  # this child process only
-    control_windows.register_api_calls(control_api)
+    control_windows.register_api_calls(control_api, backend)
+    out["api-open-old-key"] = control_api.dispatch(
+        "window.open", {"command": "tools.panel"}
+    )
+    out["api-type-no-text"] = control_api.dispatch(
+        "window.type", {"window": _TITLE, "field": "Name"}
+    )
+    out["help-args"] = {
+        c["name"]: c["args"]
+        for c in control_api.calls()
+        if c["name"].startswith("window.")
+    }
     out["api-unknown"] = control_api.dispatch(
         "window.read", {"window": "No Such Window"}
     )
@@ -174,6 +264,7 @@ def _child(picture: str) -> dict:  # noqa: PLR0915
     pump()
     out["visible-after-close"] = window.isVisible()
     out["logged"] = logged
+    out["levels"] = levels
     window.deleteLater()
     pump()
     return out
@@ -260,24 +351,30 @@ def test_window_read_lists_text_buttons_checks_and_fields(run: dict) -> None:
     assert by_text[("button", "Locked")]["enabled"] is False
     assert by_text[("check", "Loud")]["checked"] is True
     fields = [i for i in items if i["kind"] == "field"]
-    assert [(f["name"], f["placeholder"]) for f in fields] == [("nameField", "Name")]
+    assert [(f["name"], f["placeholder"]) for f in fields] == [
+        ("nameField", "Name"),
+        ("ageField", ""),
+    ]
 
 
 def test_window_press_clicks_the_button_and_logs_by_api(run: dict) -> None:
     assert run["press"] == {"ok": {"pressed": "Apply"}}
     assert run["press-by-name"] == {"ok": {"pressed": "Apply"}}
     assert run["applied"] == 2
-    assert f"Pressed 'Apply' in {_TITLE} by API" in run["logged"]
+    assert f"Pressed 'Apply' in '{_TITLE}' by API" in run["logged"]
 
 
 def test_window_press_refuses_a_turned_off_button(run: dict) -> None:
-    assert "turned off" in run["press-off"]["error"]
+    assert run["press-off"] == {
+        "error": f"'Locked' is turned off in '{_TITLE}'.",
+        "code": "refused",
+    }
 
 
 def test_window_type_fills_the_field_and_finishes_the_edit(run: dict) -> None:
     assert run["type"] == {"ok": {"text": "Pilot One"}}
     assert run["finished"] == "Pilot One"
-    assert f"Typed into 'nameField' in {_TITLE} by API" in run["logged"]
+    assert f"Typed into 'nameField' in '{_TITLE}' by API" in run["logged"]
 
 
 def test_window_screenshot_writes_a_png_of_the_window_only(run: dict) -> None:
@@ -290,11 +387,17 @@ def test_window_screenshot_writes_a_png_of_the_window_only(run: dict) -> None:
 
 
 def test_window_screenshot_refuses_a_path_that_is_not_png(run: dict) -> None:
-    assert ".png" in run["screenshot-jpg"]["error"]
+    assert run["screenshot-jpg"] == {
+        "error": "The picture path must end in .png.",
+        "code": "bad_args",
+    }
 
 
 def test_an_unknown_window_is_an_error(run: dict) -> None:
-    assert "No window called" in run["unknown"]["error"]
+    assert run["unknown"] == {
+        "error": "No window called 'No Such Window'.",
+        "code": "not_found",
+    }
 
 
 def test_window_call_errors_are_one_plain_line_without_a_traceback(
@@ -305,22 +408,109 @@ def test_window_call_errors_are_one_plain_line_without_a_traceback(
     line, no exception name) and logs only the one-line API line."""
     assert run["api-unknown"] == {
         "ok": False,
-        "error": "No window called 'No Such Window'",
+        "error": "No window called 'No Such Window'.",
+        "code": "not_found",
     }
     assert run["api-no-button"] == {
         "ok": False,
-        "error": f"No button 'Nope' in {_TITLE}",
+        "error": f"No button 'Nope' in '{_TITLE}'.",
+        "code": "not_found",
     }
     assert run["tracebacks"] == []
     assert (
         'API: window.read {"window": "No Such Window"} -> error: '
-        "No window called 'No Such Window'"
+        "No window called 'No Such Window'."
     ) in run["logged"]
 
 
 def test_window_close_closes_it(run: dict) -> None:
     assert run["close"] == {"ok": {"closed": _TITLE}}
     assert run["visible-after-close"] is False
+
+
+def test_window_close_refuses_a_window_that_stays_open(run: dict) -> None:
+    """13 S29: a window that asks before closing stays open, and the
+    answer says so instead of "closed"."""
+    assert run["close-asks"] == {
+        "error": f"'{_ASKS_TITLE}' stayed open; it may be asking about unsaved"
+        " changes in the program.",
+        "code": "refused",
+    }
+    assert run["asks-visible"] is True
+    assert f"Closed window '{_ASKS_TITLE}' by API" not in run["logged"]
+
+
+def test_window_type_needs_text_and_leaves_the_field_alone(run: dict) -> None:
+    """13 S29: no text is an error, not a cleared field; "" clears."""
+    assert run["type-no-text"] == {
+        "error": "window.type needs text.",
+        "code": "bad_args",
+    }
+    assert run["api-type-no-text"]["code"] == "bad_args"
+    assert run["type-clear"] == {"ok": {"text": ""}}
+    assert run["after-clear"] == ""
+
+
+def test_window_type_refuses_text_the_field_turns_away(run: dict) -> None:
+    """13 S29: a validator that turns the text away is refused, and the
+    field keeps what it had."""
+    assert run["type-refused"] == {
+        "error": f"'ageField' in '{_TITLE}' doesn't take 'abc'.",
+        "code": "refused",
+    }
+    assert run["type-out-of-range"]["code"] == "refused"
+    assert run["type-number"] == {"ok": {"text": "17"}}
+
+
+def test_window_open_runs_only_a_command_that_opens_a_window(run: dict) -> None:
+    """13 S29, S27: the id argument; unknown not_found, can't be used now
+    not_ready, a command without a window refused (and not run)."""
+    assert run["open"] == {"ok": {"ran": True}}
+    assert run["open-unknown"] == {
+        "error": "No command called 'tools.nope'.",
+        "code": "not_found",
+    }
+    assert run["open-no-window"] == {
+        "error": "'debug.toggle' opens no window; run it with command.run"
+        " (gremlin-ctl run-command).",
+        "code": "refused",
+    }
+    assert run["open-locked"] == {
+        "error": "'tools.locked' can't be used now.",
+        "code": "not_ready",
+    }
+    # Backend's own errors (a command that throws in QML) pass through.
+    assert run["open-broken"] == {
+        "error": "The command 'tools.broken' failed: oops.",
+        "code": "failed",
+    }
+    assert run["ran"] == ["tools.panel"]
+    assert run["open-not-ready"]["code"] == "not_ready"
+    assert run["api-open-old-key"]["code"] == "bad_args"
+
+
+def test_window_screenshot_refuses_a_short_path(run: dict) -> None:
+    assert run["screenshot-relative"] == {
+        "error": "Give the full path.",
+        "code": "bad_args",
+    }
+
+
+def test_window_calls_declare_their_arguments(run: dict) -> None:
+    """13 S26: help lists each window call's arguments."""
+    args = run["help-args"]
+    assert set(args["window.open"]) == {"id"}
+    assert set(args["window.type"]) == {"window", "field", "text"}
+    assert set(args["window.screenshot"]) == {"window", "path"}
+    assert args["window.list"] == {}
+    assert args["window.press"]["button"]["required"] is True
+
+
+def test_by_api_lines_are_written_at_warning(run: dict) -> None:
+    """13 S18: the "... by API" lines show at the default log level."""
+    by_api = [m for m in run["logged"] if m.endswith(" by API")]
+    assert by_api
+    assert {run["levels"][m] for m in by_api} == {"WARNING"}
 
 
 if __name__ == "__main__":

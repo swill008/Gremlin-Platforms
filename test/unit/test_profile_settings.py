@@ -153,3 +153,100 @@ def test_settings_model_switches_between_options_and_own(
     assert model.property("macroDelayFromOptions") is False
     model.setProperty("macroDelayFromOptions", True)
     assert p.settings.macro_default_delay is None
+
+
+# +-------------------------------------------------------------------------
+# | The control API reaches the vJoy Initial Values boxes (13 D-13-INITIAL-VALUES)
+
+_API_CODE = r"""
+import importlib.util, json, os, sys
+ROOT = sys.argv[1]
+sys.path.insert(0, ROOT)
+spec = importlib.util.spec_from_file_location(
+    "fake_hardware", os.path.join(ROOT, "test", "fake_hardware.py"))
+fake_hardware = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(fake_hardware)
+fake_hardware.install()
+import gremlin.ui.update_model as um
+um.UpdateModel.startup = lambda self, *a, **k: None
+import joystick_gremlin
+from PySide6 import QtTest
+from gremlin import shared_state
+from gremlin.ui import control_windows
+app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
+QtTest.QTest.qWait(500)
+
+out = {}
+profile = shared_state.current_profile
+main = [w for w in control_windows._windows() if control_windows._is_main(w)][0]
+# Profile Settings is a page of the main window, not a window of its own:
+# its command runs as command.run does (window.open refuses it, 13 S29).
+out["open"] = control_windows._backend(None).run_command_id("view.settings")
+QtTest.QTest.qWait(500)
+title = main.title()
+rows = control_windows.call_read({"window": title})["items"]
+out["boxes"] = {
+    r["name"]: r["text"] for r in rows
+    if r["kind"] == "field" and r["name"].startswith("vjoyInitialValue:")
+}
+name = "vjoyInitialValue:1:X Axis"
+out["name"] = name
+out["before"] = profile.settings.get_initial_vjoy_axis_value(1, 1)
+try:
+    out["type"] = control_windows.call_type(
+        {"window": title, "field": name, "text": "0.5"})
+except Exception as e:
+    out["type-error"] = str(e)
+QtTest.QTest.qWait(200)
+out["after"] = profile.settings.get_initial_vjoy_axis_value(1, 1)
+out["boxes-after"] = {
+    r["name"]: r["text"]
+    for r in control_windows.call_read({"window": title})["items"]
+    if r["kind"] == "field" and r["name"].startswith("vjoyInitialValue:")
+}
+print("OUT " + json.dumps(out), flush=True)
+os._exit(0)
+"""
+
+
+def test_initial_value_boxes_are_reachable_by_the_api(tmp_path: Path) -> None:
+    """The real program off-screen (stand-in vJoy 1): Profile Settings
+    opened by its menu command, window.read lists each initial value box
+    as vjoyInitialValue:<vJoy>:<axis> with its value, and window.type sets
+    the profile's initial value through the box."""
+    import json
+    import os
+    import sys
+
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
+
+    root = Path(__file__).parents[2]
+    home = tmp_path / "home"
+    (home / "Gremlin Platforms").mkdir(parents=True)
+    env = dict(
+        os.environ,
+        USERPROFILE=str(home),
+        QT_QPA_PLATFORM="offscreen",
+        HTTPS_PROXY="http://127.0.0.1:9",
+    )
+    done = proc_tree.run(
+        [sys.executable, "-c", _API_CODE, str(root)],
+        cwd=root,
+        env=env,
+        text=True,
+        timeout=120,
+    )
+    lines = [ln for ln in done.stdout.splitlines() if ln.startswith("OUT ")]
+    assert lines, smoke_report.explain(done)
+    out = json.loads(lines[-1][4:])
+
+    assert out["open"] is True
+    # vJoy 1's six stand-in axes, each named and showing its value.
+    assert len(out["boxes"]) == 6, out["boxes"]
+    assert out["name"] in out["boxes"], out["boxes"]
+    assert float(out["boxes"][out["name"]]) == 0.0
+    assert "type-error" not in out, out["type-error"]
+    assert out["before"] == 0.0
+    assert out["after"] == 0.5
+    assert float(out["boxes-after"][out["name"]]) == 0.5

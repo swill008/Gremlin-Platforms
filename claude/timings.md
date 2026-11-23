@@ -12,7 +12,7 @@ a time to the user.
 | Refactor | 12 | about 1/2 | 5-10 min per agent |
 | Review / read-only study | 3 | about 1/10 | 5-10 min with parallel agents |
 | Full test run + lint | 14 | on target | 5-6 min |
-| CI on a push | 3 | on target | ~10 min |
+| CI on a push | 3 (2026-10-09); 2026-11-23 runs 23-26 min | on target | ~25 min (3 parts, 2026-11-23) |
 
 End to end, a batch is: agents (~10 min) + lead checks and map (~5 min) +
 full run (~5 min) + commit/push (~2 min) + CI (~10 min, in the background).
@@ -1397,3 +1397,29 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | FLAKE-4: picture waits in the print and Device Library photo tests | fix | no data; guess 10-15 min | 21 min | 09:30-09:51, 1 agent (load runs 1.5-2.5 min each) |
 | 2026-11-23 | RUNWAIT: run start/stop answer after the Run's own started/stopped signal | fix | 3-8 min | 5 min | 10:08-10:13, 1 agent |
 | 2026-11-23 | Build + silent install + live check (3x start/stop, already-in-state cases) | build/test | ~3 min | 2 min | 10:13-10:15, lead |
+| 2026-11-23 | CI for 4e35ba7c (test race fixes) | ci | ~23 min | - | 09:53-10:15, cancelled by the next push (6e2570b9 includes it) |
+| 2026-11-23 | CI for 6e2570b9 (run start/stop + test races) | ci | ~23 min | 26 min | 10:16-10:42, FAILED: unit-2 hit the 25 min part limit with 10 tests left (no test failed); unit-1 23:04, unit-3 24:22 |
+| 2026-11-23 | CI part limit 25 -> 35 min (ci.yml edit, commit, push) | lead fix | ~2 min | 2 min | 12:31-12:33, lead |
+| 2026-11-23 | CI for b3a39f53 (part limit 35 min) | ci | ~25 min | 26 min | 12:32-12:58, green |
+| 2026-11-23 | Plan + spec (S11 code 4, D-13-USAGE-EXIT, D-13-INITIAL-VALUES) + split + 5 agent briefs | lead planning | ~5 min | 4 min | 15:55-15:59, lead |
+| 2026-11-23 | Agent CTL: gremlin-ctl usage errors exit 4 + 3 tests | agent fix | 3-8 min | 2 min | 15:59-16:00, CTL; lead proved new tests fail on old cli.py (9 of 10) |
+| 2026-11-23 | Agent DOCS: map 13/04/README, Help exit code 4, audits index | agent fix | 3-8 min | 3 min | 15:59-16:02, DOCS |
+| 2026-11-23 | Agent QML: Initial Values objectNames + generic spin box typing + e2e test | agent fix | 3-8 min | 3 min | 15:59-16:02, QML |
+| 2026-11-23 | Agent AUD-SRV: program-side API responses audit (24 calls, 18 findings) | audit | rough 10-15 min | 4 min | 15:59-16:03, AUD-SRV |
+| 2026-11-23 | Agent AUD-CLI: gremlin-ctl, client, MCP, Help responses audit (33 cases, 14 findings) | audit | rough 10-15 min | 4 min | 15:59-16:03, AUD-CLI |
+| 2026-11-23 | Agent R-RPC: protocol standards research (JSON-RPC, LSP, gRPC, AIP-193/180, MS REST, RFC 9457/9413) | review | 5-10 min | 2 min | 16:07-16:09, R-RPC |
+| 2026-11-23 | Agent R-CLI: command-line conventions research (clig, bash, argparse, sysexits, gh, az, aws, docker, terraform) | review | 5-10 min | 3 min | 16:07-16:10, R-CLI |
+| 2026-11-23 | Agent R-MCP: MCP spec + Anthropic tool guidance research, SDK 2.3 checks | review | 5-10 min | 3 min | 16:07-16:10, R-MCP |
+| 2026-11-23 | Agent R-IPC: named pipes, multiprocessing, OBS, UI Automation research | review | 5-10 min | 3 min | 16:07-16:10, R-IPC |
+| 2026-11-23 | Lead: reassessment from the 4 research reports + README | lead planning | ~5 min | 3 min | 16:10-16:13, lead |
+| 2026-11-23 | Lead: spec S25-S31 + D-13-RESEARCH, contract, split, 7 briefs | lead planning | ~5 min | 4 min | 16:14-16:18, lead |
+| 2026-11-23 | Agent IMPACT: tests pinning old API behaviour (1 test updated) | agent fix | 3-8 min | 1 min | 16:19-16:19, IMPACT |
+| 2026-11-23 | Agent BACKEND: command.run codes, last_load/save_problem, 9 tests | agent fix | 3-8 min | 4 min | 16:18-16:22, BACKEND |
+| 2026-11-23 | Agent WIN: window.* codes, args, close/type checks, open rules, 7 tests | agent fix | 3-8 min | 4 min | 16:18-16:22, WIN |
+| 2026-11-23 | Agent MCP: hints, strict schemas, descriptions, log limit, screenshot image, 9 tests | agent fix | 3-8 min | 4 min | 16:18-16:22, MCP |
+| 2026-11-23 | Agent DOCS2: map 13 sections 2-5/10, README counts, Help exit codes and examples | agent fix | 3-8 min | 4 min | 16:19-16:23, DOCS2 |
+| 2026-11-23 | Agent CTL2: gremlin-ctl renumber, --json errors, StoppedAnswering, help offline, messages, 13 tests | agent fix | 3-8 min | 5 min | 16:18-16:23, CTL2 |
+| 2026-11-23 | Agent BACKEND follow-up: window flag on 24 commands + guard test | agent fix | 3-8 min | 2 min | 16:23-16:25, BACKEND |
+| 2026-11-23 | Agent CORE: codes, declared args, one deadline, never-late jobs, too_large, per-call fixes, 19 tests | refactor | 5-10 min | 8 min | 16:18-16:26, CORE |
+| 2026-11-23 | Quick tests --changed (ran 6 parts, near-full: backend.py/main_commands.js touched) + 4 reruns + pyright | test | ~3 min | 10 min | 16:27-16:37, lead: 4 fails = 2 tests pinning command row text (fixed: window flag after group) + 2 picture-load flakes under load (pass alone) |
+| 2026-11-23 | Build + silent install + live test (31 gremlin-ctl cases) + 2 wording fixes + rebuild/reinstall + run start + tracing on | build/test | ~3 min | 6 min | 16:38-16:44, lead: two builds |
