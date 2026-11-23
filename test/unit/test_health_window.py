@@ -94,14 +94,14 @@ def _columns(j: Journey, win: Any, first: int, second: int) -> Any:  # noqa: ANN
 
 def _at_minimum(j: Journey, win: Any, first: int, second: int) -> Any:  # noqa: ANN401
     """01 S197: at the window's minimum width, a line with the ⚠, a long
-    action and "Used twice", and one with "Not plugged in" (the widest
-    chip): each action box, its right edge, where its chip starts and the
-    line's right edge."""
+    action and "Used twice", and one with both chips ("Used twice" and
+    "Not plugged in", the widest line; user 2026-11-23): each action box,
+    its right edge, where its chip starts and the line's right edge."""
     import json
 
     lines = [
         {"text": _LONG, "usedTwice": True, "notPlugged": False},
-        {"text": _LONG, "usedTwice": False, "notPlugged": True},
+        {"text": _LONG, "usedTwice": True, "notPlugged": True},
     ]
     for i, line in zip((first, second), lines, strict=True):
         row = {
@@ -343,8 +343,8 @@ def test_narrow_health_window_keeps_lines_inside_the_list(result: dict) -> None:
 
 
 def test_minimum_width_leaves_every_action_box_room(result: dict) -> None:
-    """01 S197: at Health's minimum width a line with the ⚠ and a chip
-    ("Used twice" or "Not plugged in", the widest) still has an action box
+    """01 S197: at Health's minimum width a line with the ⚠ and both chips
+    ("Used twice" and "Not plugged in") still has an action box
     of at least Style.dp(120), ending before the chip, the chip inside the
     line (before, a 640 minimum left the box 0 px wide)."""
     found = result["minimum"]
