@@ -20,7 +20,8 @@ it the answer is an error and the program carries on. Nothing in the
 program waits on a client: each connection has its own thread, every wait
 on it is bounded, and a client that stops answering is dropped.
 
-Every call writes one system log line "API: <call> <args> -> ok|error".
+Every call writes one system log line "API: <call> <args> -> ok|error",
+except the version handshake (hello).
 Profile saves and Options changes made here go into Tools › History
 marked "(by API)" where History's group path can mark them (see
 _by_api).
@@ -168,9 +169,10 @@ def dispatch(call: str, args: dict | None = None) -> dict:
             }
         else:
             reply = _run(name, entry, args)
-    if reply["ok"]:
+    # The client's version handshake before every call isn't logged (S8).
+    if reply["ok"] and name != "hello":
         _log.warning(f"API: {name} {_short(args)} -> ok")
-    else:
+    elif not reply["ok"]:
         _log.warning(f"API: {name} {_short(args)} -> error: {reply['error']}")
     return reply
 
@@ -646,11 +648,13 @@ def _state(_args: dict) -> dict:
 
 
 def _devices(_args: dict) -> list[dict]:
-    """The devices plugged in now, then the other devices the program knows
+    """The devices plugged in now, then the other hardware the program knows
     (the open profile's, saved module files: store.known_devices()), each
-    with plugged_in (S3). An unplugged one's counts are None."""
+    once with plugged_in (S3, S21). Known rows without a device id and the
+    built-in devices (Keyboard, OSC, Logical Device, vJoy and Xbox outputs:
+    device_class) are not devices here. An unplugged one's counts are None."""
     from gremlin import device_initialization
-    from gremlin.modules import store
+    from gremlin.modules import device_class, store
 
     found = []
     plugged: set[str] = set()
@@ -677,8 +681,12 @@ def _devices(_args: dict) -> list[dict]:
         known = []
     for row in known:
         guid = str(row.get("guid") or "")
-        if row.get("connected") or (guid and store.stored_guid_key(guid) in plugged):
+        key = store.stored_guid_key(guid)
+        if row.get("connected") or not key or key in plugged:
             continue
+        if not device_class.can("library_device", guid, str(row.get("name") or "")):
+            continue
+        plugged.add(key)
         found.append(
             {
                 "name": row.get("name") or "",

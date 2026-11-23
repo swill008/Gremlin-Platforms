@@ -350,7 +350,6 @@ def test_every_call_writes_an_api_line_to_the_system_log(
     lines = [
         r.getMessage() for r in caplog.records if r.getMessage().startswith("API: ")
     ]
-    assert any(t.startswith("API: hello") and t.endswith("-> ok") for t in lines)
     assert any(
         t.startswith("API: no.such.call") and "-> error: Unknown call" in t
         for t in lines
@@ -359,6 +358,21 @@ def test_every_call_writes_an_api_line_to_the_system_log(
         t.startswith("API: option.get") and "keep-alive" in t and t.endswith("-> ok")
         for t in lines
     )
+
+
+def test_the_hello_handshake_writes_no_api_line(
+    connected: ctl.Client, caplog: pytest.LogCaptureFixture
+) -> None:
+    """S8 (user 2026-11-23, 2a): the client says hello before every call;
+    only the real calls are logged, so one command is one line."""
+    with caplog.at_level(logging.INFO, logger="system"):
+        _off_main(lambda: connected.call("hello"))
+        _off_main(lambda: connected.call("option.get", key="/".join(_OTHER)))
+    lines = [
+        r.getMessage() for r in caplog.records if r.getMessage().startswith("API: ")
+    ]
+    assert not [t for t in lines if t.startswith("API: hello")]
+    assert [t for t in lines if t.startswith("API: option.get")]
 
 
 def test_stop_at_quit_closes_the_pipe_and_removes_the_endpoint(api: Path) -> None:
@@ -411,19 +425,90 @@ def test_devices_lists_known_devices_that_are_not_plugged_in(
                 "connected": False,
                 "label": "My Pedals",
             },
-            {"name": "Throttle", "guid": "", "connected": False, "label": "Throttle"},
         ],
     )
     rows = control_api._devices({})  # noqa: SLF001
     by_name = {r["name"]: r for r in rows}
-    assert set(by_name) == {"Stick", "Pedals", "Throttle"}
+    assert set(by_name) == {"Stick", "Pedals"}
     assert by_name["Stick"]["plugged_in"] is True
     assert by_name["Stick"]["buttons"] == 12
     assert by_name["Pedals"]["plugged_in"] is False
     assert by_name["Pedals"]["label"] == "My Pedals"
     assert by_name["Pedals"]["guid"] == "{22222222-2222-2222-2222-222222222222}"
     assert by_name["Pedals"]["buttons"] is None
-    assert by_name["Throttle"]["plugged_in"] is False
+
+
+def test_devices_lists_real_devices_only_each_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """S21 (user 2026-11-23, 2a): plugged-in devices, then known hardware
+    that isn't plugged in, each once; not the program's own inputs, not the
+    output modules, not known rows without a device id."""
+    from types import SimpleNamespace
+
+    from gremlin import device_initialization
+    from gremlin.modules import device_class, store
+
+    stick = SimpleNamespace(
+        name="VKB Stick",
+        device_guid="{11111111-1111-1111-1111-111111111111}",
+        is_virtual=False,
+        vjoy_id=0,
+        axis_count=6,
+        button_count=32,
+        hat_count=1,
+    )
+    vjoys = [
+        SimpleNamespace(
+            name="vJoy Device",
+            device_guid=f"{{3333333{n}-3333-3333-3333-333333333333}}",
+            is_virtual=True,
+            vjoy_id=n,
+            axis_count=8,
+            button_count=32,
+            hat_count=0,
+        )
+        for n in (1, 2, 3)
+    ]
+    monkeypatch.setattr(
+        device_initialization, "joystick_devices", lambda: [stick, *vjoys]
+    )
+    keyboard = str(device_class.guid_of_kind("keyboard"))
+    known = [
+        {"name": "Keyboard", "guid": "", "connected": False, "label": "Keyboard"},
+        {"name": "Keyboard", "guid": keyboard, "connected": False, "label": "Keys"},
+        {"name": "Logical Device", "guid": "", "connected": False},
+        {"name": "OSC", "guid": "", "connected": False, "label": "OSC"},
+        *({"name": f"vJoy {n}", "guid": "", "connected": False} for n in (1, 2, 3, 4)),
+        {
+            "name": "vJoy Device",
+            "guid": "{44444444-4444-4444-4444-444444444444}",
+            "connected": False,
+        },
+        {"name": "Xbox 360 Controller", "guid": "", "connected": False},
+        {"name": "Throttle", "guid": "", "connected": False, "label": "Throttle"},
+        {
+            "name": "HID Remapper 2DGG",
+            "guid": "{55555555-5555-5555-5555-555555555555}",
+            "connected": False,
+            "label": "HID Remapper 2DGG",
+        },
+        # Seen twice (the profile and a module file): listed once.
+        {
+            "name": "HID Remapper 2DGG",
+            "guid": "{55555555-5555-5555-5555-555555555555}",
+            "connected": False,
+        },
+    ]
+    monkeypatch.setattr(store, "known_devices", lambda: known)
+    rows = control_api._devices({})  # noqa: SLF001
+    assert [(r["name"], r["plugged_in"]) for r in rows] == [
+        ("VKB Stick", True),
+        ("vJoy Device", True),
+        ("vJoy Device", True),
+        ("vJoy Device", True),
+        ("HID Remapper 2DGG", False),
+    ]
 
 
 # --- profile.save: History marked by API (decision 3a) ---------------------------

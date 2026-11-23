@@ -1371,3 +1371,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Build (PyInstaller + installer) with gremlin-ctl.exe | build | ~3 min (rule: 1-7 min) | 2 min | 06:57-06:59 |
 | 2026-11-23 | Silent install + program started by setup; gremlin-ctl tried (switch off: exit 2 as specified) | install | no data | 1 min | 07:00-07:01 |
 | 2026-11-23 | Lead: answers 1a-4a into spec, CLAUDE.md, guards, Help; CLI UTF-8 console fix | docs/fix | 3-8 min | ~8 min | 06:57-07:05 |
+| 2026-11-23 | Live test of the control API through gremlin-ctl.exe (read calls, then actions: tracing, option set + History, Health/Search windows, press, type, screenshot, run stop/start) | test | ~2 min (guess) | 5 min | 07:10-07:15, lead |
+| 2026-11-23 | FIX-DEV: devices real only, hello not logged | fix | 3-8 min | 2 min | 07:14-07:16, 1 agent |
