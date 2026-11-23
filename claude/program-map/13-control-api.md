@@ -92,12 +92,12 @@ None planned. Layer rule: calls use the program's own paths (Run / Stop, File, O
 - **S11** **The command line** prints readable text, and raw JSON with `--json` for scripts. Exit codes: 0 done, 1 the call failed, 2 the program isn't running or control from other programs is off, 3 version mismatch. [decided 2026-11-23, user: 2a; exit codes from the approved contract]
 - **S12** **The key.** While the switch is on and the program runs, the program makes a new random key and pipe name and writes them to `%USERPROFILE%\Gremlin Platforms\api\endpoint.json` (the user's Gremlin Platforms folder, not the movable data folder); switching off or quitting stops the listener and deletes the file. [decided 2026-11-23, user: shape agreed; file layout from the approved contract]
 
-Details added by the build agents (S13-S16, S18-S20 and S22 approved by the user 2026-11-23, answers 2a and 3a; S17 still to confirm):
+Details added by the build agents (approved by the user 2026-11-23: answers 2a, 3a, 4a and, for S17, a):
 - **S13** `window.close` refuses the main window. [user confirmed 2026-11-23: 3a]
 - **S14** A mouse area counts as a button for `window.read` and `window.press` only when it has an object name. [user confirmed 2026-11-23: 3a]
 - **S15** `window.read` rows also give "checked" for check boxes and "placeholder" for fields. [user confirmed 2026-11-23: 3a]
 - **S16** `window.press` and `window.type` work on a hidden window when the item itself is set visible. [user confirmed 2026-11-23: 3a]
-- **S17** `commands` lists only the main window's commands (owner "main", 45 today), and `command.run` refuses other windows' commands. (to confirm with the user)
+- **S17** `commands` lists only the main window's commands (owner "main", 45 today), and `command.run` refuses other windows' commands. [user confirmed 2026-11-23: a]
 - **S18** The system log line for each call (S8) is written at Warning level, so it shows at the default Diagnostic logs level. [user confirmed 2026-11-23: 2a]
 - **S19** `option get` / `option set` work only on settings Options shows; settings with their own custom rows, and the switch (S2), are refused. [user confirmed 2026-11-23: 3a]
 - **S20** `profile load` refuses while the open profile has unsaved changes; `profile save` refuses an Untitled profile. [user confirmed 2026-11-23: 3a]
@@ -107,7 +107,7 @@ Details added by the build agents (S13-S16, S18-S20 and S22 approved by the user
 
 ## 9. Questions for the user
 
-- Q1 (2026-11-23) S13-S22: details the build agents chose. Answered 2026-11-23 (2a, 3a) for S13-S16, S18-S20, S22; S17 (main-window commands only) still open.
+- ~~Q1~~ (2026-11-23) S13-S22: details the build agents chose. Answered 2026-11-23 (2a, 3a; S17: a).
 - ~~Q2~~ (answered by decision 3a, D-13-HISTORY; built 2026-11-23, S7) `profile save` through the API marked "by API" in History.
 
 ## 10. Known gaps
