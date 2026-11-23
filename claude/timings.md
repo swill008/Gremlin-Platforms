@@ -1383,3 +1383,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Build + silent install + live check (Health opens, profile restarted) | build/test | ~3 min | 1 min | 07:39-07:40, lead |
 | 2026-11-23 | Health minimum 1100 (both chips): edit + test + build + silent install + live check | fix/build | 3-8 min | 5 min | 07:42-07:47, lead |
 | 2026-11-23 | CI for 75e9c325 (S17, devices/log, Search columns) | ci | ~23 min | 24 min | 07:30-07:54, FAILED: test_planes_print (1) + test_gesture_undo smoke stall (26 errors); both pass locally (35/35) |
+| 2026-11-23 | CI for 98cafdac (Health caps + minimum) | ci | ~23 min | 25 min | 07:56-08:21, FAILED 1 (new Health minimum test, row 2 not found); the two earlier CI failures passed this time |
+| 2026-11-23 | CI-FIX2: Health minimum test lost its row overrides when HealthModel rebuilt mid-test (re-apply + re-measure) | fix | no data; guess 10-15 min | 3 min | 08:22-08:25, 1 agent |

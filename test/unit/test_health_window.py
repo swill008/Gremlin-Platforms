@@ -58,38 +58,88 @@ _LONG = (
 )
 
 
+def _override(j: Journey, win: Any, lines: dict[int, dict]) -> None:  # noqa: ANN401
+    """Gives the list's delegates these lines (index -> roles): their model
+    and the flags the Health delegate binds from it."""
+    import json
+
+    for i, row in lines.items():
+        _safe(j, f"_list.itemAtIndex({i}).model = " + json.dumps(row), win)
+        for flag in ("usedTwice", "notPlugged"):
+            if flag in row:
+                value = str(bool(row[flag])).lower()
+                _safe(j, f"_list.itemAtIndex({i}).{flag} = {value}", win)
+
+
+def _kept(j: Journey, win: Any, lines: dict[int, dict]) -> bool:  # noqa: ANN401
+    """Whether the delegates still show the given lines. Any health or
+    search-index change (a background index read finishing, a device
+    notice) resets HealthModel, which makes new delegates from the real
+    rows: what was measured then wasn't these lines."""
+    for i, row in lines.items():
+        live = _safe(
+            j,
+            f"(function() {{ var it = _list.itemAtIndex({i}); if (!it) return null; "
+            "return { text: it.model ? it.model.text : null, "
+            "usedTwice: it.usedTwice, notPlugged: it.notPlugged } })()",
+            win,
+        )
+        if not isinstance(live, dict) or live.get("text") != row["text"]:
+            return False
+        for flag in ("usedTwice", "notPlugged"):
+            if flag in row and live.get(flag) is not bool(row[flag]):
+                return False
+    return True
+
+
+def _measured(j: Journey, win: Any, lines: dict[int, dict], measure: Any) -> Any:  # noqa: ANN401
+    """measure() on the given lines; if the model was reset while measuring
+    (_kept), the lines are given again and measured again (a few tries)."""
+    found: Any = None
+    for _ in range(3):
+        _override(j, win, lines)
+        try:
+            found = measure()
+        except Exception:
+            # result_columns reads the given line's roles: a reset delegate
+            # (the real model) has none. Any other failure is raised.
+            if _kept(j, win, lines):
+                raise
+            continue
+        if _kept(j, win, lines):
+            return found
+    return {"reset": "the Health lines were reset on every try", "last": found}
+
+
 def _columns(j: Journey, win: Any, first: int, second: int) -> Any:  # noqa: ANN401
     """01 S196 in Health: a short and a long action (one inherited) on the
     two lines, wide and narrow, against Health's headings."""
-    import json
-
-    lines = [
-        {
+    common = {"rowKind": "result", "notFound": True, "why": "vJoy 3 isn't there"}
+    lines = {
+        first: {
+            **common,
             "inputLabel": "Button 1",
             "mode": "Default",
             "text": "Map to vJoy: vJoy 3 · Button 1",
         },
-        {
+        second: {
+            **common,
             "inputLabel": "Button 2 of the left throttle",
             "mode": "Air",
             "text": _LONG,
             "inheritedFrom": "Default",
         },
-    ]
-    for i, line in zip((first, second), lines, strict=True):
-        row = {
-            "rowKind": "result",
-            "notFound": True,
-            "why": "vJoy 3 isn't there",
-            **line,
-        }
-        _safe(j, f"_list.itemAtIndex({i}).model = " + json.dumps(row), win)
-    j.settle()
-    heads = {c: "healthHead:" + c for c in ("input", "mode", "action")}
-    return {
-        "wide": result_columns(j, win, heads, [first, second], 1430),
-        "narrow": result_columns(j, win, heads, [first, second], 700),
     }
+    heads = {c: "healthHead:" + c for c in ("input", "mode", "action")}
+
+    def measure() -> Any:  # noqa: ANN401
+        j.settle()
+        return {
+            "wide": result_columns(j, win, heads, [first, second], 1430),
+            "narrow": result_columns(j, win, heads, [first, second], 700),
+        }
+
+    return _measured(j, win, lines, measure)
 
 
 def _at_minimum(j: Journey, win: Any, first: int, second: int) -> Any:  # noqa: ANN401
@@ -97,67 +147,64 @@ def _at_minimum(j: Journey, win: Any, first: int, second: int) -> Any:  # noqa: 
     action and "Used twice", and one with both chips ("Used twice" and
     "Not plugged in", the widest line; user 2026-11-23): each action box,
     its right edge, where its chip starts and the line's right edge."""
-    import json
+    from PySide6 import QtCore
 
-    lines = [
-        {"text": _LONG, "usedTwice": True, "notPlugged": False},
-        {"text": _LONG, "usedTwice": True, "notPlugged": True},
-    ]
-    for i, line in zip((first, second), lines, strict=True):
-        row = {
-            "rowKind": "result",
-            "inputLabel": "Button 2 of the left throttle",
-            "mode": "Air",
-            "notFound": True,
-            "why": "vJoy 3 isn't there",
-            **line,
-        }
-        _safe(j, f"_list.itemAtIndex({i}).model = " + json.dumps(row), win)
-        for flag in ("usedTwice", "notPlugged"):
-            value = str(line[flag]).lower()
-            _safe(j, f"_list.itemAtIndex({i}).{flag} = {value}", win)
+    common = {
+        "rowKind": "result",
+        "inputLabel": "Button 2 of the left throttle",
+        "mode": "Air",
+        "notFound": True,
+        "why": "vJoy 3 isn't there",
+        "text": _LONG,
+    }
+    lines = {
+        first: {**common, "usedTwice": True, "notPlugged": False},
+        second: {**common, "usedTwice": True, "notPlugged": True},
+    }
     # The off-screen screen is 800 px, which caps minimumWidth; the line
     # room is checked at the uncapped minimum.
     minimum = int(win.property("lineRoomWidth"))
-    win.setWidth(minimum)
-    j.settle()
-    from PySide6 import QtCore
 
     def sx(item: Any) -> float:  # noqa: ANN401
         return round(item.mapToScene(QtCore.QPointF(0, 0)).x(), 1)
 
-    rows = []
-    for i in (first, second):
-        box = j.item(win, f"searchRowAction:{i}")
-        chips = [
-            j.item(win, f"{name}:{i}:tag")
-            for name in ("searchRowUsedTwice", "searchRowNotPlugged")
-        ]
-        chips = [c for c in chips if c is not None and c.property("visible")]
-        row = j.item(win, f"searchRow:{i}")
-        warn = j.item(win, f"searchRowWarn:{i}")
-        if box is None or row is None or not chips:
-            rows.append(f"row {i}: no box, row or chip")
-            continue
-        rows.append(
-            {
-                "boxWidth": round(box.width(), 1),
-                "warnWidth": None if warn is None else round(warn.width(), 1),
-                "chipWidths": [round(c.width(), 1) for c in chips],
-                "listWidth": float(j.ev("_list.width", win)),
-                "boxRight": round(sx(box) + box.width(), 1),
-                "chipLeft": min(sx(c) for c in chips),
-                "chipsRight": max(round(sx(c) + c.width(), 1) for c in chips),
-                "rowRight": round(sx(row) + row.width(), 1),
-            }
-        )
+    def measure() -> list:
+        win.setWidth(minimum)
+        j.settle()
+        rows: list = []
+        for i in (first, second):
+            box = j.item(win, f"searchRowAction:{i}")
+            chips = [
+                j.item(win, f"{name}:{i}:tag")
+                for name in ("searchRowUsedTwice", "searchRowNotPlugged")
+            ]
+            chips = [c for c in chips if c is not None and c.property("visible")]
+            row = j.item(win, f"searchRow:{i}")
+            warn = j.item(win, f"searchRowWarn:{i}")
+            if box is None or row is None or not chips:
+                rows.append(f"row {i}: no box, row or chip")
+                continue
+            rows.append(
+                {
+                    "boxWidth": round(box.width(), 1),
+                    "warnWidth": None if warn is None else round(warn.width(), 1),
+                    "chipWidths": [round(c.width(), 1) for c in chips],
+                    "listWidth": float(j.ev("_list.width", win)),
+                    "boxRight": round(sx(box) + box.width(), 1),
+                    "chipLeft": min(sx(c) for c in chips),
+                    "chipsRight": max(round(sx(c) + c.width(), 1) for c in chips),
+                    "rowRight": round(sx(row) + row.width(), 1),
+                }
+            )
+        return rows
+
     return {
+        "rows": _measured(j, win, lines, measure),
         "capped": int(win.property("minimumWidth"))
         == int(j.ev(f"Style.fitWidth({minimum}, Screen)", win)),
         "minimum": minimum,
         "width": int(win.property("width")),
         "need": float(j.ev("Style.dp(120)", win)),
-        "rows": rows,
     }
 
 
@@ -339,6 +386,7 @@ def test_narrow_health_window_keeps_lines_inside_the_list(result: dict) -> None:
     Search (40% / 20% of the list), so every line's action box ends inside
     the line (before, Input and Mode pushed it past the edge), still under
     the headings."""
+    assert "narrow" in result["columns"], result["columns"]
     check_result_columns(result["columns"]["narrow"])
 
 
@@ -349,6 +397,7 @@ def test_minimum_width_leaves_every_action_box_room(result: dict) -> None:
     line (before, a 640 minimum left the box 0 px wide)."""
     found = result["minimum"]
     assert isinstance(found, dict), found
+    assert isinstance(found["rows"], list), found
     assert found["capped"] is True, found
     assert found["width"] == found["minimum"], found
     for row in found["rows"]:
