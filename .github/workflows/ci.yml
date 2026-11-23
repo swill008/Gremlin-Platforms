@@ -55,8 +55,10 @@ jobs:
       GREMLIN_TEST_STALL_AFTER: "30"
       # A unit part ran ~8-11 min on the runner with 2 parts (10 min stopped
       # a part that was still passing, run 37686302017). The stall watch above
-      # still catches a hung test.
-      GREMLIN_TEST_PART_LIMIT: "1500"
+      # still catches a hung test. Raised to 35 min on 2026-11-23: with 3
+      # parts they ran 23-25 min and unit-2 hit 25 min with no failure
+      # (run 45214414772).
+      GREMLIN_TEST_PART_LIMIT: "2100"
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
