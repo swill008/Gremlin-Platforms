@@ -24,7 +24,7 @@ function topics() {
                 + "</ol>"
                 + "<h4>What you see</h4>"
                 + "<ul>"
-                + "<li><b>General</b>: startup and the tray, devices, diagnostics and History. See <a href=\"topic:options-profile-general\">General options</a>.</li>"
+                + "<li><b>General</b>: startup and the tray, devices, vJoy, diagnostics and History. See <a href=\"topic:options-profile-general\">General options</a>.</li>"
                 + "<li><b>Interface</b>: dark mode, size, input names and input highlighting. See <a href=\"topic:options-profile-interface\">Interface options</a>.</li>"
                 + "<li><b>Actions</b>: which actions the add-action menus offer, and the settings of each action. See <a href=\"topic:options-profile-add-action-menu\">Choose the actions you can add</a>.</li>"
                 + "<li><b>Profiles</b>: load a profile automatically when a game comes to the front. See <a href=\"topic:options-profile-auto-load\">Load a profile automatically for a game</a>.</li>"
@@ -45,7 +45,7 @@ function topics() {
             id: "options-profile-general",
             section: "Options",
             title: "General options",
-            body: "<p>The <b>General</b> section of Options covers startup, devices, diagnostics and History.</p>"
+            body: "<p>The <b>General</b> section of Options covers startup, devices, vJoy, diagnostics and History.</p>"
                 + "<h4>What you see</h4>"
                 + "<ul>"
                 + "<li><b>Startup and Tray</b>:<ul>"
@@ -63,6 +63,9 @@ function topics() {
                 + "<li><b>Refresh axes when Run starts</b> <a href=\"show:option/Refresh axes when Run starts\">Show me ›</a>: sends every axis's current position again when you choose Run.</li>"
                 + "<li><b>Refresh axis on mode change</b> <a href=\"show:option/Refresh axis on mode change\">Show me ›</a>: does the same when the mode changes.</li>"
                 + "</ul></li>"
+                + "<li><b>vJoy</b>:<ul>"
+                + "<li><b>Keep vJoy devices awake</b> <a href=\"show:option/Keep vJoy devices awake\">Show me ›</a>: while the profile runs, sends to each vJoy device again after 60 seconds with no change. Only for older vJoy versions that stop responding when idle. Off at first.</li>"
+                + "</ul></li>"
                 + "<li><b>Diagnostics</b>: <b>Diagnostic logs</b> and <b>Log When Not Responding</b>. See <a href=\"topic:options-profile-diagnostics\">Diagnostic logs</a>.</li>"
                 + "<li><b>History</b>:<ul>"
                 + "<li><b>Days to keep changes</b> <a href=\"show:option/Days to keep changes\">Show me ›</a>: how long <b>Tools › History</b> keeps each change.</li>"
@@ -72,6 +75,8 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>An axis you haven't moved since the program started is sent as centered until it moves.</li>"
+                + "<li>With <b>Keep vJoy devices awake</b> on, Windows counts each send as input, so it turns the displays on about once a minute while the profile runs. Leave it off unless your vJoy stops responding.</li>"
+                + "<li>A change to <b>Keep vJoy devices awake</b> takes effect the next time you choose <b>Run</b>.</li>"
                 + "</ul>",
             related: ["options-profile-options", "options-profile-tray", "options-profile-start-with-windows", "tools-hidhide", "tools-history"]
         },

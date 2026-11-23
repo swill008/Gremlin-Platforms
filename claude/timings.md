@@ -1354,3 +1354,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-22 | CI fixes: LIBFIX + SSMTEST (Opus agents) + lead (symbol font in Style) | fix | 3-8 min | 4 min | 10:25-10:29 |
 | 2026-11-22 | CI 2 for 95f6f1ab (passed) | ci | ~23 min | 23 min | 10:29-10:52 |
 | 2026-11-22 | Release workflow 1.1.1 (publish) | release | no data | 4 min | 10:52-10:56 |
+| 2026-11-22 | Displays keep waking (user away): live watch found the vJoy keep-alive (06 S54) waking Windows every 60 s | research | — | 10 min | 18:50-19:00, lead alone, read-only watch scripts |
+| 2026-11-22 | VJTEST: write vJoy idle probe + dry run, start 180-min run | fix | 3-8 min | 2 min | 19:22-19:24, 1 agent; run expected 19:24-22:25 |
+| 2026-11-22 | WATCH: read-only watch of Screen Saver Mode counter, wakes, Run state (logs + trace) | research | ~15 min | 14 min | 19:12-19:26, 1 agent |
+| 2026-11-22 | vJoy 180-min idle probe run (VJTEST) | test | 180 min | 180 min | 19:24:39-22:24:42, all 6 checkpoints pass |
+| 2026-11-23 | Keep-alive switch: CODE / TESTS / DOCS agents | fix | 3-8 min each | 3-4 min each | 04:25-04:29, 3 parallel agents |
+| 2026-11-23 | Quick tests (`--changed` ran all 6 parts) + pyright | test | ~1 min | 9 min | 04:29-04:38; option.py change pulled in every part; 1 fail (proc_tree guard on new test), fixed 04:39 |

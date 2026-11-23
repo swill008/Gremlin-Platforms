@@ -258,6 +258,7 @@ def _wait_with_events(check: Callable[[], bool], seconds: float = 2.0) -> bool:
 def held_vjoy(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[int, _FakeDevice]]:
     """The output module on a fake driver with a quick keep-alive."""
     from gremlin import run_scope
+    from gremlin.config import Configuration
     from gremlin.modules import output
 
     devices: dict[int, _FakeDevice] = {}
@@ -266,12 +267,16 @@ def held_vjoy(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[int, _FakeDevice
     monkeypatch.setattr(output, "_KEEP_ALIVE_S", 0.01)
     monkeypatch.setattr(output, "_keep_alive", {})
     run_scope._reset_for_tests()
+    # The keep-alive is an Options switch, off at first (06 S54): on here.
+    before = Configuration().value("global", "vjoy", "keep-alive")
+    Configuration().set("global", "vjoy", "keep-alive", True)
     try:
         yield devices
     finally:
         output.reset_vjoy()
         run_scope.stop()
         run_scope._reset_for_tests()
+        Configuration().set("global", "vjoy", "keep-alive", before)
 
 
 def _keep_alive_threads(name: str) -> list[str]:

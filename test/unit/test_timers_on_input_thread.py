@@ -50,6 +50,17 @@ def run(input_thread_running: None) -> Iterator[None]:
 
 
 @pytest.fixture
+def keep_alive_on() -> Iterator[None]:
+    """The vJoy keep-alive's Options switch on (off at first, 06 S54)."""
+    from gremlin.config import Configuration
+
+    before = Configuration().value("global", "vjoy", "keep-alive")
+    Configuration().set("global", "vjoy", "keep-alive", True)
+    yield
+    Configuration().set("global", "vjoy", "keep-alive", before)
+
+
+@pytest.fixture
 def qt_warnings() -> Iterator[list[str]]:
     seen: list[str] = []
 
@@ -157,7 +168,7 @@ def test_stop_cancels_input_thread_timers_on_their_thread(
 
 
 def test_the_vjoy_keep_alive_is_armed_on_the_input_thread(
-    run: None, monkeypatch: pytest.MonkeyPatch
+    run: None, keep_alive_on: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     vid = 15
     monkeypatch.setattr(output, "_opened_vjoy", lambda _vid: object())
@@ -173,7 +184,7 @@ def test_the_vjoy_keep_alive_is_armed_on_the_input_thread(
 
 
 def test_the_keep_alive_stays_on_the_main_thread_in_inline_mode(
-    qapp: object, monkeypatch: pytest.MonkeyPatch
+    qapp: object, keep_alive_on: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     vid = 15
     monkeypatch.setattr(output, "_opened_vjoy", lambda _vid: object())

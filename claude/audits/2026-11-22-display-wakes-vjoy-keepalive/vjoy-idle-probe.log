@@ -1,0 +1,145 @@
+--- 19:23:41 ---
+19:23:41 +   0.00m DRY === vJoy idle probe start (DRY), checkpoints (min): [0.1, 0.2]
+19:23:41 +   0.00m DRY === vJoy idle probe start (DRY), checkpoints (min): [0.1, 0.2]
+19:23:41 +   0.00m DRY display watch: hwnd=1184922 RegisterPowerSettingNotification=ok
+19:23:41 +   0.00m DRY display watch: hwnd=1184922 RegisterPowerSettingNotification=ok
+19:23:41 +   0.00m DRY DISPLAY STATE -> off  (last input 179859 ms ago; last vJoy write n/a ago)
+19:23:41 +   0.00m DRY DISPLAY STATE -> off  (last input 179859 ms ago; last vJoy write n/a ago)
+19:23:42 +   0.01m DRY vJoyEnabled=1 GetvJoyVersion=0x0222 DriverMatch=1 (dll 0x0222, driver 0x0222)
+19:23:42 +   0.01m DRY vJoyEnabled=1 GetvJoyVersion=0x0222 DriverMatch=1 (dll 0x0222, driver 0x0222)
+19:23:42 +   0.01m DRY device 1: exists, status FREE, buttons 128, X axis 1
+19:23:42 +   0.01m DRY device 1: exists, status FREE, buttons 128, X axis 1
+19:23:42 +   0.01m DRY device 2: exists, status FREE, buttons 127, X axis 1
+19:23:42 +   0.01m DRY device 2: exists, status FREE, buttons 127, X axis 1
+19:23:42 +   0.01m DRY device 3: exists, status FREE, buttons 126, X axis 1
+19:23:42 +   0.01m DRY device 3: exists, status FREE, buttons 126, X axis 1
+19:23:42 +   0.01m DRY AcquireVJD(1)=1 status now OWN axis max 32767
+19:23:42 +   0.01m DRY AcquireVJD(1)=1 status now OWN axis max 32767
+19:23:42 +   0.01m DRY ResetVJD(1)=1
+19:23:42 +   0.01m DRY ResetVJD(1)=1
+19:23:42 +   0.01m DRY winmm id 0: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:23:42 +   0.01m DRY winmm id 0: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:23:42 +   0.01m DRY winmm id 3: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:23:42 +   0.01m DRY winmm id 3: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:23:42 +   0.01m DRY winmm id 5: caps rc=0 mid=0x045E pid=0x02FF name='Microsoft PC-joystick driver' buttons=16 axes=5
+19:23:42 +   0.01m DRY winmm id 5: caps rc=0 mid=0x045E pid=0x02FF name='Microsoft PC-joystick driver' buttons=16 axes=5
+19:23:42 +   0.01m DRY winmm id 7: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:23:42 +   0.01m DRY winmm id 7: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:23:42 +   0.01m DRY start write SetAxis(X=3604)=1 SetBtn(1,off)=1
+19:23:42 +   0.01m DRY start write SetAxis(X=3604)=1 SetBtn(1,off)=1
+19:23:42 +   0.02m DRY   ids with X near 7208: [0]
+19:23:42 +   0.02m DRY   ids with X near 7208: [0]
+19:23:42 +   0.02m DRY start write SetAxis(X=27196)=1 SetBtn(1,off)=1
+19:23:42 +   0.02m DRY start write SetAxis(X=27196)=1 SetBtn(1,off)=1
+19:23:42 +   0.02m DRY   ids with X near 54393: [0]
+19:23:42 +   0.02m DRY   ids with X near 54393: [0]
+19:23:43 +   0.03m DRY DISPLAY STATE -> on  (last input 15 ms ago; last vJoy write 0.2 s ago)
+19:23:43 +   0.03m DRY DISPLAY STATE -> on  (last input 15 ms ago; last vJoy write 0.2 s ago)
+19:23:43 +   0.03m DRY START vJoy device 1 = winmm id 0: SetAxis(X=8191)=1 SetBtn(1,off)=1; joyGetPosEx rc=0 X=16382 (expect ~16382) buttons=0x0 -> SEEN
+19:23:43 +   0.03m DRY START vJoy device 1 = winmm id 0: SetAxis(X=8191)=1 SetBtn(1,off)=1; joyGetPosEx rc=0 X=16382 (expect ~16382) buttons=0x0 -> SEEN
+19:23:43 +   0.04m DRY DISPLAY STATE -> off  (last input 515 ms ago; last vJoy write 0.7 s ago)
+19:23:43 +   0.04m DRY DISPLAY STATE -> off  (last input 515 ms ago; last vJoy write 0.7 s ago)
+19:23:50 +   0.15m DRY CHECKPOINT 0.1 min: GetVJDStatus=OWN SetAxis(X=24575)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 5 ms (rc=0 X=49149 expect ~49151 btn=0x1); button off seen=False -> FAIL
+19:23:50 +   0.15m DRY CHECKPOINT 0.1 min: GetVJDStatus=OWN SetAxis(X=24575)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 5 ms (rc=0 X=49149 expect ~49151 btn=0x1); button off seen=False -> FAIL
+19:23:50 +   0.15m DRY DISPLAY STATE -> on  (last input 15 ms ago; last vJoy write 0.8 s ago)
+19:23:50 +   0.15m DRY DISPLAY STATE -> on  (last input 15 ms ago; last vJoy write 0.8 s ago)
+19:23:51 +   0.16m DRY DISPLAY STATE -> off  (last input 781 ms ago; last vJoy write 1.5 s ago)
+19:23:51 +   0.16m DRY DISPLAY STATE -> off  (last input 781 ms ago; last vJoy write 1.5 s ago)
+19:23:51 +   0.16m DRY CHANGE (no write): joyGetPosEx rc=0 X=49149 buttons=0x0 (was rc=0 X=49149 buttons=0x1)
+19:23:51 +   0.16m DRY CHANGE (no write): joyGetPosEx rc=0 X=49149 buttons=0x0 (was rc=0 X=49149 buttons=0x1)
+19:23:56 +   0.25m DRY CHECKPOINT 0.2 min: GetVJDStatus=OWN SetAxis(X=13106)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 0 ms (rc=0 X=26211 expect ~26212 btn=0x1); button off seen=False -> FAIL
+19:23:56 +   0.25m DRY === SUMMARY ===
+19:23:56 +   0.25m DRY   checkpoint 0.1 min: FAIL status=OWN latency=5 ms
+19:23:56 +   0.25m DRY CHECKPOINT 0.2 min: GetVJDStatus=OWN SetAxis(X=13106)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 0 ms (rc=0 X=26211 expect ~26212 btn=0x1); button off seen=False -> FAIL
+19:23:56 +   0.25m DRY   checkpoint 0.2 min: FAIL status=OWN latency=0 ms
+19:23:56 +   0.25m DRY === SUMMARY ===
+19:23:56 +   0.25m DRY   drift / unexpected changes between checkpoints: 1
+19:23:56 +   0.25m DRY   checkpoint 0.1 min: FAIL status=OWN latency=5 ms
+19:23:56 +   0.25m DRY   checkpoint 0.2 min: FAIL status=OWN latency=0 ms
+19:23:56 +   0.25m DRY     ('19:23:51', (0, 49149, 1), (0, 49149, 0))
+19:23:56 +   0.25m DRY   drift / unexpected changes between checkpoints: 1
+19:23:56 +   0.25m DRY     ('19:23:51', (0, 49149, 1), (0, 49149, 0))
+19:23:56 +   0.25m DRY   display events: 5 total; within 5.5 s after a vJoy write: 4; not tied to a write: 1
+19:23:56 +   0.25m DRY     19:23:41 off (n/a)
+19:23:56 +   0.25m DRY   display events: 5 total; within 5.5 s after a vJoy write: 4; not tied to a write: 1
+19:23:56 +   0.25m DRY     19:23:43 on (0.2 s after last write)
+19:23:56 +   0.25m DRY     19:23:41 off (n/a)
+19:23:56 +   0.25m DRY     19:23:43 off (0.7 s after last write)
+19:23:56 +   0.25m DRY     19:23:43 on (0.2 s after last write)
+19:23:56 +   0.25m DRY     19:23:43 off (0.7 s after last write)
+19:23:56 +   0.25m DRY     19:23:50 on (0.8 s after last write)
+19:23:56 +   0.25m DRY     19:23:50 on (0.8 s after last write)
+19:23:56 +   0.25m DRY     19:23:51 off (1.5 s after last write)
+19:23:56 +   0.25m DRY     19:23:51 off (1.5 s after last write)
+19:23:56 +   0.25m DRY RelinquishVJD(1) done; status now FREE
+19:23:56 +   0.25m DRY === vJoy idle probe end ===
+19:23:56 +   0.25m DRY RelinquishVJD(1) done; status now FREE
+19:23:56 +   0.25m DRY === vJoy idle probe end ===
+--- 19:24:36 ---
+VJTEST: 180-min vJoy idle probe, expect ~180 min, user-approved
+19:24:39 +   0.00m === vJoy idle probe start (REAL), checkpoints (min): [5, 15, 30, 60, 120, 180]
+19:24:39 +   0.00m display watch: hwnd=3347028 RegisterPowerSettingNotification=ok
+19:24:39 +   0.00m DISPLAY STATE -> off  (last input 43281 ms ago; last vJoy write n/a ago)
+19:24:40 +   0.01m vJoyEnabled=1 GetvJoyVersion=0x0222 DriverMatch=1 (dll 0x0222, driver 0x0222)
+19:24:40 +   0.01m device 1: exists, status FREE, buttons 128, X axis 1
+19:24:40 +   0.01m device 2: exists, status FREE, buttons 127, X axis 1
+19:24:40 +   0.01m device 3: exists, status FREE, buttons 126, X axis 1
+19:24:40 +   0.01m AcquireVJD(1)=1 status now OWN axis max 32767
+19:24:40 +   0.01m ResetVJD(1)=1
+19:24:40 +   0.01m winmm id 0: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:24:40 +   0.01m winmm id 3: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:24:40 +   0.01m winmm id 5: caps rc=0 mid=0x045E pid=0x02FF name='Microsoft PC-joystick driver' buttons=16 axes=5
+19:24:40 +   0.01m winmm id 7: caps rc=0 mid=0x1234 pid=0xBEAD name='Microsoft PC-joystick driver' buttons=32 axes=6
+19:24:40 +   0.01m start write SetAxis(X=3604)=1 SetBtn(1,off)=1
+19:24:40 +   0.02m   ids with X near 7208: [0]
+19:24:40 +   0.02m start write SetAxis(X=27196)=1 SetBtn(1,off)=1
+19:24:41 +   0.02m   ids with X near 54393: [0]
+19:24:41 +   0.03m DISPLAY STATE -> on  (last input 0 ms ago; last vJoy write 0.2 s ago)
+19:24:41 +   0.04m START vJoy device 1 = winmm id 0: SetAxis(X=8191)=1 SetBtn(1,off)=1; joyGetPosEx rc=0 X=16382 (expect ~16382) buttons=0x0 -> SEEN
+19:24:41 +   0.04m DISPLAY STATE -> off  (last input 750 ms ago; last vJoy write 0.9 s ago)
+19:29:42 +   5.05m input tick advanced (after write): last-input time is 765 ms after the first write
+19:29:42 +   5.05m CHECKPOINT 5 min: GetVJDStatus=OWN SetAxis(X=24575)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 5 ms (rc=0 X=49149 expect ~49151 btn=0x1); button off seen=yes in 274 ms -> PASS
+19:29:42 +   5.05m DISPLAY STATE -> on  (last input 31 ms ago; last vJoy write 0.8 s ago)
+19:29:43 +   5.06m DISPLAY STATE -> off  (last input 500 ms ago; last vJoy write 1.3 s ago)
+19:39:42 +  15.05m input tick advanced (after write): last-input time is 765 ms after the first write
+19:39:42 +  15.05m CHECKPOINT 15 min: GetVJDStatus=OWN SetAxis(X=13106)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 5 ms (rc=0 X=26211 expect ~26212 btn=0x1); button off seen=yes in 273 ms -> PASS
+19:39:43 +  15.06m DISPLAY STATE -> on  (last input 485 ms ago; last vJoy write 1.2 s ago)
+19:39:43 +  15.06m DISPLAY STATE -> off  (last input 485 ms ago; last vJoy write 1.3 s ago)
+19:54:42 +  30.05m input tick advanced (after write): last-input time is 750 ms after the first write
+19:54:42 +  30.05m CHECKPOINT 30 min: GetVJDStatus=OWN SetAxis(X=29490)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 5 ms (rc=0 X=58980 expect ~58981 btn=0x1); button off seen=yes in 264 ms -> PASS
+19:54:42 +  30.05m DISPLAY STATE -> on  (last input 31 ms ago; last vJoy write 0.8 s ago)
+19:54:43 +  30.06m DISPLAY STATE -> off  (last input 500 ms ago; last vJoy write 1.3 s ago)
+20:24:42 +  60.05m input tick advanced (after write): last-input time is 750 ms after the first write
+20:24:42 +  60.05m CHECKPOINT 60 min: GetVJDStatus=OWN SetAxis(X=4915)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 5 ms (rc=0 X=9830 expect ~9830 btn=0x1); button off seen=yes in 265 ms -> PASS
+20:24:43 +  60.06m DISPLAY STATE -> on  (last input 765 ms ago; last vJoy write 1.5 s ago)
+20:24:43 +  60.06m DISPLAY STATE -> off  (last input 781 ms ago; last vJoy write 1.5 s ago)
+21:24:42 + 120.05m input tick advanced (after write): last-input time is 765 ms after the first write
+21:24:42 + 120.05m CHECKPOINT 120 min: GetVJDStatus=OWN SetAxis(X=19660)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 5 ms (rc=0 X=39319 expect ~39321 btn=0x1); button off seen=yes in 268 ms -> PASS
+21:24:42 + 120.05m DISPLAY STATE -> on  (last input 16 ms ago; last vJoy write 0.8 s ago)
+21:24:43 + 120.06m DISPLAY STATE -> off  (last input 766 ms ago; last vJoy write 1.5 s ago)
+22:24:42 + 180.05m input tick advanced (after write): last-input time is 781 ms after the first write
+22:24:42 + 180.05m CHECKPOINT 180 min: GetVJDStatus=OWN SetAxis(X=10813)=1 SetBtn(1,on)=1 SetBtn(1,off)=1; seen by joyGetPosEx: yes in 5 ms (rc=0 X=21625 expect ~21626 btn=0x1); button off seen=yes in 297 ms -> PASS
+22:24:42 + 180.05m === SUMMARY ===
+22:24:42 + 180.05m   checkpoint 5 min: PASS status=OWN latency=5 ms
+22:24:42 + 180.05m   checkpoint 15 min: PASS status=OWN latency=5 ms
+22:24:42 + 180.05m   checkpoint 30 min: PASS status=OWN latency=5 ms
+22:24:42 + 180.05m   checkpoint 60 min: PASS status=OWN latency=5 ms
+22:24:42 + 180.05m   checkpoint 120 min: PASS status=OWN latency=5 ms
+22:24:42 + 180.05m   checkpoint 180 min: PASS status=OWN latency=5 ms
+22:24:42 + 180.05m   drift / unexpected changes between checkpoints: 0
+22:24:42 + 180.05m   display events: 13 total; within 5.5 s after a vJoy write: 12; not tied to a write: 1
+22:24:42 + 180.05m     19:24:39 off (n/a)
+22:24:42 + 180.05m     19:24:41 on (0.2 s after last write)
+22:24:42 + 180.05m     19:24:41 off (0.9 s after last write)
+22:24:42 + 180.05m     19:29:42 on (0.8 s after last write)
+22:24:42 + 180.05m     19:29:43 off (1.3 s after last write)
+22:24:42 + 180.05m     19:39:43 on (1.2 s after last write)
+22:24:42 + 180.05m     19:39:43 off (1.3 s after last write)
+22:24:42 + 180.05m     19:54:42 on (0.8 s after last write)
+22:24:42 + 180.05m     19:54:43 off (1.3 s after last write)
+22:24:42 + 180.05m     20:24:43 on (1.5 s after last write)
+22:24:42 + 180.05m     20:24:43 off (1.5 s after last write)
+22:24:42 + 180.05m     21:24:42 on (0.8 s after last write)
+22:24:42 + 180.05m     21:24:43 off (1.5 s after last write)
+22:24:42 + 180.05m RelinquishVJD(1) done; status now FREE
+22:24:42 + 180.05m === vJoy idle probe end ===

@@ -20,6 +20,7 @@ from typing import Any
 import pytest
 
 from gremlin import clock, run_scope
+from gremlin.config import Configuration
 from gremlin.modules import output
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -197,8 +198,14 @@ def stepped_keep_alive(
 
     Proxy.vjoy_devices = {}
     monkeypatch.setattr(output, "_vjoy_proxy", lambda: Proxy)
-    yield now, timers, Proxy
-    Proxy.vjoy_devices = {}
+    # The keep-alive is an Options switch, off at first (06 S54): on here.
+    before = Configuration().value("global", "vjoy", "keep-alive")
+    Configuration().set("global", "vjoy", "keep-alive", True)
+    try:
+        yield now, timers, Proxy
+    finally:
+        Configuration().set("global", "vjoy", "keep-alive", before)
+        Proxy.vjoy_devices = {}
 
 
 def _run_until(now: list[float], timers: list[list[Any]], end: float) -> None:

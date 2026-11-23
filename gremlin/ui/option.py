@@ -86,6 +86,8 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
             ("global", "general", "refresh-axis-on-activation"),
             ("global", "general", "refresh-axis-on-mode-change"),
         ]),
+        # Off at first: for older vJoy versions only (06 S54).
+        ("vJoy", [("global", "vjoy", "keep-alive")]),
         ("Diagnostics", [
             ("global", "general", "debug"),
             ("global", "general", "log-when-not-responding"),
@@ -306,6 +308,7 @@ _KEY_TITLES = {
     "global/screen-saver-mode/hold-fullscreen": "Hold off during full-screen programs",
     "global/screen-saver-mode/devices": "Saved Devices list",
     "global/screen-saver-mode/wake-pc": "Wake PC list",
+    "global/vjoy/keep-alive": "Keep vJoy devices awake",
 }
 
 

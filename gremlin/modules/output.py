@@ -22,6 +22,7 @@ from PySide6 import QtCore
 from gremlin import (
     axis_names,
     clock,
+    config,
     input_thread,
     run_scope,
     threads,
@@ -30,7 +31,7 @@ from gremlin import (
 )
 from gremlin.modules import registry
 from gremlin.modules.claim import claim_allows, claim_friendly, claim_ids, kind_of
-from gremlin.types import InputType
+from gremlin.types import InputType, PropertyType
 
 # Action plugins reach the Xbox output through this module, not the driver
 # package (05 Q16).
@@ -61,9 +62,32 @@ _told_busy: set[int] = set()
 _vjoy_off: set[int] = set()
 
 # A held vJoy with no write for this long is reset so it doesn't time out
-# (06 S54); checked this often, one timer per held device.
+# (06 S54); checked this often, one timer per held device. Only while the
+# Options switch global/vjoy/keep-alive is on (off at first): each reset
+# counts as user input, so Windows turns the displays on once a minute.
 _KEEP_ALIVE_S = 60.0
 _keep_alive: dict[int, tuple[object, run_scope.Timer]] = {}
+
+config.Configuration().register(
+    "global",
+    "vjoy",
+    "keep-alive",
+    PropertyType.Bool,
+    False,
+    "For older vJoy versions that stop responding when idle. Each reset "
+    "counts as input, so Windows turns the displays on about once a minute.",
+    {},
+    True,
+)
+
+
+def keep_alive_enabled() -> bool:
+    """True when the vJoy keep-alive option is on (06 S54); False if it
+    can't be read."""
+    try:
+        return bool(config.Configuration().value("global", "vjoy", "keep-alive"))
+    except Exception:
+        return False
 
 
 # --- claims -----------------------------------------------------------------
@@ -361,8 +385,10 @@ def _arm_keep_alive(
 ) -> None:
     """Checks the held vJoy _KEEP_ALIVE_S after its last write (06 S54), or
     after seconds. One timer per device: armed when it is opened (after=None,
-    none armed yet) or by its own check (after=that check's token, still the
-    current one).
+    none armed yet, and only while keep_alive_enabled()) or by its own check
+    (after=that check's token, still the current one). A change to the
+    option takes effect at the next device open or Run start; Stop cancels
+    timers already armed.
 
     It is a Run timer (run_scope.timer): Stop cancels it with the rest of
     the Run, so it never outlives the Run that holds the device and is never
@@ -372,6 +398,8 @@ def _arm_keep_alive(
     armed on that one.
     """
     vid = int(vjoy_id)
+    if after is None and not keep_alive_enabled():
+        return
     if after is None and _pass_keep_alive_on(vid):
         return
     # Released while the request was on its way: nothing to keep alive.

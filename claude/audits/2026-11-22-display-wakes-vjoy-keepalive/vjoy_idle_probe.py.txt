@@ -1,0 +1,344 @@
+"""Standalone vJoy idle probe (plain ctypes; no gremlin/vjoy packages).
+
+Acquires one FREE vJoy device, then leaves it untouched except at
+checkpoints (5, 15, 30, 60, 120, 180 min). At each checkpoint: status
+check, write X + button 1, confirm via winmm joyGetPosEx. Between
+checkpoints: joyGetPosEx once a second, log changes only. Display on/off
+notifications and last-input advances are logged throughout.
+
+Usage: python vjoy_idle_probe.py [--dry]
+"""
+import ctypes
+import ctypes.wintypes as w
+import sys
+import threading
+import time
+import traceback
+import uuid
+from pathlib import Path
+
+REPO = Path(r"E:\Users\Stacie\Documents\GitHub\Gremlin-Platforms")
+LOGDIR = REPO / ".agent-logs"
+DLL = r"C:\Program Files\vJoy\x64\vJoyInterface.dll"
+DRY = "--dry" in sys.argv
+CHECKPOINTS = [0.1, 0.2] if DRY else [5, 15, 30, 60, 120, 180]
+TAG = "DRY " if DRY else ""
+
+LOGDIR.mkdir(exist_ok=True)
+_own = open(LOGDIR / "VJTEST.log", "a", encoding="utf-8")
+_all = open(LOGDIR / "all.log", "a", encoding="utf-8")
+_lock = threading.Lock()
+T0 = time.time()
+
+
+def log(msg):
+    line = f"{time.strftime('%H:%M:%S')} +{(time.time() - T0) / 60:7.2f}m {TAG}{msg}"
+    with _lock:
+        _own.write(line + "\n"); _own.flush()
+        _all.write("VJTEST " + line + "\n"); _all.flush()
+        try:
+            print(line, flush=True)
+        except Exception:
+            pass
+
+
+u32, k32 = ctypes.windll.user32, ctypes.windll.kernel32
+winmm = ctypes.windll.winmm
+
+
+class LII(ctypes.Structure):
+    _fields_ = [("cbSize", w.UINT), ("dwTime", w.DWORD)]
+
+
+def last_input():
+    l = LII(); l.cbSize = ctypes.sizeof(l)
+    u32.GetLastInputInfo(ctypes.byref(l))
+    return l.dwTime
+
+
+def idle_ms():
+    return (k32.GetTickCount() - last_input()) & 0xFFFFFFFF
+
+
+# ---------------- winmm ----------------
+class JOYINFOEX(ctypes.Structure):
+    _fields_ = [("dwSize", w.DWORD), ("dwFlags", w.DWORD), ("dwXpos", w.DWORD),
+                ("dwYpos", w.DWORD), ("dwZpos", w.DWORD), ("dwRpos", w.DWORD),
+                ("dwUpos", w.DWORD), ("dwVpos", w.DWORD), ("dwButtons", w.DWORD),
+                ("dwButtonNumber", w.DWORD), ("dwPOV", w.DWORD),
+                ("dwReserved1", w.DWORD), ("dwReserved2", w.DWORD)]
+
+
+class JOYCAPSW(ctypes.Structure):
+    _fields_ = [("wMid", w.WORD), ("wPid", w.WORD), ("szPname", w.WCHAR * 32),
+                ("wXmin", w.UINT), ("wXmax", w.UINT), ("wYmin", w.UINT), ("wYmax", w.UINT),
+                ("wZmin", w.UINT), ("wZmax", w.UINT), ("wNumButtons", w.UINT),
+                ("wPeriodMin", w.UINT), ("wPeriodMax", w.UINT), ("wRmin", w.UINT),
+                ("wRmax", w.UINT), ("wUmin", w.UINT), ("wUmax", w.UINT), ("wVmin", w.UINT),
+                ("wVmax", w.UINT), ("wCaps", w.UINT), ("wMaxAxes", w.UINT),
+                ("wNumAxes", w.UINT), ("wMaxButtons", w.UINT), ("szRegKey", w.WCHAR * 32),
+                ("szOEMVxD", w.WCHAR * 260)]
+
+
+def joy_read(jid):
+    j = JOYINFOEX(); j.dwSize = ctypes.sizeof(j); j.dwFlags = 0xFF  # JOY_RETURNALL
+    rc = winmm.joyGetPosEx(jid, ctypes.byref(j))
+    return rc, j.dwXpos, j.dwButtons
+
+
+def joy_caps(jid):
+    c = JOYCAPSW()
+    rc = winmm.joyGetDevCapsW(jid, ctypes.byref(c), ctypes.sizeof(c))
+    return rc, c
+
+
+# ---------------- vJoy ----------------
+VJD_STATS = {0: "OWN", 1: "FREE", 2: "BUSY", 3: "MISS", 4: "UNKN"}
+HID_X = 0x30
+
+
+def load_vjoy():
+    v = ctypes.WinDLL(DLL)
+    v.vJoyEnabled.restype = w.BOOL
+    v.GetvJoyVersion.restype = ctypes.c_short
+    v.DriverMatch.argtypes = [ctypes.POINTER(w.WORD), ctypes.POINTER(w.WORD)]
+    v.DriverMatch.restype = w.BOOL
+    for n in ("GetVJDStatus", "isVJDExists", "AcquireVJD", "RelinquishVJD", "ResetVJD",
+              "GetVJDButtonNumber"):
+        getattr(v, n).argtypes = [w.UINT]
+    v.GetVJDStatus.restype = ctypes.c_int
+    v.isVJDExists.restype = w.BOOL
+    v.AcquireVJD.restype = w.BOOL
+    v.RelinquishVJD.restype = None
+    v.ResetVJD.restype = w.BOOL
+    v.GetVJDButtonNumber.restype = ctypes.c_int
+    v.GetVJDAxisExist.argtypes = [w.UINT, w.UINT]; v.GetVJDAxisExist.restype = w.BOOL
+    v.GetVJDAxisMax.argtypes = [w.UINT, w.UINT, ctypes.POINTER(ctypes.c_long)]
+    v.GetVJDAxisMax.restype = w.BOOL
+    v.SetAxis.argtypes = [ctypes.c_long, w.UINT, w.UINT]; v.SetAxis.restype = w.BOOL
+    v.SetBtn.argtypes = [w.BOOL, w.UINT, ctypes.c_ubyte]; v.SetBtn.restype = w.BOOL
+    return v
+
+
+# ---------------- display watch thread ----------------
+WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, w.HWND, w.UINT, w.WPARAM, w.LPARAM)
+
+
+class GUID(ctypes.Structure):
+    _fields_ = [("b", ctypes.c_ubyte * 16)]
+
+
+class PBS(ctypes.Structure):
+    _fields_ = [("g", GUID), ("len", w.DWORD), ("data", ctypes.c_ubyte * 4)]
+
+
+class WC(ctypes.Structure):
+    _fields_ = [("style", w.UINT), ("proc", WNDPROC), ("a", ctypes.c_int), ("b", ctypes.c_int),
+                ("inst", w.HINSTANCE), ("icon", w.HICON), ("cur", w.HANDLE), ("bg", w.HBRUSH),
+                ("menu", w.LPCWSTR), ("name", w.LPCWSTR)]
+
+
+u32.DefWindowProcW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
+u32.DefWindowProcW.restype = ctypes.c_ssize_t
+u32.CreateWindowExW.restype = w.HWND
+
+display_events = []   # (time, state, seconds since last write or None)
+last_write = [None]   # time.time() of last vJoy write
+write_window = [0.0]  # input-tick advances before this time are "after write"
+
+
+def _proc(h, msg, wp, lp):
+    if msg == 0x218 and wp == 0x8013:  # WM_POWERBROADCAST / PBT_POWERSETTINGCHANGE
+        s = ctypes.cast(lp, ctypes.POINTER(PBS)).contents
+        st = ["off", "on", "dimmed"][s.data[0]] if s.data[0] < 3 else str(s.data[0])
+        since = None if last_write[0] is None else time.time() - last_write[0]
+        display_events.append((time.strftime('%H:%M:%S'), st, since))
+        sw = "n/a" if since is None else f"{since:.1f} s"
+        log(f"DISPLAY STATE -> {st}  (last input {idle_ms()} ms ago; last vJoy write {sw} ago)")
+    return u32.DefWindowProcW(h, msg, w.WPARAM(wp), w.LPARAM(lp))
+
+
+_cb = WNDPROC(_proc)
+
+
+def pump():
+    try:
+        wc = WC(); wc.proc = _cb; wc.name = "vjoyidleprobe"
+        u32.RegisterClassW(ctypes.byref(wc))
+        # Style 0, never shown: invisible. (Same as watch_wake.py, which is known to
+        # receive GUID_CONSOLE_DISPLAY_STATE.)
+        h = u32.CreateWindowExW(0, "vjoyidleprobe", "vjoyidleprobe", 0, 0, 0, 0, 0,
+                                None, None, None, None)
+        g = GUID(); g.b[:] = uuid.UUID("6fe69556-704a-47a0-8f24-c28d936fda47").bytes_le
+        r = u32.RegisterPowerSettingNotification(h, ctypes.byref(g), 0)
+        log(f"display watch: hwnd={h} RegisterPowerSettingNotification={'ok' if r else 'FAILED'}")
+        m = w.MSG()
+        while u32.GetMessageW(ctypes.byref(m), None, 0, 0) > 0:
+            u32.TranslateMessage(ctypes.byref(m)); u32.DispatchMessageW(ctypes.byref(m))
+    except Exception:
+        log("display watch thread error: " + traceback.format_exc().replace("\n", " | "))
+
+
+# ---------------- main ----------------
+def main():
+    log(f"=== vJoy idle probe start ({'DRY' if DRY else 'REAL'}), checkpoints (min): {CHECKPOINTS}")
+    threading.Thread(target=pump, daemon=True).start()
+    time.sleep(0.5)
+    v = load_vjoy()
+    en = v.vJoyEnabled()
+    ver = v.GetvJoyVersion() & 0xFFFF
+    dll_v, drv_v = w.WORD(), w.WORD()
+    dm = v.DriverMatch(ctypes.byref(dll_v), ctypes.byref(drv_v))
+    log(f"vJoyEnabled={en} GetvJoyVersion=0x{ver:04X} DriverMatch={dm} "
+        f"(dll 0x{dll_v.value:04X}, driver 0x{drv_v.value:04X})")
+    if not en:
+        log("vJoy not enabled: EXIT without acquiring"); return
+
+    rid = None
+    for i in range(1, 17):
+        ex = v.isVJDExists(i)
+        if not ex:
+            continue
+        st = v.GetVJDStatus(i)
+        log(f"device {i}: exists, status {VJD_STATS.get(st, st)}, buttons {v.GetVJDButtonNumber(i)}, "
+            f"X axis {v.GetVJDAxisExist(i, HID_X)}")
+        if rid is None and st == 1 and v.GetVJDAxisExist(i, HID_X) and v.GetVJDButtonNumber(i) >= 1:
+            rid = i
+    if rid is None:
+        log("no FREE vJoy device with X axis and a button: EXIT without acquiring anything"); return
+
+    acquired = False
+    try:
+        mx = ctypes.c_long()
+        v.GetVJDAxisMax(rid, HID_X, ctypes.byref(mx))
+        amax = mx.value or 32767
+        ok = v.AcquireVJD(rid); acquired = bool(ok)
+        log(f"AcquireVJD({rid})={ok} status now {VJD_STATS.get(v.GetVJDStatus(rid))} axis max {amax}")
+        if not ok:
+            log("acquire failed: EXIT"); return
+        ok = v.ResetVJD(rid); log(f"ResetVJD({rid})={ok}")
+
+        def expect(val):  # winmm X is 0..65535
+            return val * 65535 / amax
+
+        # Find the winmm id: set a distinctive X, see which vJoy-like id follows.
+        cand = []
+        for jid in range(16):
+            rc, c = joy_caps(jid)
+            if rc == 0:
+                log(f"winmm id {jid}: caps rc=0 mid=0x{c.wMid:04X} pid=0x{c.wPid:04X} "
+                    f"name='{c.szPname}' buttons={c.wNumButtons} axes={c.wNumAxes}")
+                cand.append(jid)
+        jid = None
+        for val in (int(amax * 0.11), int(amax * 0.83)):
+            r1 = v.SetAxis(val, rid, HID_X); r2 = v.SetBtn(0, rid, 1)
+            last_write[0] = time.time(); write_window[0] = time.time() + 5
+            log(f"start write SetAxis(X={val})={r1} SetBtn(1,off)={r2}")
+            time.sleep(0.3)
+            hits = [c for c in cand if joy_read(c)[0] == 0 and abs(joy_read(c)[1] - expect(val)) < 1500]
+            log(f"  ids with X near {expect(val):.0f}: {hits}")
+            cand = hits
+        if len(cand) != 1:
+            log(f"could not identify a unique winmm id (candidates {cand}): EXIT"); return
+        jid = cand[0]
+        # Final known start value
+        X0 = int(amax * 0.25)
+        r1 = v.SetAxis(X0, rid, HID_X); r2 = v.SetBtn(0, rid, 1)
+        last_write[0] = time.time(); write_window[0] = time.time() + 5
+        time.sleep(0.3)
+        rc, x, b = joy_read(jid)
+        seen = rc == 0 and abs(x - expect(X0)) < 1500 and not (b & 1)
+        log(f"START vJoy device {rid} = winmm id {jid}: SetAxis(X={X0})={r1} SetBtn(1,off)={r2}; "
+            f"joyGetPosEx rc={rc} X={x} (expect ~{expect(X0):.0f}) buttons=0x{b:X} -> "
+            f"{'SEEN' if seen else 'NOT SEEN'}")
+
+        idle_t0 = time.time()
+        prev = (rc, x, b)
+        prev_li = last_input()
+        last_free_input_log = 0.0
+        results = []
+        drift = []
+        vals = [int(amax * f) for f in (0.75, 0.40, 0.90, 0.15, 0.60, 0.33)]
+        for n, cp in enumerate(CHECKPOINTS):
+            target = idle_t0 + cp * 60
+            while time.time() < target:
+                time.sleep(min(1.0, max(0.0, target - time.time())))
+                cur = joy_read(jid)
+                if cur != prev:
+                    log(f"CHANGE (no write): joyGetPosEx rc={cur[0]} X={cur[1]} buttons=0x{cur[2]:X} "
+                        f"(was rc={prev[0]} X={prev[1]} buttons=0x{prev[2]:X})")
+                    drift.append((time.strftime('%H:%M:%S'), prev, cur))
+                    prev = cur
+                li = last_input()
+                if li != prev_li:
+                    if time.time() < write_window[0]:
+                        log(f"input tick advanced (after write, {time.time() - last_write[0]:.2f} s)")
+                    elif time.time() - last_free_input_log > 60:
+                        log("input tick advanced (not after a write; user or other source; "
+                            "further ones muted for 60 s)")
+                        last_free_input_log = time.time()
+                    prev_li = li
+            # Checkpoint
+            st = v.GetVJDStatus(rid)
+            val = vals[n % len(vals)]
+            li_before = last_input()
+            tick_w = k32.GetTickCount()
+            t_w = time.time()
+            r1 = v.SetAxis(val, rid, HID_X); r2 = v.SetBtn(1, rid, 1)
+            last_write[0] = t_w; write_window[0] = t_w + 5.5
+            lat = None
+            while time.time() - t_w < 0.5:
+                rc, x, b = joy_read(jid)
+                if rc == 0 and abs(x - expect(val)) < 1500 and (b & 1):
+                    lat = (time.time() - t_w) * 1000; break
+                time.sleep(0.005)
+            time.sleep(max(0.0, 0.5 - (time.time() - t_w)))
+            r3 = v.SetBtn(0, rid, 1)
+            t_off = time.time()
+            off_lat = None
+            while time.time() - t_off < 0.5:
+                rc2, x2, b2 = joy_read(jid)
+                if rc2 == 0 and not (b2 & 1):
+                    off_lat = (time.time() - t_off) * 1000; break
+                time.sleep(0.005)
+            off_ok = off_lat is not None
+            li_after = last_input()
+            if li_after != li_before:
+                log(f"input tick advanced (after write): last-input time is "
+                    f"{(li_after - tick_w) & 0xFFFFFFFF} ms after the first write")
+            passed = st == 0 and r1 and r2 and r3 and lat is not None and off_ok
+            log(f"CHECKPOINT {cp} min: GetVJDStatus={VJD_STATS.get(st, st)} SetAxis(X={val})={r1} "
+                f"SetBtn(1,on)={r2} SetBtn(1,off)={r3}; seen by joyGetPosEx: "
+                f"{'yes in %.0f ms' % lat if lat is not None else 'NO within 500 ms'} "
+                f"(rc={rc} X={x} expect ~{expect(val):.0f} btn=0x{b:X}); button off seen="
+                f"{'yes in %.0f ms' % off_lat if off_ok else 'NO within 500 ms'} "
+                f"-> {'PASS' if passed else 'FAIL'}")
+            results.append((cp, passed, VJD_STATS.get(st, st), lat))
+            prev = (rc2, x2, b2)
+            prev_li = li_after
+
+        # Summary
+        log("=== SUMMARY ===")
+        for cp, passed, st, lat in results:
+            log(f"  checkpoint {cp} min: {'PASS' if passed else 'FAIL'} status={st} "
+                f"latency={'%.0f ms' % lat if lat is not None else 'not seen'}")
+        log(f"  drift / unexpected changes between checkpoints: {len(drift)}")
+        for d in drift:
+            log(f"    {d}")
+        tied = [e for e in display_events if e[2] is not None and e[2] <= 5.5]
+        log(f"  display events: {len(display_events)} total; within 5.5 s after a vJoy write: "
+            f"{len(tied)}; not tied to a write: {len(display_events) - len(tied)}")
+        for e in display_events:
+            log(f"    {e[0]} {e[1]} ({'n/a' if e[2] is None else '%.1f s after last write' % e[2]})")
+    finally:
+        if acquired:
+            v.RelinquishVJD(rid)
+            log(f"RelinquishVJD({rid}) done; status now {VJD_STATS.get(v.GetVJDStatus(rid))}")
+        log("=== vJoy idle probe end ===")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        log("EXCEPTION: " + traceback.format_exc().replace("\n", " | "))
