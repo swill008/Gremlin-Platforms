@@ -1367,3 +1367,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | CI-FIX: 3 order-dependent CI failures (2 races fixed in tests, OSC not reproduced) | fix | no data; guess 15-20 min | 6 min | 05:24-05:30, 1 agent |
 | 2026-11-23 | Quick tests (--changed, all 6 parts) + pyright, control API batch | test | ~9 min | 9 min | 05:30-05:39; 1 fail (packaging test pinned three exes), fixed 05:41 |
 | 2026-11-23 | CI for d5eeae3b (control API batch) | ci | ~23 min | 18 min | 05:41-05:59, FAILED 1 of 9124 (test_driver_jobs leftover lost-device store), fixed 06:03 |
+| 2026-11-23 | CI for 773a8662 (lost-store test fix) | ci | ~23 min | 22 min | 06:04-06:26, passed |
+| 2026-11-23 | Build (PyInstaller + installer) with gremlin-ctl.exe | build | ~3 min (rule: 1-7 min) | 2 min | 06:57-06:59 |
+| 2026-11-23 | Silent install + program started by setup; gremlin-ctl tried (switch off: exit 2 as specified) | install | no data | 1 min | 07:00-07:01 |
+| 2026-11-23 | Lead: answers 1a-4a into spec, CLAUDE.md, guards, Help; CLI UTF-8 console fix | docs/fix | 3-8 min | ~8 min | 06:57-07:05 |

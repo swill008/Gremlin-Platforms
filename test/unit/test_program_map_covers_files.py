@@ -104,6 +104,11 @@ def _program_units() -> list[tuple[str, list[str]]]:
         if path.name == "__init__.py" and _is_trivial_init(path):
             continue
         file_unit(path, "vjoy/")
+    # The command-line client shipped as gremlin-ctl.exe (13 S1; 01 S156).
+    for path in sorted((_ROOT / "gremlin_ctl").glob("*.py")):
+        if path.name == "__init__.py" and _is_trivial_init(path):
+            continue
+        file_unit(path, "gremlin_ctl/")
     # The program's QML style and shared controls: each QML/JS file, or
     # the folder it sits in.
     for path in sorted((_ROOT / "theme").rglob("*")):

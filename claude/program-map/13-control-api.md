@@ -28,7 +28,7 @@ Being built 2026-11-23 (`claude/plans/control-api-contract.md`; names to confirm
 - `tools/gremlin_mcp/server.py`, `tools/gremlin_mcp/README.md` (new, agent MCP; development only, not in the installer): an MCP stdio server with 22 tools, one per API call (`gremlin_state` … `gremlin_window_type`), using `gremlin_ctl.client` only and connecting again for each call; `.mcp.json` (new) entry "gremlin" (stdio) runs it with the Poetry venv Python; the `mcp` package (2.3.x) is in a new Poetry dev group (`[tool.poetry.group.dev.dependencies]` in `pyproject.toml`), not in the installer.
 - Help (agent DOCS): `qml/help/getting_started.js` topic `getting-started-control` (Control the program from other programs); `qml/help/options_profile.js` topic `options-profile-general` (the Control group).
 
-Note: `gremlin_ctl/` and `tools/` are outside the change control guards' program folder list (01 S156), so `test_program_map_covers_files.py` and `test_spec_line.py` don't see them yet (gap CTL-GUARD, section 10).
+Note: `gremlin_ctl/` is under the change control guards (01 S156, 2026-11-23); `tools/gremlin_mcp/` is development only and stays outside.
 
 ## 3. What it owns
 
@@ -92,27 +92,28 @@ None planned. Layer rule: calls use the program's own paths (Run / Stop, File, O
 - **S11** **The command line** prints readable text, and raw JSON with `--json` for scripts. Exit codes: 0 done, 1 the call failed, 2 the program isn't running or control from other programs is off, 3 version mismatch. [decided 2026-11-23, user: 2a; exit codes from the approved contract]
 - **S12** **The key.** While the switch is on and the program runs, the program makes a new random key and pipe name and writes them to `%USERPROFILE%\Gremlin Platforms\api\endpoint.json` (the user's Gremlin Platforms folder, not the movable data folder); switching off or quitting stops the listener and deletes the file. [decided 2026-11-23, user: shape agreed; file layout from the approved contract]
 
-Details added by the build agents, to confirm with the user (not yet approved, 2026-11-23):
-- **S13** `window.close` refuses the main window. (to confirm with the user)
-- **S14** A mouse area counts as a button for `window.read` and `window.press` only when it has an object name. (to confirm with the user)
-- **S15** `window.read` rows also give "checked" for check boxes and "placeholder" for fields. (to confirm with the user)
-- **S16** `window.press` and `window.type` work on a hidden window when the item itself is set visible. (to confirm with the user)
+Details added by the build agents (S13-S16, S18-S20 and S22 approved by the user 2026-11-23, answers 2a and 3a; S17 still to confirm):
+- **S13** `window.close` refuses the main window. [user confirmed 2026-11-23: 3a]
+- **S14** A mouse area counts as a button for `window.read` and `window.press` only when it has an object name. [user confirmed 2026-11-23: 3a]
+- **S15** `window.read` rows also give "checked" for check boxes and "placeholder" for fields. [user confirmed 2026-11-23: 3a]
+- **S16** `window.press` and `window.type` work on a hidden window when the item itself is set visible. [user confirmed 2026-11-23: 3a]
 - **S17** `commands` lists only the main window's commands (owner "main", 45 today), and `command.run` refuses other windows' commands. (to confirm with the user)
-- **S18** The system log line for each call (S8) is written at Warning level, so it shows at the default Diagnostic logs level. (to confirm with the user)
-- **S19** `option get` / `option set` work only on settings Options shows; settings with their own custom rows, and the switch (S2), are refused. (to confirm with the user)
-- **S20** `profile load` refuses while the open profile has unsaved changes; `profile save` refuses an Untitled profile. (to confirm with the user)
+- **S18** The system log line for each call (S8) is written at Warning level, so it shows at the default Diagnostic logs level. [user confirmed 2026-11-23: 2a]
+- **S19** `option get` / `option set` work only on settings Options shows; settings with their own custom rows, and the switch (S2), are refused. [user confirmed 2026-11-23: 3a]
+- **S20** `profile load` refuses while the open profile has unsaved changes; `profile save` refuses an Untitled profile. [user confirmed 2026-11-23: 3a]
+- **S23** `gremlin-ctl call <name> [json]` makes any call by its name, with its arguments as JSON, so a new call can be used before it has its own command (advanced use). [user approved 2026-11-23: 4a] [test: test_gremlin_ctl_cli.py]
 - **S21** `devices` lists the plugged-in devices (name, label, id, virtual, vJoy id, axes, buttons, hats), then each other device the program knows (the open profile's devices and saved module files, `store.known_devices()`) with `plugged_in` false and its counts empty (S3).
-- **S22** An `option set` change goes into History as "Changed <setting> (by API)" (S7). (built so; wording to confirm with the user)
+- **S22** An `option set` change goes into History as "Changed <setting> (by API)" (S7). [user confirmed 2026-11-23: 3a]
 
 ## 9. Questions for the user
 
-- Q1 (2026-11-23) S13-S22: details the build agents chose; approve or change them.
+- Q1 (2026-11-23) S13-S22: details the build agents chose. Answered 2026-11-23 (2a, 3a) for S13-S16, S18-S20, S22; S17 (main-window commands only) still open.
 - ~~Q2~~ (answered by decision 3a, D-13-HISTORY; built 2026-11-23, S7) `profile save` through the API marked "by API" in History.
 
 ## 10. Known gaps
 
 - CTL-NOT-TRIED (open, 2026-11-23): S1-S12 built 2026-11-23 with tests (section 11); not yet tried from the installed program with `gremlin-ctl.exe` on the user's PC. Names in sections 2-6 and 11 to confirm from the agents' reports.
-- CTL-GUARD (open, 2026-11-23): `gremlin_ctl/` is new program code (built into `gremlin-ctl.exe` and shipped) but is outside the program folder lists of `test/unit/test_program_map_covers_files.py`, `test/unit/test_spec_line.py` and `.claude/CLAUDE.md` change control rule 5 (01 S156); adding it changes S156 and needs the user's OK. `tools/gremlin_mcp/` is development only and stays outside.
+- CTL-GUARD (closed 2026-11-23, user 1a: `gremlin_ctl/` added to both guards and CLAUDE.md rule 5, 01 S156): `gremlin_ctl/` is new program code (built into `gremlin-ctl.exe` and shipped) but is outside the program folder lists of `test/unit/test_program_map_covers_files.py`, `test/unit/test_spec_line.py` and `.claude/CLAUDE.md` change control rule 5 (01 S156); adding it changes S156 and needs the user's OK. `tools/gremlin_mcp/` is development only and stays outside.
 - CTL-READ-LABELS (open, 2026-11-23): `window.read` can't see a control's accessible name (`Accessible.name`) or a label that sits beside a field, so such a field or button may be listed without its name.
 - CTL-MCP-SCREENSHOT (open, 2026-11-23): the MCP screenshot tool returns the file path, not the picture.
 - ~~CTL-HISTORY-OPTIONS~~ (closed 2026-11-23, agent API's report): `option.set` changes go to History as "Changed <setting> (by API)" (S22).
@@ -128,6 +129,7 @@ Being built 2026-11-23 (agent TESTS; names to confirm): `test/unit/test_control_
 
 | Decision | Summary |
 |---|---|
+| D-13-AGENT-DETAILS (2026-11-23, user: 1a, 2a, 3a, 4a) | `gremlin_ctl/` under change control (01 S156); API log lines at Warning level (S18); the agents' limits approved (S13-S16, S19, S20, S22); `gremlin-ctl call` kept (S23) |
 | D-13-SHAPE (2026-11-23, user: shape agreed; 6a, 2a) | Three layers: the API in the program (private named pipe + secret key, the device helper's method), one client library, front ends on it: `gremlin-ctl.exe` in the installer with a Help page (6a, 2a), and an MCP server in the repo for development only (2a) (S1, S12) |
 | D-13-SCOPE (2026-11-23, user: 1c) | Read state; start/stop, profile load/save, tracing, any menu command by id, Options read and change; window actions (S3, S4) |
 | D-13-COMMANDS (2026-11-23, user: design for change) | Commands come from the menu command list; new menu commands need no API work (S5) |

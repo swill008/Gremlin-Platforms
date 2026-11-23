@@ -21,6 +21,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 _THIS = "test/unit/test_spec_line.py"
 _PROGRAM = (
     "gremlin/", "qml/", "action_plugins/", "dill/", "vigem/", "vjoy/", "theme/",
+    "gremlin_ctl/",
 )
 _PROGRAM_FILES = ("joystick_gremlin.py", "input_tester.py")
 _SPEC = re.compile(r"^Spec:\s*\S", re.MULTILINE)

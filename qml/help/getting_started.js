@@ -376,6 +376,7 @@ function topics() {
                 + "<tr><td><code>gremlin-ctl window screenshot History C:\\shots\\history.png</code></td><td>Saves a picture of that window only.</td></tr>"
                 + "<tr><td><code>gremlin-ctl window press History Close</code>, <code>gremlin-ctl window type Search Find gear</code></td><td>Presses a button, or types into a field, by its name.</td></tr>"
                 + "<tr><td><code>gremlin-ctl help</code></td><td>Lists every command.</td></tr>"
+                + "<tr><td><code>gremlin-ctl call state</code>, <code>gremlin-ctl call log {\"lines\": 5}</code></td><td>Makes any call by its name, with its settings written as JSON. For advanced use: a new call works here before it has its own command.</td></tr>"
                 + "</table>"
                 + "<p>Add <code>--json</code> to any command to get the answer as data for a script.</p>"
                 + "<h4>Good to know</h4>"
