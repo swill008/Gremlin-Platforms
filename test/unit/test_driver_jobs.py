@@ -41,6 +41,14 @@ class FakeRunner:
         return self.default
 
 
+@pytest.fixture(autouse=True)
+def _no_lost_devices_left() -> None:
+    """Each test starts with no saved lost vJoy devices: the store is one
+    file in the test user folder, which other test files also write (CI
+    seed run 45167227281 left one here)."""
+    drivers.lost_path().unlink(missing_ok=True)
+
+
 def _ok(path: str, info: DriverInfo) -> str:
     return ""
 

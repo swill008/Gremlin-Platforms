@@ -1366,3 +1366,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | FIX-API (devices known, History by API for saves, trace categories owned by trace.py) | fix | 3-8 min each | 4 min | 05:24-05:28, 1 agent |
 | 2026-11-23 | CI-FIX: 3 order-dependent CI failures (2 races fixed in tests, OSC not reproduced) | fix | no data; guess 15-20 min | 6 min | 05:24-05:30, 1 agent |
 | 2026-11-23 | Quick tests (--changed, all 6 parts) + pyright, control API batch | test | ~9 min | 9 min | 05:30-05:39; 1 fail (packaging test pinned three exes), fixed 05:41 |
+| 2026-11-23 | CI for d5eeae3b (control API batch) | ci | ~23 min | 18 min | 05:41-05:59, FAILED 1 of 9124 (test_driver_jobs leftover lost-device store), fixed 06:03 |
