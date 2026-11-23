@@ -262,12 +262,14 @@ def test_line_columns_line_up_under_the_headings(result: dict) -> None:
     assert isinstance(found, dict), found
     check_result_columns(found["wide"])
     assert found["wide"]["rows"][1]["cut"] is True, found["wide"]
-    # Narrow, Health's fixed Input and Mode leave the action no room (its
-    # own widths, not capped as Search's are); they still line up.
-    narrow = found["narrow"]
-    for row in narrow["rows"]:
-        for column in ("input", "mode", "action"):
-            assert abs(row[column] - narrow["heads"][column]) <= 1, (column, narrow)
+
+
+def test_narrow_health_window_keeps_lines_inside_the_list(result: dict) -> None:
+    """01 S196/S197 in Health: at ~700 px Input and Mode are capped as in
+    Search (40% / 20% of the list), so every line's action box ends inside
+    the line (before, Input and Mode pushed it past the edge), still under
+    the headings."""
+    check_result_columns(result["columns"]["narrow"])
 
 
 if __name__ == "__main__":

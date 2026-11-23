@@ -1377,3 +1377,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | CI for 0cff7134 (control API answers) | ci | ~23 min | ~22 min | 07:05-07:27, passed |
 | 2026-11-23 | SEARCH-FIX: Search/Health columns line up (tests first) | fix | 3-8 min | 5 min | 07:20-07:25, 1 agent |
 | 2026-11-23 | Build + silent install + live test (Search columns, devices, log, ›) | build/test | ~5 min | 3 min | 07:26-07:29, lead |
+| 2026-11-23 | HEALTH-CAP: Health columns capped like Search (test first) | fix | 3-8 min | 2 min | 07:31-07:32, 1 agent (clock looked short) |
+| 2026-11-23 | Build + silent install + live test (Health screenshot) | build/test | ~3 min | 2 min | 07:33-07:34, lead |

@@ -285,8 +285,12 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         clip: true
                         model: _model
-                        readonly property real inputWidth: Math.max(Style.dp(120), width * 0.22)
-                        readonly property real modeWidth: Math.max(Style.dp(70), width * 0.12)
+                        // Capped as Search's are (01 S196): a narrow list
+                        // still leaves the action room.
+                        readonly property real inputWidth: Math.min(Math.max(Style.dp(120), width * 0.22),
+                                                                    width * 0.4)
+                        readonly property real modeWidth: Math.min(Math.max(Style.dp(70), width * 0.12),
+                                                                   width * 0.2)
                         delegate: SearchResultRow {
                             id: _line
                             inputWidth: _list.inputWidth
