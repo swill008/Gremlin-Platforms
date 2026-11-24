@@ -196,12 +196,10 @@ ApplicationWindow {
             _saveGate.ask()
             return
         }
-        if (_axisView && _axisView.model)
-            _axisView.model.destroy()
+        // _calib and _modules are ModelFactory's (C++ owned, freed with the
+        // window): destroy() on them throws and skipped the resume below.
         if (_axisView)
             _axisView.destroy()
-        if (_modules)
-            _modules.destroy()
         backend.resumeInputHighlighting("calibration")
     }
 

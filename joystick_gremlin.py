@@ -1150,13 +1150,20 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.cfg.purge_unused()
         update_action_priorities()
 
+        # Main.qml's errors, for the message if it fails (01 S15); collected
+        # during the load only, or every later window's warnings would pile up.
         qml_errors: list[str] = []
-        self.engine.warnings.connect(
-            lambda warnings: qml_errors.extend(w.toString() for w in warnings)
-        )
-        self.engine.load(
-            QtCore.QUrl.fromLocalFile(gremlin.util.resource_path("qml/Main.qml"))
-        )
+
+        def collect(warnings: list[QtQml.QQmlError]) -> None:
+            qml_errors.extend(w.toString() for w in warnings)
+
+        self.engine.warnings.connect(collect)
+        try:
+            self.engine.load(
+                QtCore.QUrl.fromLocalFile(gremlin.util.resource_path("qml/Main.qml"))
+            )
+        finally:
+            self.engine.warnings.disconnect(collect)
         if not self.engine.rootObjects():
             raise StartupError(
                 "The main window could not be loaded.", "\n".join(qml_errors)
