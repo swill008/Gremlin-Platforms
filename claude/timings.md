@@ -1537,3 +1537,17 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent B3-CORE: ModeType, pending table, Foreign gate, ButtonReleaseActions removed (6f83c414) | refactor | 5-10 min | 8 min | 20:10-20:18, B3-CORE |
 | 2026-11-23 | Agent B3-TEST: 20 mode-change release tests + 5 pinned files (5b648f3a) | refactor | 5-10 min | 10 min | 20:11-20:21, B3-TEST |
 | 2026-11-23 | Agent R-MEASURE: probe after the release batch (+ --release option, 6-block B) | run | ~8 min | 16 min | 20:12-20:28, R-MEASURE |
+| 2026-11-23 | Agent B3-OUT: Map to vJoy / Logical Device / Macro / Change Mode on waits_for_end (40f977f8) | refactor | 5-10 min | ~6 min | ~20:08-20:14 (commit time), B3-OUT |
+| 2026-11-23 | Lead: cherry-pick B3 (4 commits, no conflicts) -> 3fc09dda | merge | ~2 min | 1 min | 20:31-20:32, lead |
+| 2026-11-23 | Agent B5-DOC: Help options_profile + Reference, glossary, maps 02/04/05/09 (b3048331) | agent fix | 3-8 min | 3 min | 20:31-20:34, B5-DOC |
+| 2026-11-23 | Agent B5-OPT: Options › Profiles choice + Default profile row, ConfigGroup enabled (e0464eed) | agent fix | 5-10 min | 4 min | 20:30-20:34, B5-OPT |
+| 2026-11-23 | Agent B4-CALLERS: macro plugin, input_refresh, script fixture on run/stop/toggle_macro (686ecbe4, stub-tested) | refactor | 5-10 min | 2 min | 20:33-20:35, B4-CALLERS |
+| 2026-11-23 | Agent B5-AUTO: no-profile-action choice + default profile in Backend auto-load, 9 tests (10f8d9d7) | agent feature | 5-10 min | 5 min | 20:30-20:35, B5-AUTO |
+| 2026-11-23 | Agent B5-REF: Reference labels/order, place_label, one natural_key, tooltips, 4 tests (90fe1121) | agent fix | 5-10 min | 5 min | 20:30-20:35, B5-REF |
+| 2026-11-23 | Agent B4-KBD: Map to Keyboard sends keys directly, 4 tests + 2 pinned tests (37aed392) | agent fix | 5-10 min | 3 min | 20:33-20:36, B4-KBD |
+| 2026-11-23 | Agent B5-TESTS: 5 test files on no-profile-action, 128 passed with B5-AUTO (2bc9ed57) | agent fix | 5-10 min | 6 min | 20:30-20:36, B5-TESTS |
+| 2026-11-23 | Agent B5-AUTO follow-up: each missing-file notice once (5b44e07a) | agent fix | ~3 min | 2 min | 20:35-20:37, B5-AUTO |
+| 2026-11-23 | Agent B4-CORE: MacroManager rebuild, 12 tests (9a26a137) | refactor | 5-10 min | 4 min | 20:33-20:37, B4-CORE |
+| 2026-11-23 | Agent B4-DOC: B3 leftovers + B4 map 05/06 + Help macro (a41d0834) | agent fix | 3-8 min | 4 min | 20:34-20:38, B4-DOC |
+| 2026-11-23 | Agent B4-PORT: 18 upstream macro tests ported, 8 fail on old code (35097cf6) | agent fix | 5-10 min | 7 min | 20:33-20:40, B4-PORT |
+| 2026-11-23 | Lead: merge B5 (6 commits) + targeted tests 227 | merge+test | ~5 min | 3 min | 20:37-20:39, lead |

@@ -610,9 +610,12 @@ class Backend(QtCore.QObject):
             own = False
         if not profile_path and _no_profile_action(self) == "default":
             # 02 S90a: the default profile; a missing one is said once.
+            # An empty Path reads back as "." once saved: no default set.
             default = str(
                 self.config.value("profile", "automation", "default-profile") or ""
             )
+            if default in ("", "."):
+                default = ""
             if default and os.path.isfile(default):
                 profile_path = default
             elif default:

@@ -170,6 +170,7 @@ def _fake(open_path: object) -> types.SimpleNamespace:
         gremlinActive=True,
         _wanted_active=True,
         _autoload_held=None,
+        _autoload_missing=set(),
         activate_gremlin=lambda on: calls.append(("active", on)),
         loadProfile=lambda path: calls.append(("load", path)),
         calls=calls,

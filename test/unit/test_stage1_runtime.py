@@ -1162,6 +1162,7 @@ def _backend_stub(running: bool, options: dict[tuple, Any]) -> Any:  # noqa: ANN
         calls=calls,
         config=SimpleNamespace(value=lambda *key: options.get(key)),
         _autoload_held=None,
+        _autoload_missing=set(),
     )
     return stub
 

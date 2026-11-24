@@ -85,7 +85,7 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
             return False
         input = self._logical[self._identifier]
         if isinstance(input, LogicalDevice.Button):
-            return self._release_on_end and input.is_pressed
+            return bool(self._release_on_end) and bool(input.is_pressed)
         if isinstance(input, LogicalDevice.Hat):
             centre = HatDirection.Center
             return input.direction not in (centre, centre.value)

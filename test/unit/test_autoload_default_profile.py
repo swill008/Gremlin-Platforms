@@ -173,3 +173,13 @@ def test_own_and_default_both_missing_each_said_once(
     for _ in range(3):
         _AUTOLOAD(fake, "C:/x/game.exe")
     assert [n[1].split(" ")[0] for n in notes] == ["game.xml", "gone.xml"]
+
+
+def test_no_default_set_just_stops_also_after_saving(
+    no_profile: None, notes: list
+) -> None:
+    # A saved empty Path reads back as Path("."): still "no default set".
+    fake = _fake("default", Path(""))  # type: ignore[arg-type]
+    _AUTOLOAD(fake, "C:/x/other.exe")
+    assert fake.calls == [("active", False)]
+    assert notes == []

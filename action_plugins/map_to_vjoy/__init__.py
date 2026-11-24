@@ -76,7 +76,7 @@ class MapToVjoyFunctor(RelativeAxisLoop, AbstractFunctor):
         its release) or a hat off centre (06 S38)."""
         data = self.data
         if self._is_button():
-            return self._release_on_end and bool(
+            return bool(self._release_on_end) and bool(
                 output.vjoy_value(data.vjoy_device_id, "button", data.vjoy_input_id)
             )
         if data.vjoy_input_type == InputType.JoystickHat:

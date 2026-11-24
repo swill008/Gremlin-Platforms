@@ -41,7 +41,7 @@ def model() -> Iterator[tuple[option.ConfigEntryModel, dict[str, int]]]:
         yield entries, roles
     finally:
         cfg.set(*_CHOICE, before[0])
-        cfg.set(*_FILE, before[1])
+        cfg.set(*_FILE, Path(before[1]))
 
 
 def test_the_rows_replace_the_keep_running_switch() -> None:
