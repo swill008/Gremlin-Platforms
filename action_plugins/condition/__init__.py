@@ -34,12 +34,14 @@ from gremlin.modules import output
 from gremlin.profile import Library
 from gremlin.signal import signal
 from gremlin.types import (
+    ActionActivationMode,
     ActionProperty,
     ConditionType,
     Event,
     HatDirection,
     InputType,
     LogicalOperator,
+    ModeType,
     PropertyType,
 )
 from gremlin.ui.action_model import ActionModel
@@ -75,6 +77,15 @@ class ConditionFunctor(AbstractFunctor):
     ) -> None:
         if not self._should_execute(value):
             return
+        if value.mode_type == ModeType.Foreign:
+            # The press happened in another mode (06 S38): the release (hat
+            # centre) goes only to the list that ran the press, never to a
+            # newly picked one.
+            functors, cached = self._functor_cache
+            self._functor_cache = ([], False)
+            if cached:
+                self._process_event(functors, event, value, properties)
+            return
 
         match self.data.behavior_type:
             case InputType.JoystickAxis:
@@ -83,6 +94,14 @@ class ConditionFunctor(AbstractFunctor):
                 self._process_hat(event, value, properties)
             case _:
                 self._process_button(event, value, properties)
+
+    @override
+    def waits_for_end(self) -> bool:
+        """Only a Condition acting on press and release passes the end of an
+        activation on to its actions (06 S38)."""
+        if self.data.activation_mode != ActionActivationMode.Both:
+            return False
+        return super().waits_for_end()
 
     def _process_axis(
         self, event: Event, value: Value, properties: list[ActionProperty]

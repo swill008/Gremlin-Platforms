@@ -28,12 +28,12 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.config import Configuration
-from gremlin.event_helpers import ButtonReleaseActions
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
     Event,
     InputType,
+    ModeType,
     PropertyType,
 )
 from gremlin.ui.action_model import ActionModel
@@ -48,6 +48,8 @@ class SmartToggleFunctor(AbstractFunctor):
         super().__init__(action)
 
         self.timer = None
+        # The press that started the sequence under way (06 S38).
+        self.value_press: Value | None = None
         self.fsm = self._create_fsm()
 
     def _create_fsm(self) -> fsm.FiniteStateMachine:
@@ -81,6 +83,12 @@ class SmartToggleFunctor(AbstractFunctor):
         """On while the children are held (09 S157)."""
         return self.fsm.current_state != "wait"
 
+    @override
+    def waits_for_end(self) -> bool:
+        """Held or toggled on waits for the release that lets go, even when
+        the button is up (06 S38)."""
+        return self.fsm.current_state != "wait" or super().waits_for_end()
+
     def _timeout(self) -> None:
         self.fsm.perform("timeout", None, None, None)
 
@@ -98,24 +106,20 @@ class SmartToggleFunctor(AbstractFunctor):
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
+        if self.fsm.current_state == "wait":
+            # A press in another mode (06 S38) never starts a sequence.
+            if value.mode_type == ModeType.Foreign or not value.current:
+                return
+            self.value_press = value.clone()
+        elif self.value_press is not None:
+            # A sequence belongs to the mode of the press that started it,
+            # also its events after a mode change.
+            value = self._sequence_value(value, self.value_press)
+        properties = properties + [ActionProperty.DisableAutoRelease]
         if value.current:
-            ButtonReleaseActions().register_callback(
-                lambda release_event: self._release_cb(
-                    release_event, Value(False), properties
-                ),
-                event,
-            )
-
-            self.fsm.perform(
-                "press", event, value, properties + [ActionProperty.DisableAutoRelease]
-            )
-
-    def _release_cb(
-        self, event: Event, value: Value, properties: list[ActionProperty]
-    ) -> None:
-        self.fsm.perform(
-            "release", event, value, properties + [ActionProperty.DisableAutoRelease]
-        )
+            self.fsm.try_perform("press", event, value, properties)
+        else:
+            self.fsm.perform("release", event, value, properties)
 
 
 class SmartToggleModel(ActionModel):

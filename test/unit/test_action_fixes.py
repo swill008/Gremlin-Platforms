@@ -42,6 +42,7 @@ import pytest
 from PySide6 import QtCore
 
 from gremlin import threads
+from gremlin.base_classes import Value
 
 if TYPE_CHECKING:
     from gremlin.macro import MacroManager
@@ -87,9 +88,9 @@ def test_split_axis_puts_the_half_it_leaves_at_rest() -> None:
         side: [lambda e, v, p, side=side: sent.append((side, round(v.current, 3)))]
         for side in ("lower", "upper")
     }
-    functor(None, SimpleNamespace(current=-0.98), [])  # brake almost full on
+    functor(None, Value(-0.98), [])  # brake almost full on
     sent.clear()
-    functor(None, SimpleNamespace(current=1.0), [])  # straight to full throttle
+    functor(None, Value(1.0), [])  # straight to full throttle
     assert sent == [("lower", -1.0), ("upper", 1.0)]  # the brake goes to rest
 
 
@@ -110,12 +111,12 @@ def test_chain_held_past_the_timeout_releases_the_pressed_step() -> None:
     functor._pressed_index = None
     now = [100.0]
     with mock.patch.object(chain.clock, "monotonic", lambda: now[0]):
-        functor(None, SimpleNamespace(current=True), [])
-        functor(None, SimpleNamespace(current=False), [])  # step 0 done
+        functor(None, Value(True), [])
+        functor(None, Value(False), [])  # step 0 done
         now[0] += 0.5
-        functor(None, SimpleNamespace(current=True), [])  # step 1 pressed
+        functor(None, Value(True), [])  # step 1 pressed
         now[0] += 5.0  # held past the timeout
-        functor(None, SimpleNamespace(current=False), [])
+        functor(None, Value(False), [])
     assert calls == [(0, True), (0, False), (1, True), (1, False)]  # 1 released
 
 

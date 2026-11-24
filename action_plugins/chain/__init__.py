@@ -31,6 +31,7 @@ from gremlin.types import (
     ActionProperty,
     Event,
     InputType,
+    ModeType,
     PropertyType,
 )
 from gremlin.ui.action_model import (
@@ -65,6 +66,12 @@ class ChainFunctor(AbstractFunctor["ChainData"]):
             return
         count = len(self.data.chain_sequences)
         pressed = getattr(self, "_pressed_index", None)
+        if value.mode_type == ModeType.Foreign:
+            # The press happened in another mode (06 S38): a press here
+            # starts nothing; a release ends the step its press went to and
+            # advances the chain.
+            if value.current or pressed is None:
+                return
         if value.current:
             # The timeout is checked on a press only: checked on a release
             # too, a step held past it was reset to step 0 before its release
@@ -87,6 +94,15 @@ class ChainFunctor(AbstractFunctor["ChainData"]):
         if not value.current:
             self.current_index = (index + 1) % count
             self._pressed_index = None
+
+    @override
+    def waits_for_end(self) -> bool:
+        """A pressed step waits for its release, which advances the chain,
+        even when no action in it acts on the release (06 S38)."""
+        return (
+            getattr(self, "_pressed_index", None) is not None
+            or super().waits_for_end()
+        )
 
 
 class ChainModel(ActionModel):

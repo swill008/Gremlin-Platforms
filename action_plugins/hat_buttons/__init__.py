@@ -38,6 +38,7 @@ from gremlin.types import (
     Event,
     HatDirection,
     InputType,
+    ModeType,
     PropertyType,
 )
 from gremlin.ui.action_model import (
@@ -103,6 +104,12 @@ class DirectionalButton:
         properties: List[ActionProperty] = [],
     ) -> None:
         is_pressed = event.value == self.type_direction
+        if value.mode_type == ModeType.Foreign and (
+            is_pressed or self.fsm.current_state == "up"
+        ):
+            # The press happened in another mode (06 S38, S38c): only a
+            # pressed direction lets go; nothing is pressed here.
+            return
         action = "press" if is_pressed else "release"
 
         # Event creation
@@ -116,7 +123,7 @@ class DirectionalButton:
             # Made from the hat, not by the hardware (02 S44).
             synthetic=True,
         )
-        btn_value = Value(is_pressed)
+        btn_value = Value(is_pressed, value.mode_type)
 
         self.fsm.perform(action, virtual_btn_event, btn_value, properties)
         event_handler.EventListener().virtual_event.emit(virtual_btn_event)
@@ -149,6 +156,15 @@ class HatButtonsFunctor(AbstractFunctor):
     ) -> None:
         for button in self.buttons:
             button(event, value, properties)
+
+    def waits_for_end(self) -> bool:
+        """A pressed direction button waits for the hat to leave it, even
+        when its actions act on press only: its virtual button still lets go
+        (06 S38)."""
+        return (
+            any(button.fsm.current_state == "down" for button in self.buttons)
+            or super().waits_for_end()
+        )
 
 
 class HatButtonsModel(ActionModel):

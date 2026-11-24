@@ -35,12 +35,12 @@ from gremlin.error import (
     GremlinError,
     ProfileError,
 )
-from gremlin.event_helpers import ButtonReleaseActions
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
     Event,
     InputType,
+    ModeType,
     PropertyType,
 )
 from gremlin.ui.action_model import (
@@ -74,23 +74,29 @@ class DoubleTapFunctor(AbstractFunctor):
             )
             return
 
-        # Copy state when input is pressed
+        if value.mode_type == ModeType.Foreign:
+            # The press happened in another mode (06 S38): a press here never
+            # starts a sequence (a second tap continues one); a release ends
+            # the one under way.
+            if self.fsm.current_state == "neutral":
+                return
+        if self.fsm.current_state != "neutral" and self.value_press is not None:
+            # A sequence belongs to the mode of the press that started it.
+            value = self._sequence_value(value, self.value_press)
         if value.current:
+            # Copy state when input is pressed
             self.value_press = copy.deepcopy(value)
             self.event_press = event.clone()
-
-            # React to button release events to perform a fallback release in
-            # case of invalid FSM state transitions due to action interactions.
-            ButtonReleaseActions().register_callback(
-                lambda release_event: self._release_cb(
-                    release_event, Value(False), properties
-                ),
-                event,
-            )
 
         action = "press" if value.current else "release"
         if self.fsm.try_perform(action, event, value, properties) is None:
             self._reset_fsm(event, value, properties)
+
+    @override
+    def waits_for_end(self) -> bool:
+        """A tap under way (held, or waiting for the second tap) waits for
+        the events that end it, even before any action ran (06 S38)."""
+        return self.fsm.current_state != "neutral" or super().waits_for_end()
 
     def _create_fsm(self) -> fsm.FiniteStateMachine:
         # Define lambda functions for the needed actions
@@ -171,12 +177,6 @@ class DoubleTapFunctor(AbstractFunctor):
         self._process_event(
             self.functors["single"] + self.functors["double"], event, value, properties
         )
-
-    def _release_cb(
-        self, event: Event, value: Value, properties: list[ActionProperty]
-    ) -> None:
-        if (self.fsm.current_state, "press") not in self.fsm.transitions:
-            self._reset_fsm(event, value, properties)
 
     def _timeout(self) -> None:
         if (

@@ -35,12 +35,12 @@ from gremlin.error import (
     GremlinError,
     ProfileError,
 )
-from gremlin.event_helpers import ButtonReleaseActions
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
     Event,
     InputType,
+    ModeType,
     PropertyType,
 )
 from gremlin.ui.action_model import (
@@ -83,19 +83,18 @@ class TempoFunctor(AbstractFunctor):
             )
             return
 
-        # Copy state when input is pressed
+        if value.mode_type == ModeType.Foreign:
+            # The press happened in another mode (06 S38): a press here never
+            # starts a sequence; a release ends the one under way.
+            if value.current or self.fsm.current_state == "wait":
+                return
         if value.current:
+            # Copy state when input is pressed
             self.value_press = copy.deepcopy(value)
             self.event_press = event.clone()
-
-            # React to button release events to perform a fallback release in
-            # case of invalid FSM state transitions due to action interactions.
-            ButtonReleaseActions().register_callback(
-                lambda release_event: self._release_cb(
-                    release_event, Value(False), properties
-                ),
-                event,
-            )
+        else:
+            # The release belongs to the sequence its press started.
+            value = self._sequence_value(value, self.value_press)
 
         action = "press" if value.current else "release"
         if self.fsm.try_perform(action, event, value, properties) is None:
@@ -114,11 +113,11 @@ class TempoFunctor(AbstractFunctor):
             self.functors["short"] + self.functors["long"], event, value, properties
         )
 
-    def _release_cb(
-        self, event: Event, value: Value, properties: List[ActionProperty]
-    ) -> None:
-        if (self.fsm.current_state, "press") not in self.fsm.transitions:
-            self._reset_fsm(event, value, properties)
+    @override
+    def waits_for_end(self) -> bool:
+        """Held (short or long) waits for the release, even before any
+        action ran (06 S38)."""
+        return self.fsm.current_state != "wait" or super().waits_for_end()
 
     def _create_fsm(self) -> fsm.FiniteStateMachine:
         T = fsm.Transition

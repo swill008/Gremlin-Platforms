@@ -28,6 +28,7 @@ from gremlin.types import (
     ActionProperty,
     Event,
     InputType,
+    ModeType,
     PropertyType,
 )
 from gremlin.ui.action_model import (
@@ -49,6 +50,9 @@ class SplitAxisFunctor(AbstractFunctor):
     def __call__(
         self, event: Event, value: Value, properties: list[ActionProperty] = []
     ) -> None:
+        if value.mode_type == ModeType.Foreign:
+            # Axis values never go to the old mode (06 S38a).
+            return
         side = "lower" if value.current < self.data.split_value else "upper"
         if self._side is not None and side != self._side:
             # Crossing the split: the half being left goes to rest (-1), as it

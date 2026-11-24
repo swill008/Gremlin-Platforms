@@ -31,6 +31,7 @@ from xml.etree import ElementTree
 import pytest
 
 from gremlin import error, util
+from gremlin.base_classes import Value
 from gremlin.types import InputType
 
 # ACT5 ---------------------------------------------------------------------
@@ -55,7 +56,7 @@ def test_split_axis_at_the_end_handles_full_deflection(split: float) -> None:
         "upper": [lambda e, v, p: seen.append(("upper", v.current))],
     }
     for value in (-1.0, 0.0, 1.0):
-        functor(None, SimpleNamespace(current=value), [])
+        functor(None, Value(value), [])
     # (crossing the split also puts the half it leaves at rest: ACT4)
     assert seen and all(-1.0 <= v <= 1.0 for _, v in seen)
 
@@ -71,8 +72,8 @@ def test_a_chain_with_no_sequences_does_nothing() -> None:
     functor.functors = {}
     functor.current_index = 0
     functor.last_execution = 0.0
-    functor(None, SimpleNamespace(current=True), [])
-    functor(None, SimpleNamespace(current=False), [])
+    functor(None, Value(True), [])
+    functor(None, Value(False), [])
 
 
 def test_an_empty_macro_does_nothing() -> None:
@@ -95,7 +96,7 @@ def test_a_mode_change_with_no_mode_does_nothing(kind: str) -> None:
     )
     functor._mode_sequence = None
     functor._should_execute = lambda value: True
-    functor(None, SimpleNamespace(current=True), [])
+    functor(None, Value(True), [])
     functor._release_temporary_mode()
 
 
