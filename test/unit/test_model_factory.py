@@ -143,6 +143,40 @@ def test_props_set_in_literal_order(
     _destroy(root)
 
 
+@ta.QmlElement
+class MetaProbe(QtCore.QObject):
+    """Made by this file's meta object test only."""
+
+    changed = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._a = ""
+
+    def _set_a(self, value: str) -> None:
+        self._a = value
+
+    a = QtCore.Property(str, lambda self: self._a, _set_a, notify=changed)
+
+
+def test_qml_create_with_props_keeps_the_types_meta_object(
+    engine: QtQml.QQmlEngine,
+) -> None:
+    """PySide 6.11.2: `obj.metaObject()` read inside a Slot that QML calls
+    leaves the class's QMetaObject wrapper "already deleted", so every later
+    `Type.staticMetaObject` or `instance.metaObject()` in Python raises."""
+    component, root = _load(
+        engine,
+        "Item { id: _root\n"
+        "  readonly property MetaProbe _p:\n"
+        '    ModelFactory.create("MetaProbe", _root, { a: "x" }) }',
+    )
+    assert root is not None, [e.toString() for e in component.errors()]
+    assert MetaProbe.staticMetaObject.indexOfProperty("a") >= 0
+    assert MetaProbe().metaObject().indexOfProperty("a") >= 0
+    _destroy(root)
+
+
 def test_unknown_type_is_a_clear_error(engine: QtQml.QQmlEngine) -> None:
     item = QtCore.QObject()
     with pytest.raises(ValueError, match="unknown type 'NoSuchType'"):

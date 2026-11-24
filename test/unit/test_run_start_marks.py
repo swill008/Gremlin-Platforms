@@ -83,6 +83,11 @@ def runner(
     monkeypatch.setattr(output, "vjoy_driver_found", lambda: True)
     monkeypatch.setattr(output, "vjoy_exists", lambda vid: int(vid) != 4)
     monkeypatch.setattr(output, "held_vjoy_ids", lambda: sorted(proxy.vjoy_devices))
+    # The can't-be-sent notice is made once per process and hooks
+    # EventListener().device_change_event: made first inside start() it
+    # would hook the stand-in below and later tests' device changes never
+    # reach it. Make it now, on the real listener.
+    output.watch_cant_send()
     listener = mock.MagicMock()
     fake_listener = mock.MagicMock(return_value=listener)
     fake_listener.instance = None

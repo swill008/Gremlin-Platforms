@@ -177,8 +177,12 @@ def make(
     QtQml.QQmlEngine.setObjectOwnership(
         obj, QtQml.QQmlEngine.ObjectOwnership.CppOwnership
     )
+    # The class's meta object, not obj.metaObject(): PySide 6.11.2 marks the
+    # type's QMetaObject wrapper deleted when obj.metaObject() is read inside
+    # a Slot QML calls, and every later metaObject() in Python then raises.
+    meta = cls.staticMetaObject
     for name, value in (props or {}).items():
-        if obj.metaObject().indexOfProperty(name) < 0:
+        if meta.indexOfProperty(name) < 0:
             obj.setParent(None)
             obj.deleteLater()
             raise ValueError(
