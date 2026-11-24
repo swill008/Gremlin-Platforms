@@ -156,7 +156,7 @@ function topics() {
                 + "<li><b>Dark mode</b> <a href=\"show:option/Dark mode\">Show me ›</a>: dark colors, in every window at once.</li>"
                 + "<li><b>UI scale</b> and <b>Ignore Windows display scaling</b>: the size of the program. See <a href=\"topic:options-profile-ui-scale\">Change the size of the program</a>.</li>"
                 + "<li><b>Input names</b> <a href=\"show:option/Input names\">Show me ›</a>: how inputs are named on screen.<ul>"
-                + "<li><b>Numerical</b>: the number name, such as \"Axis 3\".</li>"
+                + "<li><b>Numerical</b>: the number name, such as \"X Axis\" or \"Button 3\".</li>"
                 + "<li><b>Label</b>: the name the program knows for that control on your device model.</li>"
                 + "<li><b>Numerical and Label</b>: both. This is the usual choice.</li>"
                 + "</ul></li>"
@@ -165,6 +165,7 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>A control with no known label always shows its number name.</li>"
+                + "<li>Editors such as Merge Axis, Dual Axis Deadzone and a script's input setting use the same names. Open editors change at once when you change this setting.</li>"
                 + "</ul>",
             related: ["options-profile-ui-scale", "options-profile-options"]
         },

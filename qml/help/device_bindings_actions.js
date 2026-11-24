@@ -430,7 +430,8 @@ function topics() {
                 ])
                 + _good([
                     "<b>Actions offered</b> <a href=\"show:option/Actions offered\">Show me ›</a> in <a href=\"topic:options-profile-options\">Options</a> sets the order of the list. It can also hide actions you never use.",
-                    "<b>Map to vJoy</b> is listed only when at least one vJoy device can be an output."
+                    "<b>Map to vJoy</b> is listed only when at least one vJoy device can be an output.",
+                    "An action that holds others can't be dragged into one of its own actions. The drop is refused and the action stays where it was."
                 ]),
             related: ["device-bindings-actions-add-action", "device-bindings-actions-right-click", "device-bindings-actions-reference", "options-profile-options"]
         },
@@ -565,7 +566,7 @@ function topics() {
                     "Between steps without a <b>Pause</b>, the macro waits for <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a> <a href=\"show:toolbar/Profile Settings\">Show me ›</a>.",
                     "If the profile doesn't set one, it uses <b>Default delay</b> in Options <a href=\"show:option/Default delay\">Show me ›</a>.",
                     "A Joystick step acts like the stick itself. It only works for controls ticked in the stick's Module Setup.",
-                    "New Joystick, Keyboard, Logical Device, Mouse Button and vJoy button steps start on <b>Press</b>.",
+                    "New Joystick, Keyboard, Logical Device, Mouse Button and vJoy button steps start on <b>Press</b>. A step you change to a button input or to another kind of step also starts on <b>Press</b>.",
                     "A new vJoy step starts on the first ticked vJoy output. With none ticked, a notice asks you to tick one first.",
                     "A step the program can't read shows as <b>Unreadable step</b>. It does nothing and is saved unchanged; you can remove it.",
                     "Mouse buttons can be recorded as steps, but a mouse button is never an input. See " + _link("map-to-mouse", "Map to Mouse") + "."
@@ -667,6 +668,9 @@ function topics() {
                 + _good([
                     "A condition on an input that isn't ticked in Module Setup sees it as not pressed or centered.",
                     "A condition on a stick plugged in later works once it is connected.",
+                    "A condition on a stick that is unplugged counts as false, so later presses run the actions for false. Nothing runs at the moment you unplug it. OSC conditions aren't affected.",
+                    "An unplugged stick keeps the name saved in the profile in the editor.",
+                    "Releasing an input sends the release to the same actions its press ran, even if the condition changed while you held it.",
                     "New button and key conditions start on <b>Pressed</b>.",
                     "A new vJoy condition starts on the first ticked vJoy output. With none ticked, it isn't added and a notice says why."
                 ]),
