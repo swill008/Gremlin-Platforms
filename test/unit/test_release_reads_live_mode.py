@@ -62,11 +62,15 @@ def ld_button(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Any, list]]:
 
     control = LogicalDevice().create(InputType.JoystickButton)
     updates: list[tuple[Any, Any]] = []
-    monkeypatch.setattr(
-        LogicalDevice.Input,
-        "update",
-        lambda self, value: updates.append((self, value)),
-    )
+    real_update = LogicalDevice.Input.update
+
+    def update(self: Any, value: Any) -> None:  # noqa: ANN401
+        # Record and keep the state: Map to Logical Device's waits_for_end
+        # reads is_pressed (06 S38).
+        updates.append((self, value))
+        real_update(self, value)
+
+    monkeypatch.setattr(LogicalDevice.Input, "update", update)
     profile = Profile()
     item = profile.get_input_item(
         _GUID, InputType.JoystickButton, 3, "Default", create_if_missing=True
