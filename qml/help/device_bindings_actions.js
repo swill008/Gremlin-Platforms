@@ -768,6 +768,7 @@ function topics() {
                     "How the program remembers your path: see <a href=\"topic:modes-while-running\">How modes change while the profile runs</a>.",
                     "Cycle's first press goes to the mode after the current one. If the current mode isn't in the list, it goes to the first.",
                     "Cycle skips deleted modes.",
+                    "A key or button held when the mode changes is let go when you release it. See <a href=\"topic:modes-while-running\">How modes change while the profile runs</a>.",
                     "Modes are added, renamed and deleted in <b>Manage Modes</b> <a href=\"show:modebar/Manage Modes\">Show me ›</a>. Renaming a mode updates the Change Mode actions that name it.",
                     "When you come back to a mode you were in earlier, <b>Mode cycle resolution</b> in Options decides how your path is shortened. See <a href=\"topic:modes-cycle-resolution\">Come back to a mode you passed</a>."
                 ]),
