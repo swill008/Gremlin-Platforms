@@ -1567,3 +1567,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent CI-SETTINGS: settings test re-clears after writing its file, gap race test (ee332889) | agent fix | 8-10 min | 3 min | 22:26-22:29, CI-SETTINGS |
 | 2026-11-23 | Agent CI-WAITS: OSC test fixture sync_bind + home thumb waits for Ready (e8184ddc) | agent fix | 8-10 min | 5 min | 22:26-22:31, CI-WAITS |
 | 2026-11-23 | Agent CI-J11: per-object QMetaObject (no @Slot) reused addresses -> wrong QML property cache; @Slot on 5 page models, 10 tests (d48c98d3) | fix | 5-10 min | 49 min | 22:02-22:51, CI-J11 (bisect + load runs) |
+| 2026-11-23 | Agent META-PROF: @Slot on 5 profile.py models, 10 tests (ae9e2e30) | agent fix | 5-10 min | ~2 min | 22:53-22:54, META-PROF |
+| 2026-11-23 | Agent META-LIVE: @Slot on DeviceLiveState + PairLiveThrottle, 4 tests (9c9ccef0) | agent fix | 5-10 min | 3 min | 22:53-22:56, META-LIVE |
+| 2026-11-23 | Agent META-DRV: @Slot on DriversModel, HidHideModel, HardwareProfile, 6 tests (b37e10f0) | agent fix | 5-10 min | 4 min | 22:53-22:57, META-DRV |
+| 2026-11-23 | Agent META-DEV: @Slot on 5 device.py types, 10 tests (3598402f); found metaObject()-on-parented trap | agent fix | 5-10 min | 5 min | 22:52-22:57, META-DEV |
+| 2026-11-23 | Agent META-MOD: @Slot on 3 module models, 6 tests (f92f2cc4) | agent fix | 5-10 min | 5 min | 22:53-22:58, META-MOD |
