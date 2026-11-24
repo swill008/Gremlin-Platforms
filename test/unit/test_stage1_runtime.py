@@ -1194,7 +1194,8 @@ def test_auto_load_stops_on_focus_loss_unless_kept_running(
 
     options = {
         ("profile", "automation", "enable-auto-loading"): True,
-        ("profile", "automation", "remain-active-on-focus-loss"): keep_running,
+        ("profile", "automation", "no-profile-action"): "keep" if keep_running else "stop",
+        ("profile", "automation", "default-profile"): "",
     }
     stub = _backend_stub(True, options)
     # The program now in front has no profile.

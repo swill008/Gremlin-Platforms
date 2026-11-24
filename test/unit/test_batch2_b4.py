@@ -354,7 +354,8 @@ def test_focusing_the_program_itself_keeps_the_run(
     calls: list = []
     settings = {
         ("profile", "automation", "enable-auto-loading"): True,
-        ("profile", "automation", "remain-active-on-focus-loss"): False,
+        ("profile", "automation", "no-profile-action"): "stop",
+        ("profile", "automation", "default-profile"): "",
     }
     _AUTOLOAD(_fake_backend(settings, False, calls), sys.executable)
     assert calls == []
@@ -372,7 +373,8 @@ def test_auto_load_held_by_unsaved_edits_stops_the_open_profile(
     calls: list = []
     settings = {
         ("profile", "automation", "enable-auto-loading"): True,
-        ("profile", "automation", "remain-active-on-focus-loss"): keep_running,
+        ("profile", "automation", "no-profile-action"): "keep" if keep_running else "stop",
+        ("profile", "automation", "default-profile"): "",
     }
     _AUTOLOAD(_fake_backend(settings, True, calls), "C:/x/game.exe")
     assert calls == ([] if keep_running else [("active", False)])

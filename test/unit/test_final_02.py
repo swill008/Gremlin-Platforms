@@ -1087,7 +1087,8 @@ def _autoload_backend(
 ) -> types.SimpleNamespace:
     settings = {
         ("profile", "automation", "enable-auto-loading"): auto_load,
-        ("profile", "automation", "remain-active-on-focus-loss"): False,
+        ("profile", "automation", "no-profile-action"): "stop",
+        ("profile", "automation", "default-profile"): "",
     }
     return types.SimpleNamespace(
         config=types.SimpleNamespace(value=lambda *key: settings[key]),

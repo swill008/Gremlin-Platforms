@@ -199,7 +199,8 @@ def test_a_missing_auto_load_profile_stops_the_open_one(
     calls: list = []
     settings = {
         ("profile", "automation", "enable-auto-loading"): True,
-        ("profile", "automation", "remain-active-on-focus-loss"): keep_running,
+        ("profile", "automation", "no-profile-action"): "keep" if keep_running else "stop",
+        ("profile", "automation", "default-profile"): "",
     }
     fake = types.SimpleNamespace(
         config=types.SimpleNamespace(value=lambda *key: settings[key]),

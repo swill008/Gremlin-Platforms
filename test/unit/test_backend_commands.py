@@ -198,7 +198,8 @@ def test_auto_load_restarts_the_run_after_the_profile_change(
     real_value = be.config.value
     wanted = {
         ("profile", "automation", "enable-auto-loading"): True,
-        ("profile", "automation", "remain-active-on-focus-loss"): False,
+        ("profile", "automation", "no-profile-action"): "stop",
+        ("profile", "automation", "default-profile"): "",
     }
     # On the class: patching the singleton's instance would leave a bound
     # "value" attribute on it after the test (monkeypatch puts the old bound
