@@ -45,7 +45,12 @@ def action_sequence_feedback(binding: InputItemBinding) -> list[UserFeedback]:
         for fn in analysis_functions:
             feedback.extend(fn(paths, binding.behavior))
     feedback = list(set(feedback))
-    _feedback_cache[cache_key] = (clock.monotonic(), feedback)
+    # Each pane open drafts the input, so its root is a copy with a new id;
+    # drop expired entries or the cache keeps one per open.
+    now = clock.monotonic()
+    for key in [k for k, (t, _) in _feedback_cache.items() if now - t >= _CACHE_TTL]:
+        del _feedback_cache[key]
+    _feedback_cache[cache_key] = (now, feedback)
     return feedback
 
 
