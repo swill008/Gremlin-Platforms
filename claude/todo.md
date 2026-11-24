@@ -69,6 +69,7 @@ older text is in git history.
 ## Hands-on checks
 
 154. (user 2026-11-24: "1a") Overnight wake-cause check, night of 2026-11-24: the user leaves no window full screen; next morning read trace.log for power-off, keep-off, `wakes` and wake-cause lines. Night of 2026-11-23 gave none: a full-screen hold all night, the screens switched off by something else (likely Windows' 5 min display-off). The date line worked (`--- 2026-11-24 ---` once, first line after midnight).
+155. PARKED (2026-11-24; user: "lets park it for now.. we will keep it as it is"). Screen Saver Mode: automatic switch-off, no choosing devices (check which devices never go quiet right before each power-off and switch them off; list read-only; never virtual or Wake PC-ticked devices). Also covers Refresh Devices dropping a listed device it can't find (S27/S35). Would change S12, S21, S25, S27, S35, S37, S40. Owner: page 12.
 
 5. **Program-run part done 2026-10-07** (e50c4ed8, results in
    `claude/hands-on-results/`, page https://claude.ai/artifact/XDkvyR895esB8smH439BWD):

@@ -1597,3 +1597,12 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-24 | Commit 3b5cf4b7 + push 7 commits (2fe32018..3b5cf4b7) | lead | ~2 min | 1 min | 10:15-10:16, lead; CI run 45435202801 started |
 | 2026-11-24 | CI run 45435202801 (push of 7 commits) | CI | ~27 min | 27 min | 10:16-10:43; 1 failure: test_autoload_default_profile::test_settings_are_registered (leak from test_options_default_profile) |
 | 2026-11-24 | CI failure: find the leak (Path("") restore -> "."), test-only fix, repro before/after | lead | ~5 min | 6 min | 10:44-10:50, lead |
+| 2026-11-24 | CI run 45440926552 (d3fb6935) | CI | ~27 min | 26 min | 10:46-11:12; passed |
+| 2026-11-24 | Study: 24 s freeze during display cycling (stacks, CPU, 11-20 study, upstream grep) | review | ~6 min | ~2 min | 15:49-15:50, lead; reading earlier study not redone |
+| 2026-11-24 | Read tests A and B trace + Windows arrival times (S23 gap found) | lead | no data | ~2 min | 15:57-15:59, lead |
+| 2026-11-24 | Study: S23 replug detection (Microsoft docs, SDL, code) | review | rough guess 10 min | ~3 min | 16:00-16:03, lead |
+| 2026-11-24 | Replug listen script (A/B/state) written, self-tested, started | lead | rough guess 5 min | 1 min | 16:06-16:07, lead |
+| 2026-11-24 | WATCH: device_watch.py (exact-device notification) + 14 tests (12 S23) | agent fix | 3-8 min | ~4 min | 16:09-16:13 |
+| 2026-11-24 | WIRE: watch missing devices, retry on return + 15 tests (12 S23 gap) | agent fix | 3-8 min | 5 min | 16:10-16:15 |
+| 2026-11-24 | Lead review + map + targeted tests (249) + ruff/pyright + build + silent install (S23 fix) | test/build | ~10 min | 4 min | 16:15-16:19, lead |
+| 2026-11-24 | Live tests S23 (measure, failed list run, pass) read + reported | lead | no data | ~1 min each | 16:09, 16:21, 16:30, lead |

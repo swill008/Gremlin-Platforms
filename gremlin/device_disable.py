@@ -13,9 +13,9 @@ journal lists are ever enabled; a device someone else disabled is never
 touched.
 
 All the Windows work runs on one program thread, one job at a time, so a
-re-enable always comes after the disable it undoes. Three seams keep tests
-away from Windows: the elevation launcher, the pipe listener and the status
-reader; the real ones refuse to run under pytest.
+re-enable always comes after the disable it undoes. Four seams keep tests away from
+Windows: the elevation launcher, the pipe listener, the status reader and the
+device watch; the real ones refuse to run under pytest.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ import queue
 import secrets
 import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any, Protocol
 
 from gremlin import clock, threads, trace, util
@@ -52,6 +52,10 @@ ANSWER_SLACK_S = 10.0
 # Device change behavior stays paused, so the plug-in that Windows reports
 # a moment after an enable still finds it paused.
 SWITCH_GRACE_S = 10.0
+# S23: from a waiting device's return to the retry (Windows finishes
+# enumerating it), and to the one second try when it still reads missing.
+ARRIVAL_DELAY_S = 0.5
+ARRIVAL_SECOND_TRY_S = 2.0
 
 ENABLED, DISABLED, NOT_PRESENT = "enabled", "disabled", "not present"
 TO_BE_DISABLED, DISABLE_FAILED = "to be disabled", "disable failed"
@@ -263,7 +267,13 @@ class Process(Protocol):
     def close(self) -> None: ...
 
 
+class Watch(Protocol):
+    def set_ids(self, ids: Iterable[str]) -> list[str]: ...
+    def close(self) -> None: ...
+
+
 Launcher = Callable[[str, str], Process]
+WatchFactory = Callable[[Callable[[str], None]], Watch]
 ListenerFactory = Callable[[str, bytes], Listener]
 
 
@@ -373,6 +383,14 @@ class _PipeListener:
             pass
 
 
+def _real_watch(on_arrival: Callable[[str], None]) -> Watch:
+    if _under_test():
+        raise RealCallBlocked("device_disable device watch called from a test")
+    from gremlin.device_watch import DeviceWatch
+
+    return DeviceWatch(on_arrival)
+
+
 # The disabler --------------------------------------------------------------
 
 
@@ -387,6 +405,7 @@ class DeviceDisabler:
         listener_factory: ListenerFactory | None = None,
         status_reader: StatusReader | None = None,
         connect_timeout_s: float = CONNECT_TIMEOUT_S,
+        watch_factory: WatchFactory | None = None,
     ) -> None:
         self._journal_file = journal_file
         self._key_file = key_file
@@ -394,6 +413,19 @@ class DeviceDisabler:
         self._listener_factory = listener_factory or _PipeListener
         self._status = status_reader or device_status
         self._connect_timeout_s = connect_timeout_s
+        self._watch_factory = watch_factory or _real_watch
+        # Guards _watch and its calls; never taken by _on_arrival and never
+        # while _lock is held (set_ids and close wait for _on_arrival).
+        self._watch_lock = threading.Lock()
+        self._watch: Watch | None = None
+        self._arrival_timer: threading.Timer | None = None
+        self._arrival_first = False
+        # stop_helper() raises it: an older timer does nothing.
+        self._arrival_gen = 0
+        # Ids whose return was reported; moved to _check_ids when the first
+        # try is queued and taken by the enable job that tries them.
+        self._arrived: set[str] = set()
+        self._check_ids: set[str] = set()
         self._lock = threading.RLock()
         self._conn: Connection | None = None
         self._listener: Listener | None = None
@@ -472,6 +504,9 @@ class DeviceDisabler:
             self._error = "" if ok else error
             callbacks, self._callbacks = self._callbacks, []
         if ok:
+            # Devices still waiting are watched (again): after every job.
+            if self._waits():
+                self._enqueue("watch", lambda: None, counted=False)
             _log.info("Screen Saver Mode: device helper running")
             _trace("Device helper: running")
         else:
@@ -563,10 +598,18 @@ class DeviceDisabler:
                     pass
 
     def stop_helper(self) -> None:
-        """Lets running jobs end (bounded), sends "quit" and closes."""
+        """Lets running jobs end (bounded), sends "quit" and closes; no
+        device is watched any more."""
         with self._lock:
             self._wanted = False
             conn = self._conn
+            self._arrival_gen += 1
+            timer, self._arrival_timer = self._arrival_timer, None
+            self._arrived.clear()
+            self._check_ids.clear()
+        if timer is not None:
+            timer.cancel()
+        self._close_watch()
         self.wait_idle(5.0)
         if conn is not None:
             try:
@@ -637,11 +680,15 @@ class DeviceDisabler:
                 if self._queued_enable is job:
                     self._queued_enable = None
                 self._running = job
+                tried: set[str] = set()
+                if job.name == "enable":
+                    tried, self._check_ids = self._check_ids, set()
             try:
                 job.run()
             except Exception:
                 _log.exception("Screen Saver Mode: device %s failed", job.name)
             finally:
+                self._update_watch(tried)
                 held = self._journal_holds_off()
                 with self._lock:
                     self._held_off = held
@@ -856,9 +903,101 @@ class DeviceDisabler:
     def on_device_arrival(self) -> None:
         """A device was plugged in: retry the ones still "to be enabled".
         Pauses Device change behavior only if it switches one on."""
+        if self._waits():
+            self._retry()
+
+    def _waits(self) -> bool:
         journal = self.journal()
-        if any(e.get("state") == TO_BE_ENABLED for e in journal.entries.values()):
-            self._enqueue("enable", self._enable, counted=False)
+        return any(e.get("state") == TO_BE_ENABLED for e in journal.entries.values())
+
+    def _retry(self) -> None:
+        self._enqueue("enable", self._enable, counted=False)
+
+    # The watch on devices not plugged in (S23) ------------------------------
+
+    def _update_watch(self, tried: set[str]) -> None:
+        """After each job: watches exactly the devices "to be enabled" that
+        are not present, while the helper runs. Queues a retry for one that
+        came back before its watch took effect; gives the returned ids the
+        job tried (tried) and still found missing one second try."""
+        try:
+            entries = self.journal().entries if self.helper_running() else {}
+            missing: list[str] = []
+            back = False
+            for device_id, entry in entries.items():
+                if entry.get("state") != TO_BE_ENABLED:
+                    continue
+                status = self._read(device_id)
+                if status == NOT_PRESENT:
+                    missing.append(device_id)
+                elif status in (ENABLED, DISABLED):
+                    # The job found it missing: back since then.
+                    back = back or entry.get("result", "").endswith(NOT_PRESENT)
+            fresh = self._set_watched(missing)
+            for device_id in fresh:
+                back = back or self._read(device_id) in (ENABLED, DISABLED)
+            if back:
+                with self._lock:
+                    if self._wanted:
+                        self._retry()
+            elif any(i.upper() in tried for i in missing):
+                self._schedule(ARRIVAL_SECOND_TRY_S, first=False)
+        except Exception as exc:
+            _log.warning("Screen Saver Mode: devices not watched: %s", exc)
+            _trace(f"Devices not watched: {exc}")
+
+    def _set_watched(self, ids: list[str]) -> list[str]:
+        with self._watch_lock:
+            if self._watch is None:
+                # stop_helper() clears _wanted before it closes the watch.
+                if not ids or not self._wanted:
+                    return []
+                self._watch = self._watch_factory(self._on_arrival)
+            return self._watch.set_ids(ids)
+
+    def _close_watch(self) -> None:
+        with self._watch_lock:
+            watch, self._watch = self._watch, None
+            if watch is not None:
+                try:
+                    watch.close()
+                except Exception:
+                    _log.exception("Screen Saver Mode: device watch not closed")
+
+    def _on_arrival(self, device_id: str) -> None:
+        """A watched device is back (a Windows thread): retries soon."""
+        with self._lock:
+            if not self._wanted:
+                return
+            self._arrived.add(device_id.upper())
+        _trace(f"Device {device_id}: plugged in again, switching it on")
+        self._schedule(ARRIVAL_DELAY_S, first=True)
+
+    def _schedule(self, seconds: float, first: bool) -> None:
+        """One timer at a time; a first try replaces a waiting second try."""
+        with self._lock:
+            if not self._wanted:
+                return
+            timer = self._arrival_timer
+            if timer is not None:
+                if not first or self._arrival_first:
+                    return
+                timer.cancel()
+            self._arrival_first = first
+            self._arrival_gen += 1
+            self._arrival_timer = threads.timer(
+                "Device arrival", seconds, self._arrival_due, self._arrival_gen, first
+            )
+
+    def _arrival_due(self, gen: int, first: bool) -> None:
+        with self._lock:
+            if gen != self._arrival_gen or not self._wanted:
+                return
+            self._arrival_timer = None
+            if first:
+                self._check_ids |= self._arrived
+                self._arrived = set()
+            self._retry()
 
     def _read(self, device_id: str) -> str:
         try:
