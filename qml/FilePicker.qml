@@ -103,9 +103,7 @@ Item {
         picked(url)
     }
 
-    FolderMemory {
-        id: _memory
-    }
+    readonly property FolderMemory _memory: ModelFactory.create("FolderMemory", _root)
 
     FileDialog {
         id: _fileDialog

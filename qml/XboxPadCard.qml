@@ -38,7 +38,7 @@ Rectangle {
     // A press stays lit at least this long on the chips and the face.
     readonly property int minimumVisibleMs: 100
 
-    readonly property alias list: _list
+    readonly property XboxOutputListModel list: _list
 
     // The Appearance's Group row look, for the header (ControlTree's group
     // rows use the same values).
@@ -69,25 +69,26 @@ Rectangle {
     radius: Style.dp(groupRadius)
     implicitHeight: _column.implicitHeight + 2 * border.width
 
-    XboxOutputListModel {
-        id: _list
-        padId: _root.padId
-        // Polls what the pad sends only while the profile runs and the
-        // list shows bars or lights.
-        liveActive: _root.running && !!_root.appear
-                    && (_root.appear.showLiveBars || _root.appear.showLeds)
+    readonly property XboxOutputListModel _list:
+        ModelFactory.create("XboxOutputListModel", _root)
+    Binding { target: _root._list; property: "padId"; value: _root.padId }
+    // Polls what the pad sends only while the profile runs and the list
+    // shows bars or lights.
+    Binding {
+        target: _root._list
+        property: "liveActive"
+        value: _root.running && !!_root.appear
+               && (_root.appear.showLiveBars || _root.appear.showLeds)
     }
 
-    XboxPadChipsModel {
-        id: _chips
-        padId: _root.padId
-    }
+    readonly property XboxPadChipsModel _chips:
+        ModelFactory.create("XboxPadChipsModel", _root)
+    Binding { target: _root._chips; property: "padId"; value: _root.padId }
 
-    XboxPadLive {
-        id: _live
-        padId: _root.padId
-        active: _root.running && _root.open
-    }
+    readonly property XboxPadLive _live:
+        ModelFactory.create("XboxPadLive", _root)
+    Binding { target: _root._live; property: "padId"; value: _root.padId }
+    Binding { target: _root._live; property: "active"; value: _root.running && _root.open }
 
     // A control's right-click menu: Find uses… (D-01-SEARCH-INDEX), Search
     // on what sends to this pad's control: 'xbox:"<pad> <kind> <target>"'.

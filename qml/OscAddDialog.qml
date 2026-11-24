@@ -15,6 +15,7 @@ import QtQuick.Layouts
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 Popup {
     id: _root
@@ -63,7 +64,9 @@ Popup {
     padding: Style.dp(20)
     width: Style.dp(860)
 
-    OscSettingsInfo { id: _oscInfo }
+    // Made by ModelFactory (PYSIDE-1407); each lives as long as this popup.
+    readonly property OscSettingsInfo _oscInfo:
+        ModelFactory.create("OscSettingsInfo", _root)
 
     // Acceleration (09 S164): turning fast multiplies the step or the pulses.
     component AccelBox: RowLayout {
@@ -89,7 +92,8 @@ Popup {
             }
         }
     }
-    OscBulkCapture { id: _bulk }
+    readonly property OscBulkCapture _bulk:
+        ModelFactory.create("OscBulkCapture", _root)
 
     // A Device Mapping Editor card (osc_style.md): card fill, strong line, round corners.
     background: Rectangle {

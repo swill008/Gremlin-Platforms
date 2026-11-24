@@ -84,7 +84,7 @@ ApplicationWindow {
     readonly property string hoverReason: _body.hoveredLink.length
                                           ? ((_linkReasons || {})[_body.hoveredLink] || "") : ""
 
-    WindowPlacement { id: _place }
+    readonly property WindowPlacement _place: ModelFactory.create("WindowPlacement", _win)
 
     function _defaultListWidth() {
         return Style.dp(290)

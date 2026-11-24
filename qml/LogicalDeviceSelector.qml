@@ -9,6 +9,7 @@ import Gremlin.Base as Base
 import Gremlin.Compact as Compact
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 
 Item {
@@ -17,9 +18,14 @@ Item {
     property bool useCompact: false
     property string logicalInputType
 
-    property alias currentIndex: _model.currentIndex
-    property alias logicalInputIdentifier: _model.currentIdentifier
-    property alias validTypes: _model.validTypes
+    // Passed to the model by hand, valid types before the identifier (the
+    // model finds the identifier among the inputs of those types). The
+    // user's pick comes out as logicalInputSelected; the selector never
+    // writes logicalInputIdentifier, so an outside binding to it stays.
+    property var logicalInputIdentifier: null
+    property var validTypes: []
+
+    signal logicalInputSelected(InputIdentifier identifier)
 
     implicitHeight: _content.height
     implicitWidth: _content.implicitWidth
@@ -27,8 +33,33 @@ Item {
     Component { id: _baseVariant;    Base.TooltipComboBox    {} }
     Component { id: _compactVariant; Compact.TooltipComboBox {} }
 
-    LogicalDeviceSelectorModel {
-        id: _model
+    // Made by ModelFactory (PySide6 never frees QML-made Python objects,
+    // PYSIDE-1407); freed with this item.
+    readonly property LogicalDeviceSelectorModel _model:
+        ModelFactory.create("LogicalDeviceSelectorModel", _root, {})
+
+    property bool _ready: false
+    function _passTypes() {
+        if (_model)
+            _model.validTypes = validTypes
+    }
+    function _passIdentifier() {
+        if (_ready && _model && logicalInputIdentifier)
+            _model.currentIdentifier = logicalInputIdentifier
+    }
+    Component.onCompleted: {
+        _passTypes()
+        _ready = true
+        _passIdentifier()
+    }
+    onValidTypesChanged: _passTypes()
+    onLogicalInputIdentifierChanged: _passIdentifier()
+
+    Connections {
+        target: _model
+        function onSelectionChanged() {
+            _root.logicalInputSelected(_root._model.currentIdentifier)
+        }
     }
 
     Connections {

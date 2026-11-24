@@ -7,13 +7,15 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
+import Gremlin.UI
 
 Item {
     id: _root
     implicitHeight: _row.implicitHeight
     implicitWidth: Style.dp(480)
 
-    UiScaleModel { id: _model }
+    // Made by ModelFactory (PYSIDE-1407); it lives as long as this row.
+    readonly property UiScaleModel _model: ModelFactory.create("UiScaleModel", _root)
 
     RowLayout {
         id: _row

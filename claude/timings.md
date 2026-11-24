@@ -1498,3 +1498,19 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent S1-MEASURE: probe rerun after stage 1 (A-E + per window) | run | ~8 min | 8 min | 18:55-19:03, S1-MEASURE |
 | 2026-11-23 | Quick tests --changed for memory stage 1 (5,000 tests) | test | ~10 min | 11 min | 19:01-19:12, lead: 1 failed |
 | 2026-11-23 | Stage 1: test fix (HeldLight copy) + build + install + live check (7 windows, Device Bindings) + run/trace | build/test | ~4 min | 3 min | 19:12-19:15, lead |
+| 2026-11-23 | Lead: stage 1 commit e479e6eb (local) + 10 stage-2 briefs | lead planning | ~5 min | 3 min | 19:15-19:18, lead |
+| 2026-11-23 | Agent S2-G: Group G 9 types via ModelFactory | refactor | 5-10 min | 2 min | 19:16-19:18, S2-G |
+| 2026-11-23 | Agent S2-F: Group F 7 files via ModelFactory | refactor | 5-10 min | 2 min | 19:16-19:18, S2-F |
+| 2026-11-23 | Agent S2-B: Group B OSC 13 sites via ModelFactory | refactor | 5-10 min | 4 min | 19:15-19:19, S2-B |
+| 2026-11-23 | Agent S2-A: Group A 21 sites / 14 types via ModelFactory | refactor | 5-10 min | 4 min | 19:15-19:19, S2-A |
+| 2026-11-23 | Agent S2-C: Group C 9 types via ModelFactory | refactor | 5-10 min | 4 min | 19:15-19:19, S2-C |
+| 2026-11-23 | Agent S2-PY: upstream caches (selection model reuse, per-row vJoy model) + 12 tests | refactor | 5-10 min | 4 min | 19:16-19:20, S2-PY |
+| 2026-11-23 | Agent S2-DOCS: map notes for 55 stage-2 files + caches + gap text | agent fix | 3-8 min | 6 min | 19:16-19:22, S2-DOCS |
+| 2026-11-23 | Agent S2-E: Group E 11 files via ModelFactory | refactor | 5-10 min | 6 min | 19:16-19:22, S2-E |
+| 2026-11-23 | Agent S2-D: Group D 10 sites via ModelFactory | refactor | 5-10 min | 8 min | 19:15-19:23, S2-D |
+| 2026-11-23 | Agent S2-GUARD: STAGE2_PENDING empty, FACTORY_ONLY 81, stage-2 round test, 10 test files moved to the factory | refactor | 5-10 min | 10 min | 19:16-19:26, S2-GUARD |
+| 2026-11-23 | Agent FIX-LDS: selector emits logicalInputSelected, 3 users switched, test | agent fix | 3-8 min | 5 min | 19:24-19:29, FIX-LDS |
+| 2026-11-23 | Lead: test_qt_property_getters to the factory, test_ld_refs_c uses qapp | fix | ~3 min | 4 min | 19:29-19:33, lead |
+| 2026-11-23 | Agent FIX-CLOSE: Health/Search close slots, clear_on_change, guard test | agent fix | 3-8 min | 4 min | 19:27-19:31, FIX-CLOSE |
+| 2026-11-23 | Agent S2-NATIVE: growth outside Python investigated (component cache, JS GC, heap retention) | review | rough 10-15 min | 15 min | 19:19-19:34, S2-NATIVE |
+| 2026-11-23 | Agent S2-MEASURE: probe after stage 2 (A-E, per window, QObject, JS GC runs) | run | ~8 min | 12 min | 19:31-19:43, S2-MEASURE |

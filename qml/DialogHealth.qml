@@ -53,15 +53,18 @@ ApplicationWindow {
     U.Universal.theme: Style.theme
     title: "Health"
 
-    readonly property alias health: _model
+    readonly property HealthModel health: _model
     // The last clicked line (the Why panel's), -1: none.
     property int current: -1
     property int whyRevision: 0
 
-    HealthModel {
-        id: _model
-        onModelReset: { _root.current = -1; _root.whyRevision++ }
-        onEditRefused: (title, why) => _root.tell(title, why)
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property HealthModel _model: ModelFactory.create("HealthModel", _root)
+    Connections {
+        target: _root._model
+        function onModelReset() { _root.current = -1; _root.whyRevision++ }
+        function onEditRefused(title, why) { _root.tell(title, why) }
     }
 
     onClosing: _model.close()

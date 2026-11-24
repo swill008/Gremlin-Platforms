@@ -40,11 +40,14 @@ Item {
     readonly property bool running:
         !!(typeof backend !== "undefined" && backend && backend.gremlinActive)
 
-    XboxPadSectionsModel { id: _pads }
+    readonly property XboxPadSectionsModel _pads:
+        ModelFactory.create("XboxPadSectionsModel", _root)
 
-    XboxDriverStatus { id: _driver }
+    readonly property XboxDriverStatus _driver:
+        ModelFactory.create("XboxDriverStatus", _root)
 
-    WindowPlacement { id: _place }
+    readonly property WindowPlacement _place:
+        ModelFactory.create("WindowPlacement", _root)
 
     function isPadOpen(pad) {
         return !padOpenMap || padOpenMap[String(pad)] !== false

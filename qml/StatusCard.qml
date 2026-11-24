@@ -10,6 +10,7 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
+import Gremlin.UI
 
 import "control_menu.js" as ControlMenu
 
@@ -72,11 +73,17 @@ Rectangle {
     // No button / axis / hat count line on these cards (03 S73).
     readonly property bool _noCounts: ["keyboard", "osc", "logical"].indexOf(tab) >= 0
                                       || ["keyboard", "osc", "logical"].indexOf(slug) >= 0
-    readonly property QtObject _oscStatus: _oscMaker.object
+    readonly property QtObject _oscStatus: _oscMaker.object ? _oscMaker.object.status : null
     Instantiator {
         id: _oscMaker
         model: _card._isOsc ? 1 : 0
-        delegate: OscCardStatus {}
+        // Made by ModelFactory (PYSIDE-1407), owned by the delegate, so it
+        // goes when the card stops being the OSC card.
+        delegate: QtObject {
+            id: _oscHolder
+            readonly property OscCardStatus status:
+                ModelFactory.create("OscCardStatus", _oscHolder)
+        }
     }
     z: stackIndex + (lifting || resizing ? 100 : 0)
 

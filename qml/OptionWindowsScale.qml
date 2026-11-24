@@ -7,13 +7,16 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
+import Gremlin.UI
 
 Item {
     id: _root
     implicitHeight: _row.implicitHeight
     implicitWidth: Style.dp(420)
 
-    WindowsScaleModel { id: _model }
+    // Made by ModelFactory (PYSIDE-1407); it lives as long as this row.
+    readonly property WindowsScaleModel _model:
+        ModelFactory.create("WindowsScaleModel", _root)
 
     // Saved value before the last click, restored by Cancel.
     property bool _before: false

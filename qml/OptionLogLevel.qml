@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
+import Gremlin.UI
 
 Item {
     id: _root
@@ -14,9 +15,10 @@ Item {
     implicitHeight: _row.implicitHeight
     implicitWidth: Style.dp(420)
 
-    LogLevelModel {
-        id: _model
-    }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this row.
+    readonly property LogLevelModel _model:
+        ModelFactory.create("LogLevelModel", _root)
 
     RowLayout {
         id: _row

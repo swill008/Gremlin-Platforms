@@ -9,13 +9,14 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Profile
 import Gremlin.Style
+import Gremlin.UI
 
 Item {
     id: _root
 
     property InputItemModel inputItemModel
     // The one edit lock (06 S13): nothing is edited while the profile runs.
-    EditLock { id: _lock }
+    readonly property EditLock _lock: ModelFactory.create("EditLock", _root, {})
     readonly property bool editorLocked: _lock.locked
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0

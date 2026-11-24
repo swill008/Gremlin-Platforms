@@ -8,6 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Config
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 import "confirm.js" as Confirm
 
@@ -22,7 +23,9 @@ Flickable {
     required property OscServerModel server
 
     // Companion setup check (09 S144): only reads and reports.
-    OscCompanionCheck { id: _check }
+    // Made by ModelFactory (PYSIDE-1407); lives as long as this tab.
+    readonly property OscCompanionCheck _check:
+        ModelFactory.create("OscCompanionCheck", _root)
 
     clip: true
     contentWidth: width

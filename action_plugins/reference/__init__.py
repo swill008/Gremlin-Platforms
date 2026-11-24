@@ -32,7 +32,10 @@ from gremlin.ui.action_model import (
     ActionModel,
     SequenceIndex,
 )
-from gremlin.ui.profile import LabelValueSelectionModel
+from gremlin.ui.profile import (
+    LabelValueSelectionModel,
+    reuse_or_replace_selection_model,
+)
 
 if TYPE_CHECKING:
     from gremlin.types import Event
@@ -62,6 +65,8 @@ class ReferenceModel(ActionModel):
         parent: QtCore.QObject,
     ) -> None:
         super().__init__(data, binding_model, action_index, parent_index, parent)
+        # The list handed to QML, reused while its entries stay the same.
+        self._actions: LabelValueSelectionModel | None = None
 
     def _qml_path_impl(self) -> str:
         return (
@@ -116,12 +121,14 @@ class ReferenceModel(ActionModel):
         actions = self.library.pick_list(
             selector, self._data, self._binding_model.input_item_binding.input_item
         )
-        return LabelValueSelectionModel(
+        self._actions = reuse_or_replace_selection_model(
+            self._actions,
             [a.action_label for a in actions],
             [str(a.id) for a in actions],
+            self,
             bootstrap=[a.icon for a in actions],
-            parent=self,
         )
+        return self._actions
 
     @QtCore.Slot(str)
     def referenceAction(self, value: str) -> None:

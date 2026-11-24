@@ -17,7 +17,10 @@ from gremlin import references, util
 from gremlin.edits import EditNoted
 from gremlin.types import InputType
 from gremlin.ui.device import InputIdentifier
-from gremlin.ui.profile import LabelValueSelectionModel
+from gremlin.ui.profile import (
+    LabelValueSelectionModel,
+    reuse_or_replace_selection_model,
+)
 
 if TYPE_CHECKING:
     from gremlin.ui.action_model import ActionModel
@@ -102,10 +105,15 @@ class AxisView:
         return view
 
 
-def pick_list(model: ActionModel, data_cls: type) -> LabelValueSelectionModel:
+def pick_list(
+    model: ActionModel,
+    data_cls: type,
+    current: LabelValueSelectionModel | None,
+) -> LabelValueSelectionModel:
     """The instances the editor offers: the one shown, those in the input
     being edited (the pane edits copies; "+" makes one no input uses yet)
-    and those an input uses, by label."""
+    and those an input uses, by label. current (the list handed out last)
+    is reused while it holds the same entries."""
     actions = sorted(
         model.library.pick_list(
             lambda a: isinstance(a, data_cls),
@@ -114,10 +122,11 @@ def pick_list(model: ActionModel, data_cls: type) -> LabelValueSelectionModel:
         ),
         key=lambda x: getattr(x, "label", ""),
     )
-    return LabelValueSelectionModel(
+    return reuse_or_replace_selection_model(
+        current,
         [getattr(a, "label", "") for a in actions],
         [str(a.id) for a in actions],
-        parent=model,
+        model,
     )
 
 

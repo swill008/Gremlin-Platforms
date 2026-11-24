@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
+import Gremlin.UI
 
 // OSC's Module Setup settings as tabs: Server · Output · Feedback · Discovery
 // (D-09-OSC-TABS). One server model is shared by the first, second and last
@@ -17,7 +18,7 @@ ColumnLayout {
     objectName: "oscSetupTabs"
     spacing: 0
 
-    property alias model: _model
+    readonly property OscServerModel model: _model
     property alias current: _strip.current
 
     // Shows the tab of that name ("Feedback"); unknown names are ignored.
@@ -32,11 +33,14 @@ ColumnLayout {
         _server.commit()
     }
 
-    OscServerModel {
-        id: _model
-        onMessageChanged: {
-            if (message.length)
-                _message.show(message, messageFailed)
+    // Made by ModelFactory (PYSIDE-1407); lives as long as these tabs.
+    readonly property OscServerModel _model:
+        ModelFactory.create("OscServerModel", _root)
+    Connections {
+        target: _model
+        function onMessageChanged() {
+            if (_model.message.length)
+                _message.show(_model.message, _model.messageFailed)
             else
                 _message.clear()
         }

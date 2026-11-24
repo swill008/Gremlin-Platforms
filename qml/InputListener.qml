@@ -10,13 +10,15 @@ import QtQml.StateMachine as DSM
 import Gremlin.Util
 import Gremlin.Compact as Compact
 import Gremlin.Style
+import Gremlin.UI
 
 
 Item {
     id: _root
 
-    property alias eventTypes: _listener.eventTypes
-    property alias multipleInputs: _listener.multipleInputs
+    // Passed on to the listener (set only from QML, notified only on change).
+    property var eventTypes: []
+    property bool multipleInputs: false
     property alias text: _name.text
     property var callback
     signal listenFinished()
@@ -24,10 +26,15 @@ Item {
     implicitWidth: _button.implicitWidth
     implicitHeight: _button.implicitHeight
 
-    InputListenerModel {
-        id: _listener
+    // Made by ModelFactory (PySide6 never frees QML-made Python objects,
+    // PYSIDE-1407); freed with this item.
+    readonly property InputListenerModel _listener: ModelFactory.create("InputListenerModel", _root, {})
+    Binding { target: _listener; property: "eventTypes"; value: _root.eventTypes }
+    Binding { target: _listener; property: "multipleInputs"; value: _root.multipleInputs }
+    Connections {
+        target: _listener
 
-        onListeningTerminated: function(inputs) {
+        function onListeningTerminated(inputs) {
             if (_root.callback) {
                 _root.callback(inputs)
             }

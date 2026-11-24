@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Controls
 
 import Gremlin.Config
+import Gremlin.UI
 
 Item {
     id: _root
@@ -12,9 +13,10 @@ Item {
     implicitHeight: _combo.implicitHeight
     implicitWidth: _combo.implicitWidth
 
-    TTSVoiceSelectionModel {
-        id: _model
-    }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this row.
+    readonly property TTSVoiceSelectionModel _model:
+        ModelFactory.create("TTSVoiceSelectionModel", _root)
 
     ComboBox {
         id: _combo

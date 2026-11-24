@@ -3,6 +3,7 @@
 
 import QtQuick
 import Gremlin.Device
+import Gremlin.UI
 
 // The device's background picture (07 S157): devicePhotoMaker
 // (gremlin/ui/device_photo.py) asks for one device at a time; this hidden
@@ -25,7 +26,8 @@ Item {
     readonly property alias renderer: _render
 
     // Look copies (07 S43) and picture sizes (07 S83), as in the editor.
-    HardwareProfile { id: _hw }
+    // Made by ModelFactory, freed with this host (memory-qml-factory.md).
+    readonly property HardwareProfile _hw: ModelFactory.create("HardwareProfile", _host, {})
 
     RigRenderer {
         id: _render

@@ -65,7 +65,9 @@ ApplicationWindow {
         { key: "settings", label: "Settings" }
     ]
 
-    HistoryModel { id: _model }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property HistoryModel _model: ModelFactory.create("HistoryModel", _root)
 
     function wanted() {
         try {

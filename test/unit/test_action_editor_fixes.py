@@ -121,8 +121,8 @@ def test_merge_axis_error_names_the_value() -> None:
 def _operation_list() -> tuple[list[str], list[str]]:
     from action_plugins.merge_axis import MergeAxisModel
 
-    with mock.patch("action_plugins.merge_axis.LabelValueSelectionModel") as made:
-        MergeAxisModel.operationList.fget(SimpleNamespace())
+    with mock.patch("gremlin.ui.profile.LabelValueSelectionModel") as made:
+        MergeAxisModel.operationList.fget(SimpleNamespace(_operation_list=None))
     labels, values = made.call_args.args[:2]
     return list(labels), list(values)
 

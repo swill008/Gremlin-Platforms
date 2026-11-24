@@ -398,9 +398,10 @@ class SearchModel(QtCore.QAbstractListModel):
         except Exception:  # noqa: BLE001 - the old rows stay
             log.exception("Search: the open profile could not be indexed again")
 
+    @QtCore.Slot()
     def close(self) -> None:
         """Stop listening to notices, the index and Listen (window closed,
-        tests)."""
+        tests). A Slot, or QML's onClosing call never reaches it."""
         if self._closed:
             return
         self._closed = True
@@ -411,7 +412,12 @@ class SearchModel(QtCore.QAbstractListModel):
             except (RuntimeError, TypeError):
                 pass
         if self._index is not None:
-            self._index.set_on_change(None)
+            # Only our own callback: a newer Search window may have set its.
+            clear = getattr(self._index, "clear_on_change", None)
+            if clear is not None:
+                clear(self._index_changed_any_thread)
+            else:  # a stand-in index without it (tests)
+                self._index.set_on_change(None)
         for timer in (self._debounce, self._recent_timer, self._rebuild_timer):
             timer.stop()
 

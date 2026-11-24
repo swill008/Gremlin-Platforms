@@ -28,9 +28,9 @@ Item {
     readonly property bool actionOpen: _pane.open
     readonly property string paneKey: _pane.paneKey
     readonly property string paneTitle: _pane.paneTitle
-    readonly property alias layout: _layout
+    readonly property OscLayoutModel layout: _layout
     readonly property alias monitorPanel: _monitor
-    readonly property alias deviceModel: _devices
+    readonly property OscDeviceManagementModel deviceModel: _devices
     // The page's Appearance part (PageAppearance.qml, to-do 91).
     property alias displayOpen: _appear.displayOpen
     readonly property Component pageBar: _appear.pageBar
@@ -42,7 +42,8 @@ Item {
     property alias _picked: _tree.picked
 
     // The one edit lock (06 S13, S82): nothing is edited while the profile runs.
-    EditLock { id: _lock }
+    // Made by ModelFactory (PYSIDE-1407); each lives as long as this page.
+    readonly property EditLock _lock: ModelFactory.create("EditLock", _root)
     readonly property bool editorLocked: _lock.locked
 
     readonly property bool _undoKeys: visible && !editorLocked && !actionOpen
@@ -79,7 +80,8 @@ Item {
     // (S137, D-09-MONITOR-REMEMBERED): "open", "folded" or "closed"; folded
     // until set once. Popping out is never kept: a popped-out Monitor is
     // saved as "open", so it comes back docked and unfolded.
-    WindowPlacement { id: _monitorPlace }
+    readonly property WindowPlacement _monitorPlace:
+        ModelFactory.create("WindowPlacement", _root)
     property bool _monitorLoaded: false
 
     function _monitorState() {
@@ -464,7 +466,8 @@ Item {
         _layout.setPatternsOnly(_find.isChecked("patterns"))
     }
 
-    OscLayoutModel { id: _layout }
+    readonly property OscLayoutModel _layout:
+        ModelFactory.create("OscLayoutModel", _root)
     Connections {
         target: _layout
         function onPaneLost() { _pane.closeNow() }
@@ -483,7 +486,8 @@ Item {
 
     // The Add window, Import, Listen and the input's settings work on OSC's
     // list through this model (shared with every profile).
-    OscDeviceManagementModel { id: _devices }
+    readonly property OscDeviceManagementModel _devices:
+        ModelFactory.create("OscDeviceManagementModel", _root)
     // A new input from Add / Listen / one import line is selected (S12).
     Connections {
         target: _devices

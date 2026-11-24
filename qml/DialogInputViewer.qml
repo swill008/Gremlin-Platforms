@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -36,7 +37,9 @@ ApplicationWindow {
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
 
-    ModulePairDeviceModel { id: _devices }
+    // Made by ModelFactory, freed with this window (memory-qml-factory.md).
+    readonly property ModulePairDeviceModel _devices:
+        ModelFactory.create("ModulePairDeviceModel", _inputViewer, {})
 
     Component.onCompleted: () => {
         if (_devices)

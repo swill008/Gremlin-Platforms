@@ -9,6 +9,7 @@ import QtQuick.Layouts
 import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
+import Gremlin.UI
 
 import "control_menu.js" as ControlMenu
 
@@ -20,6 +21,15 @@ ColumnLayout {
     property string title: ""
     property string pairLabel: ""
     property bool destEmpty: false
+    // Made by ModelFactory, freed with this card (memory-qml-factory.md).
+    // Above the stamps that read them.
+    readonly property ModulePairAxisModel _axes:
+        ModelFactory.create("ModulePairAxisModel", _root, {})
+    readonly property ModulePairButtonModel _buttons:
+        ModelFactory.create("ModulePairButtonModel", _root, {})
+    readonly property PairLiveThrottle _live:
+        ModelFactory.create("PairLiveThrottle", _root, {})
+
     property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
     property bool pairActive: backend && backend.gremlinActive
@@ -28,22 +38,11 @@ ColumnLayout {
 
     spacing: Style.dp(4)
 
-    ModulePairAxisModel {
-        id: _axes
-        guid: deviceGuid
-        deviceName: _root.deviceName
-    }
-
-    ModulePairButtonModel {
-        id: _buttons
-        guid: deviceGuid
-        deviceName: _root.deviceName
-    }
-
-    PairLiveThrottle {
-        id: _live
-        guid: deviceGuid
-    }
+    Binding { target: _axes; property: "guid"; value: _root.deviceGuid }
+    Binding { target: _axes; property: "deviceName"; value: _root.deviceName }
+    Binding { target: _buttons; property: "guid"; value: _root.deviceGuid }
+    Binding { target: _buttons; property: "deviceName"; value: _root.deviceName }
+    Binding { target: _live; property: "guid"; value: _root.deviceGuid }
 
     // A chip's right-click menu: Find uses… (D-01-SEARCH-INDEX), Search on
     // what sends to its vJoy button: 'vjoy:"<device> button <n>"'.

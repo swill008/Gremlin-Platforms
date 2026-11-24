@@ -10,6 +10,7 @@ import QtCharts
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 Item {
     id: _root
@@ -24,32 +25,36 @@ Item {
         return String(value || "").replace(/[{}]/g, "").length >= 32
     }
 
-    DeviceAxisSeries {
-        id: _axis_series
+    // Made by ModelFactory (PySide6 never frees QML-made Python objects,
+    // PYSIDE-1407); freed with this item. The guid is set by hand below,
+    // once this Connections exists, so the first deviceChanged is seen.
+    readonly property DeviceAxisSeries _axis_series: ModelFactory.create("DeviceAxisSeries", _root, {})
+    Connections {
+        target: _axis_series
 
-        onDeviceChanged: () => {
+        function onDeviceChanged() {
             _chart.removeAllSeries()
 
-            for(var i=0; i<axisCount; i++) {
+            for(var i=0; i<_axis_series.axisCount; i++) {
                 var series = _chart.createSeries(
                     ChartView.SeriesTypeLine,
-                    "Axis " + axisIdentifier(i),
+                    "Axis " + _axis_series.axisIdentifier(i),
                     _x_axis,
                     _y_axis
                 )
-               series.color = colors[i]
+               series.color = _root.colors[i]
             }
         }
     }
 
     Component.onCompleted: {
-        if (_validGuid(deviceGuid)) {
+        if (_axis_series && _validGuid(deviceGuid)) {
             _axis_series.guid = deviceGuid
         }
     }
 
     onDeviceGuidChanged: {
-        if (_validGuid(deviceGuid)) {
+        if (_axis_series && _validGuid(deviceGuid)) {
             _axis_series.guid = deviceGuid
         }
     }

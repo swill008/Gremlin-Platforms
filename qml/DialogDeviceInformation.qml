@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 ApplicationWindow {
     id: _info
@@ -37,6 +38,11 @@ ApplicationWindow {
     U.Universal.theme: Style.theme
 
     title: "Device Information"
+
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property DeviceListModel _devices:
+        ModelFactory.create("DeviceListModel", _info, { deviceType: "information" })
 
     // The columns need about 1060 wide: on a narrow screen or a large UI
     // scale the list scrolls sideways (Device ID was cut off).
@@ -109,7 +115,7 @@ ApplicationWindow {
                     Repeater {
                         // Every device Windows reports, also the ones the
                         // program leaves out (marked by their note).
-                        model: DeviceListModel { deviceType: "information" }
+                        model: _info._devices
 
                         delegate: Rectangle {
                             id: _outer

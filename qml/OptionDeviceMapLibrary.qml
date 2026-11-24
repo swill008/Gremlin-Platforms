@@ -10,6 +10,7 @@ import QtQuick.Layouts
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 import "confirm.js" as Confirm
 
@@ -19,8 +20,9 @@ Item {
     implicitHeight: _content.implicitHeight
     implicitWidth: Style.dp(420)
 
-    DeviceMapOptions { id: _opts }
-    HardwareProfile { id: _hw }
+    // Made by ModelFactory, freed with this page (memory-qml-factory.md).
+    readonly property DeviceMapOptions _opts: ModelFactory.create("DeviceMapOptions", _library, {})
+    readonly property HardwareProfile _hw: ModelFactory.create("HardwareProfile", _library, {})
 
     property var templateList: _hw.templates()
     property string renaming: ""

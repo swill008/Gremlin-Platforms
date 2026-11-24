@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 import "confirm.js" as Confirm
 import "helpers.js" as Helpers
@@ -39,11 +40,13 @@ ApplicationWindow {
 
     EscapeCloses { host: _win }
 
-    XboxSetupModel { id: _setup }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property XboxSetupModel _setup: ModelFactory.create("XboxSetupModel", _win)
 
     // The open lowering question (01 S140), for tests.
     property var _question: null
-    readonly property alias setup: _setup
+    readonly property XboxSetupModel setup: _setup
     readonly property alias chosenCount: _count.value
 
     // OK: applies the count; lowering past bound pads asks first.

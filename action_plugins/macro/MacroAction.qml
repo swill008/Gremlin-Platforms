@@ -380,8 +380,8 @@ Item {
                         logicalInputIdentifier: modelData.logicalInputIdentifier
                         useCompact: true
 
-                        onLogicalInputIdentifierChanged: () => {
-                            modelData.logicalInputIdentifier = logicalInputIdentifier
+                        onLogicalInputSelected: (identifier) => {
+                            modelData.logicalInputIdentifier = identifier
                         }
                     }
 

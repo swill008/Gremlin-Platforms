@@ -120,6 +120,8 @@ class DualAxisDeadzoneModel(ActionModel):
     ) -> None:
         super().__init__(data, binding_model, action_index, parent_index, parent)
         self._axis_views = {1: AxisView(self), 2: AxisView(self)}
+        # The list handed to QML, reused while its entries stay the same.
+        self._deadzone_action_list: LabelValueSelectionModel | None = None
 
     def _qml_path_impl(self) -> str:
         return (
@@ -144,7 +146,10 @@ class DualAxisDeadzoneModel(ActionModel):
 
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def deadzoneActionList(self) -> LabelValueSelectionModel:
-        return axis_pair.pick_list(self, DualAxisDeadzoneData)
+        self._deadzone_action_list = axis_pair.pick_list(
+            self, DualAxisDeadzoneData, self._deadzone_action_list
+        )
+        return self._deadzone_action_list
 
     def _get_axis(self, idx: int) -> InputIdentifier:
         return self._axis_views[idx].show(

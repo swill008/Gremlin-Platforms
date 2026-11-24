@@ -95,3 +95,5 @@ page 01 (PYSIDE-WRAPPERS) and the test_leaks.py comment. Results:
 memory.md.
 2a UP-VIEWER-OUTPUT-POLL stays a known gap. 3a XboxPadCard.qml gets the
 100 ms hold (UP-XBOX-PAD-HOLD).
+
+- native-growth.md (S2-NATIVE, 2026-11-23): the memory growth outside Python: QML component cache never trimmed while shown, late JavaScript GC, Windows heap retention, a one-time ~10 MB step; recommended release_unused(engine) helper.

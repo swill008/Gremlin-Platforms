@@ -4,6 +4,7 @@
 import QtQuick
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 Item {
     id: _root
@@ -25,6 +26,19 @@ Item {
     function resetView() { _face.resetView() }
     function clampPan() { if (_face.clampPan) _face.clampPan() }
 
+    // Made by ModelFactory, freed with this card (memory-qml-factory.md).
+    // Above the stamps that read them.
+    readonly property PairLiveThrottle _live:
+        ModelFactory.create("PairLiveThrottle", _root, {})
+    readonly property MappedButtonModel _buttons:
+        ModelFactory.create("MappedButtonModel", _root, {})
+    readonly property MappedAxisModel _axes:
+        ModelFactory.create("MappedAxisModel", _root, {})
+    readonly property MappedHatModel _hats:
+        ModelFactory.create("MappedHatModel", _root, {})
+    readonly property HardwareProfile _inventory:
+        ModelFactory.create("HardwareProfile", _root, {})
+
     property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
     property int hatStamp: _live && _live.hatStamp !== undefined ? _live.hatStamp : (_live ? _live.stamp : 0)
@@ -32,29 +46,14 @@ Item {
     // (what drives what changed), so the face and its editor redraw.
     property int liveStamp: buttonStamp + axisStamp + hatStamp + _buttons.stamp + _axes.stamp + _hats.stamp
 
-    PairLiveThrottle {
-        id: _live
-        guid: _root.deviceGuid
-    }
+    Binding { target: _live; property: "guid"; value: _root.deviceGuid }
+    Binding { target: _buttons; property: "guid"; value: _root.deviceGuid }
+    Binding { target: _axes; property: "guid"; value: _root.deviceGuid }
+    Binding { target: _hats; property: "guid"; value: _root.deviceGuid }
 
-    MappedButtonModel {
-        id: _buttons
-        guid: _root.deviceGuid
-    }
-
-    MappedAxisModel {
-        id: _axes
-        guid: _root.deviceGuid
-    }
-
-    MappedHatModel {
-        id: _hats
-        guid: _root.deviceGuid
-    }
-
-    HardwareProfile {
-        id: _inventory
-        onProfileLabelsChanged: _root.refreshChipRows()
+    Connections {
+        target: _inventory
+        function onProfileLabelsChanged() { _root.refreshChipRows() }
     }
 
     // The pool rows. A live press only checks a cheap key (module file time,

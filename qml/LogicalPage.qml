@@ -40,7 +40,7 @@ Item {
     property alias _picked: _tree.picked
 
     // The one edit lock (06 S13, S82): nothing is edited while the profile runs.
-    EditLock { id: _lock }
+    readonly property EditLock _lock: ModelFactory.create("EditLock", _root, {})
     readonly property bool editorLocked: _lock.locked
 
     // Same rules as the Undo and Redo menu items. A focused text field keeps these keys.
@@ -69,7 +69,9 @@ Item {
 
     function _finishClose() { _pane.finishClose() }
 
-    LogicalLayoutModel { id: _layout }
+    // Made by ModelFactory (PySide6 never frees QML-made Python objects,
+    // PYSIDE-1407); the page is the parent, so it goes with it.
+    readonly property LogicalLayoutModel _layout: ModelFactory.create("LogicalLayoutModel", _root, {})
     // Its mode was deleted (the model said so and closed the draft).
     Connections {
         target: _layout

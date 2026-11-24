@@ -49,7 +49,7 @@ ApplicationWindow {
     U.Universal.theme: Style.theme
     title: "Search"
 
-    readonly property alias search: _model
+    readonly property SearchModel search: _model
     // The picked result's row in the model (-1: none).
     property int current: -1
     property string sortColumn: ""
@@ -66,11 +66,14 @@ ApplicationWindow {
     readonly property bool typed: String(_model.text || "").trim().length > 0
     readonly property bool nothingFound: typed && !listening && _model.resultCount === 0
 
-    SearchModel {
-        id: _model
-        onModelReset: { _root.current = -1; _root.detailRevision++ }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property SearchModel _model: ModelFactory.create("SearchModel", _root)
+    Connections {
+        target: _root._model
+        function onModelReset() { _root.current = -1; _root.detailRevision++ }
         // An edit or undo that can't be made says why (01 S195).
-        onEditRefused: (title, why) => _root.tell(title, why)
+        function onEditRefused(title, why) { _root.tell(title, why) }
     }
 
     Connections {
@@ -336,6 +339,7 @@ ApplicationWindow {
         _box.text = _model.text || ""
         Qt.callLater(focusBox)
     }
+    onClosing: _model.close()
     onActiveChanged: if (active && !_box.activeFocus && current < 0) focusBox()
 
     ColumnLayout {

@@ -8,13 +8,15 @@ import QtQuick.Layouts
 import Gremlin.Base
 import Gremlin.Profile
 import Gremlin.Style
+import Gremlin.UI
 
 // Profile Settings › General (04 S62-S64, S96, S98): Startup Mode and the
 // Macro Default Delay, in Options' cards and rows.
 ScrollView {
     id: _root
 
-    property ProfileSettingsModel settingsModel: ProfileSettingsModel {}
+    readonly property ProfileSettingsModel settingsModel:
+        ModelFactory.create("ProfileSettingsModel", _root)
 
     contentWidth: availableWidth
     ScrollBar.vertical.interactive: true
@@ -39,10 +41,13 @@ ScrollView {
                     + "the mode shown in the toolbar."
 
                 ComboBox {
+                    id: _startupBox
                     objectName: "startupModeBox"
                     Layout.preferredWidth: Style.dp(240)
 
-                    model: StartupModeModel {}
+                    readonly property StartupModeModel _startupModes:
+                        ModelFactory.create("StartupModeModel", _startupBox)
+                    model: _startupModes
 
                     textRole: "label"
                     valueRole: "value"

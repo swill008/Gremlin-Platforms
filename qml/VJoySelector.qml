@@ -10,6 +10,7 @@ import Gremlin.Base as Base
 import Gremlin.Compact as Compact
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 
 Item {
@@ -19,7 +20,9 @@ Item {
     // The saved binding can't be sent (D-05-CANT-SEND); the tooltip says why.
     readonly property bool cantSend: _vjoy ? _vjoy.currentUnclaimed : false
     readonly property string cantSendText: _vjoy ? _vjoy.currentReason : ""
-    property alias validTypes: _vjoy.validTypes
+    // Passed to _vjoy by hand: before initialize() reads the saved binding
+    // against them, and again on each change.
+    property var validTypes: []
 
     signal selectionChanged(int deviceId, string inputType, int inputId)
 
@@ -28,9 +31,17 @@ Item {
 
     function initialize(vjoy_id, input_type, input_id) {
         if (_vjoy) {
+            _passTypes()
             _vjoy.setInitialState(vjoy_id, input_type, input_id)
         }
     }
+
+    function _passTypes() {
+        if (_vjoy)
+            _vjoy.validTypes = validTypes
+    }
+    onValidTypesChanged: _passTypes()
+    Component.onCompleted: _passTypes()
 
     // A box's widest choice plus its padding (WidestText); the background's
     // own default width doesn't count.
@@ -56,14 +67,17 @@ Item {
         Compact.TooltipComboBox { implicitContentWidthPolicy: ComboBox.WidestText }
     }
 
-    OutputModuleDevices {
-        id: _vjoy
+    // Made by ModelFactory (PySide6 never frees QML-made Python objects,
+    // PYSIDE-1407); freed with this item.
+    readonly property OutputModuleDevices _vjoy: ModelFactory.create("OutputModuleDevices", _root, {})
+    Connections {
+        target: _vjoy
 
-        onCurrentSelectionChanged: (vjoyId, inputType, inputId) => {
+        function onCurrentSelectionChanged(vjoyId, inputType, inputId) {
             _root.selectionChanged(vjoyId, inputType, inputId)
         }
 
-        onCurrentValuesChanged: (vjoy_name, input_name) => {
+        function onCurrentValuesChanged(vjoy_name, input_name) {
             if (_deviceLoader.item) {
                 _deviceLoader.item.currentIndex = _deviceLoader.item.find(vjoy_name)
             }

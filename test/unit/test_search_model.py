@@ -505,23 +505,28 @@ def test_listen_says_when_osc_listening_is_off(
 def test_qml_creates_it(
     qapp: object, saved: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Gremlin.Device's SearchModel from QML."""
+    """Gremlin.Device's SearchModel from QML, made by ModelFactory."""
     from PySide6 import QtQml
+
+    from gremlin.ui import model_factory  # noqa: F401  (the singleton)
 
     stand_in = _Index(ROWS)
     monkeypatch.setattr(search_model, "_default_index", lambda: stand_in)
     engine = QtQml.QQmlEngine()
     component = QtQml.QQmlComponent(engine)
     component.setData(
-        b"import Gremlin.Device\nSearchModel { text: 'gear'; lookIn: 'all' }",
+        b"import QtQml\nimport Gremlin.UI\nQtObject { id: r; readonly property var m:"
+        b" ModelFactory.create('SearchModel', r, {text: 'gear', lookIn: 'all'}) }",
         QtCore.QUrl(),
     )
-    made = component.create()
-    assert made is not None, component.errorString()
+    root = component.create()
+    assert root is not None, component.errorString()
+    made = root.property("m")
+    assert made is not None and made.parent() is root
     made.search()
     assert made.property("resultCount") == 1
     made.close()
-    made.deleteLater()
+    root.deleteLater()  # and the model with it
     # Gone before the engine is, not left for a later test's event loop.
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     del engine

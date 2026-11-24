@@ -284,6 +284,12 @@ else:
     # Not the real model: the fake is the contract's API with known values.
     QtQml.qmlRegisterType(FakeDrivers, "Gremlin.Device", 1, 0, "DriversModel")
 
+# The windows make it with ModelFactory.create, which looks the name up in
+# ta.QML_TYPES: the fake goes there.
+import gremlin.ui.model_factory  # noqa: E402, F401  (the singleton)
+from gremlin.ui import type_aliases as ta  # noqa: E402
+
+ta.QML_TYPES["DriversModel"] = FakeDrivers
 
 
 class FakeBackend(QtCore.QObject):

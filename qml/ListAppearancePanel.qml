@@ -183,7 +183,7 @@ Rectangle {
     property bool rowNoBindings: false
     property bool rowWrapDetails: false
 
-    WindowPlacement { id: _place }
+    readonly property WindowPlacement _place: ModelFactory.create("WindowPlacement", _panel)
 
     color: Style.bgCard
     border.color: Style.line

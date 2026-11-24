@@ -256,8 +256,8 @@ def main() -> None:
     pics = out / "pictures"
     pics.mkdir(exist_ok=True)
     folder = QtCore.QUrl.fromLocalFile(str(pics)).toString()
-    js("var m = Qt.createQmlObject('import Gremlin.UI; FolderMemory {}', _editorWin);"
-       f" m.remember('picture', {json.dumps(folder)}); m.destroy(); 1")
+    js("var m = ModelFactory.create('FolderMemory', _editorWin, {});"
+       f" m.remember('picture', {json.dumps(folder)}); 1")
     result("picker", [
         js("_bgPictureDialog.kind"), js("_overlayDialog.kind"),
         js("_exportPngDialog.kind + ' ' + _exportPngDialog.mode"),

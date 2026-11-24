@@ -16,14 +16,19 @@ from unittest import mock
 sys.path.append(".")
 
 import pytest
-from PySide6 import QtCore
 
 from gremlin.logical_device import LogicalDevice
 from gremlin.types import InputType
 from gremlin.ui.device import InputIdentifier
 
 B = InputType.JoystickButton
-_APP = QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
+
+
+@pytest.fixture(autouse=True)
+def _app(qapp: object) -> object:
+    """The shared test app (a bare QCoreApplication made at import, as
+    before, crashed Qt Quick tests run in the same process)."""
+    return qapp
 
 
 @pytest.fixture(autouse=True)

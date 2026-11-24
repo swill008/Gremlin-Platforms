@@ -35,9 +35,12 @@ ApplicationWindow {
         return _diag.saveAsync(String(url), _includeProfile.checked)
     }
 
-    Diagnostics {
-        id: _diag
-        onSaved: (ok, message) => { _win._failed = !ok }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property Diagnostics _diag: ModelFactory.create("Diagnostics", _win)
+    Connections {
+        target: _win._diag
+        function onSaved(ok, message) { _win._failed = !ok }
     }
 
     ColumnLayout {

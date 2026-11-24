@@ -8,6 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Config
 import Gremlin.Util
 import Gremlin.Style
+import Gremlin.UI
 
 import "confirm.js" as Confirm
 
@@ -38,9 +39,10 @@ Item {
         })
     }
 
-    ProfileAutoLoadingModel {
-        id: _model
-    }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this row.
+    readonly property ProfileAutoLoadingModel _model:
+        ModelFactory.create("ProfileAutoLoadingModel", _root)
 
     // The choosers open in the last folder used (01 S143): profiles in the
     // profiles folder at first, programs anywhere.
@@ -106,7 +108,10 @@ Item {
 
                 spacing: Style.dp(5)
 
-                model: ProcessListModel {}
+                // Made by ModelFactory (PYSIDE-1407).
+                readonly property ProcessListModel _processes:
+                    ModelFactory.create("ProcessListModel", _processListViee)
+                model: _processes
 
                 delegate: Button {
                     width: ListView.view.width

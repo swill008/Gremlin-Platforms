@@ -374,3 +374,138 @@ blocks.
    **unverified**. The stage-2 re-run (S2-MEASURE) shows whether it goes
    when no shells are left. If it does not, it is a separate question
    (Qt, shiboken or QML internals).
+
+## After stage 2
+
+Agent S2-MEASURE, 2026-11-23, 19:31-19:43. Measured after the stage-2 QML
+conversion: all 81 QML-made Python types are now made only through
+`ModelFactory.create(...)` (115 QML sites, no `TypeName {}` left), and the
+Health and Search windows close properly. No program code and no probe code
+was changed, and nothing was committed.
+
+### How it was run
+
+- Same probe and set-up as stage 1: off-screen, temporary `USERPROFILE`,
+  stand-in hardware, fake vJoy, 2 warm-up repetitions, then 3 blocks of 25.
+  The probe still finds 81 types, all by their `ModelFactory.create` call.
+- Main run: A, B, C, E and D for each of the seven windows (one process per
+  window), 4 processes at a time, with `--no-qobjects`.
+- `--per-window` replaces D (all seven) instead of adding to it, so D for
+  all seven windows ran on its own afterwards (25 per block, `--no-qobjects`).
+- C and E with the QObject count on, 10 repetitions per block, as in stage 1.
+- B with the JavaScript garbage collector (`--js-gc`) before each reading,
+  to check whether B's remaining growth is uncollected JavaScript garbage.
+- Note: E ran with 25 repetitions per block in the main run (stage 1: 10).
+- Raw JSON and logs: session scratchpad `s2run`, `s2runD`, `s2qobj`,
+  `s2jsgc` (not in the repo).
+
+### Before and after, block 1 to block 3 (50 repetitions)
+
+Private bytes are in MB, with the two block steps in brackets. "Shells" is
+the number kept per repetition.
+
+| Scenario | Private: baseline | stage 1 | stage 2 | Heap: baseline | stage 1 | stage 2 | Shells: baseline | stage 1 | stage 2 |
+|---|---|---|---|---|---|---|---|---|---|
+| A. Profile load | +3.6 | +3.0 | **+0.1** (+0.57, -0.47) | +0.03 | +0.01 | +0.02 | 0 | 0 | 0 |
+| B. Page switch (one round) | +52.4 | +26.7 | +26.4 (+7.4, +19.0) | +12.3 | +1.35 | **+0.07** | 43 | 33 | **0** |
+| B with JavaScript GC (stage 2: 25 per block) | +33.1 per 20 (10 per block) | | +15.3 per 50 (+6.2, +9.1) | | | +0.07 | | | 0 |
+| C. Action pane open and close | +4.9 | +3.6 | +2.5 (+1.5, +1.0) | +0.37 | +0.03 | +0.03 | 4 | 0 | 0 |
+| C, QObject run (10 per block) | | +1.9 per 20 | +2.7 per 20 (+1.1, +1.6) | | | +0.06 | | 0 | 0 |
+| D. Seven windows (one round) | +33.1 | +12.6 | +9.9 (+1.3, +8.5) | +4.0 | +1.25 | **+0.04** | 58 | 49 | **0** |
+| E. Load + pane, twice (25 per block) | | | **+1.5** (+1.41, +0.12) | | | +0.06 | | | 0 |
+| E, QObject run (10 per block) | +6.2 per 20 | +3.5 per 20 | +7.5 per 20 (+6.3, +1.3) | | +0.36 | +0.09 | 9 | 1 | 0 |
+
+- Reach (bytes the shells' `__dict__` keep): 0 in every scenario (baseline:
+  B 5.9 MB and D 1.75 MB per block; stage 1: B 0.50 MB and D 0.49 MB).
+- The live `Profile` count stayed at 1 everywhere, and no heavy object
+  (`Profile`, `Device`, `DeviceSummary`, `TreeNode`, ...) was reached.
+- The valid object counts of the 81 types were the same in every block
+  (16 or 25, the long-lived ones). So the factory does not leave live
+  objects behind in place of shells.
+- With the QObject count on, QObjects were flat: C 4934 and E 4962 in
+  every block, the same as stage 1.
+
+### D, one window at a time (25 opens per block)
+
+| Window | Private, stage 1 | Private, stage 2 (steps) | Shells per open, stage 1 | stage 2 |
+|---|---|---|---|---|
+| Options | +1.5 MB | +0.92 (+0.11, +0.81) | 11 | 0 |
+| Input Viewer | +2.6 MB | +1.79 (+1.24, +0.55) | 3 | 0 |
+| Manage Modes | +1.0 MB | +0.38 (+0.31, +0.07) | 2 | 0 |
+| Device Information | +1.4 MB | +1.37 (+0.37, +1.00) | 3 | 0 |
+| Calibration | +0.8 MB | +0.63 (+0.24, +0.39) | 2 | 0 |
+| Live Log | +2.2 MB | +0.67 (+0.37, +0.30) | 4 | 0 |
+| Device Mapping Editor | +5.6 MB | **+0.43 (+0.50, -0.07)** | 24 | 0 |
+
+The Device Mapping Editor, the largest in stage 1 (about 110 KB per open),
+now levels off. Every single window is at or under the 1 MB per 25 line in
+each block except Input Viewer's first block (+1.24).
+
+### Verdicts against the plan's thresholds
+
+The plan's thresholds are no kept shells, and private bytes flat from block
+1 to block 3 or levelling off (under about 1 MB per 25 repetitions).
+
+- **No shells: met everywhere.** 0 shells of any of the 81 types in every
+  scenario and every window, as expected. Nothing is held through a shell.
+- **A. Profile load: flat.** +0.1 MB over 50 loads. Passes.
+- **E. Profile load + pane: levels off.** +1.41 then +0.12 MB per 25 (main
+  run); +6.3 then +1.3 per 10 in the QObject run. The mode-tree hold and the
+  `OutputModuleDevices` shell are gone. Passes (levels off).
+- **C. Action pane: borderline.** +1.5 then +1.0 MB per 25 opens (about
+  40-60 KB per open), at the 1 MB line, outside the Python heap (+0.03 MB).
+  The QObject count is flat. Noisy as before; not clearly levelling off.
+- **D, single windows: pass.** Small, mostly under 1 MB per 25, and the
+  Device Mapping Editor levels off.
+- **D, seven windows: not shown flat.** +1.3 then +8.5 MB per 25 rounds.
+  The heap grew only +0.04 MB, so the growth is outside Python. The second
+  block's jump is not seen in any single-window run (their sum is about
+  +3.8 per 25 in the larger block), so it may be noise or an interaction
+  between windows; **unverified**.
+- **B. Page switch: still grows (fails the private-bytes threshold).**
+  +7.4 then +19.0 MB per 25 rounds (about 0.3-0.75 MB per round of six page
+  opens), with no shells and a flat heap (+0.07 MB). With the JavaScript GC
+  it was +6.2 then +9.1, so part of it may be uncollected JavaScript
+  garbage, but it still grows by about 0.25-0.35 MB per round.
+
+### What is left
+
+1. **No type still leaves shells.** Stage 2's goal is met.
+2. **Growth outside the Python heap remains in B (and probably D).** Now that
+   no shells are left, this is not the PySide wrapper issue. The Python heap
+   is flat, the QObject count is flat in C and E, and the valid counts are
+   flat. The cause is **unverified**: likely candidates are QML or Qt
+   internals per page load (component or type caches, the scene graph, glyph
+   or image caches, the Qt heap not returning freed memory to Windows).
+   Finding it would need native tools (for example a heap snapshot with
+   Windows Performance Recorder or UMDH) or a QML-only repro of the page
+   switch; that is a separate question for the user.
+3. **Small Python-side growth found by `tracemalloc` (block 1 to 3, 50
+   repetitions).** All are small, none are shells:
+   - `gremlin/ui/hardware_layout.py:444-449, 491-492`: each
+     `HardwareLayoutModel` adds a `_pending_relay` listener to the store;
+     a relay removes itself only when the store next fires after its model
+     is gone. In B about 37 KB per 50 rounds (+196 relay allocations at
+     `:446`), and the `gc` object count grows about 10 per round. Bounded
+     only by the next pending-store event.
+   - `joystick_gremlin.py:1155`: the `engine.warnings` lambda appends every
+     QML warning to `qml_errors` for the whole run (the list is only needed
+     for start-up). In D about 18 KB per 50 rounds (about 3 warnings per
+     round of seven windows). Which warnings these are was not checked.
+   - `gremlin/action_analysis.py:26, 48`: `_feedback_cache` gets one new
+     entry per action pane open (C: +49 per 50 opens, about 140 B each with
+     the `uuid` at `gremlin/util.py:426`). Entries expire by time but are
+     never removed. Why each open has a new key was not traced.
+   - About 46 B per call kept at `gremlin/ui/model_factory.py:177`
+     (`setObjectOwnership`), `gremlin/ui/debug_mode.py:122` (the same call)
+     and `gremlin/ui/window_placement.py:317` (`setWindowStates`): 2-7 KB
+     per 50 repetitions. The cause (shiboken's per-call caches) is
+     **unverified**.
+4. **Next steps (for the user to choose; efforts not estimated here):**
+   - a) Record PYSIDE-WRAPPERS as fixed for shells (program map page 01) and
+     update the `test_leaks.py` comment and `counts()` filter.
+   - b) Fix the three small Python-side growths above (relay clean-up when
+     the model is destroyed, drop the warnings lambda after start-up, prune
+     the feedback cache).
+   - c) A separate investigation of B's native growth (native heap tools or
+     a QML-only repro).

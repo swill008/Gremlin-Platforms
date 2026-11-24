@@ -42,7 +42,10 @@ from gremlin.ui.action_model import (
     SequenceIndex,
 )
 from gremlin.ui.device import InputIdentifier
-from gremlin.ui.profile import LabelValueSelectionModel
+from gremlin.ui.profile import (
+    LabelValueSelectionModel,
+    reuse_or_replace_selection_model,
+)
 
 if TYPE_CHECKING:
     from gremlin.ui.profile import InputItemBindingModel
@@ -180,6 +183,9 @@ class MergeAxisModel(ActionModel):
     ) -> None:
         super().__init__(data, binding_model, action_index, parent_index, parent)
         self._axis_views = {1: AxisView(self), 2: AxisView(self)}
+        # The lists handed to QML, reused while their entries stay the same.
+        self._operation_list: LabelValueSelectionModel | None = None
+        self._merge_action_list: LabelValueSelectionModel | None = None
 
     def _qml_path_impl(self) -> str:
         return (
@@ -203,11 +209,17 @@ class MergeAxisModel(ActionModel):
         operations = sorted(MergeOperation, key=MergeOperation.to_display)
         labels = [MergeOperation.to_display(o) for o in operations]
         values = [MergeOperation.to_string(o) for o in operations]
-        return LabelValueSelectionModel(labels, values, parent=self)
+        self._operation_list = reuse_or_replace_selection_model(
+            self._operation_list, labels, values, self
+        )
+        return self._operation_list
 
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def mergeActionList(self) -> LabelValueSelectionModel:
-        return axis_pair.pick_list(self, MergeAxisData)
+        self._merge_action_list = axis_pair.pick_list(
+            self, MergeAxisData, self._merge_action_list
+        )
+        return self._merge_action_list
 
     def _get_label(self) -> str:
         return self._data.label

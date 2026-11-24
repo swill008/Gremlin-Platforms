@@ -363,6 +363,11 @@ class SearchIndex:
         thread, so a Qt caller queues it to the main thread."""
         self._on_change = callback
 
+    def clear_on_change(self, callback: Callable[[], None]) -> None:
+        """Drops the set_on_change callback if it is still `callback`."""
+        if self._on_change == callback:
+            self._on_change = None
+
     def add_listener(self, callback: Callable[[], None]) -> None:
         """Another callback() after the rows change (gremlin.health); like
         set_on_change's, it may run on a program thread."""

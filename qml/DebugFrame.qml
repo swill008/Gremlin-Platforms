@@ -22,9 +22,7 @@ Item {
     readonly property real strength: 0.28
     readonly property color red: Style.danger
 
-    DebugMode {
-        id: _mode
-    }
+    readonly property DebugMode _mode: ModelFactory.create("DebugMode", _frame)
 
     Rectangle {
         anchors.fill: parent

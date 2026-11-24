@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
+import Gremlin.UI
 import "action_kinds.js" as ActionKinds
 
 // Options → Actions → Add Action Menu: which actions the menu offers, under
@@ -19,9 +20,10 @@ Item {
     implicitHeight: _content.implicitHeight
     implicitWidth: _content.implicitWidth
 
-    ActionSequenceOrdering {
-        id: _data
-    }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this row.
+    readonly property ActionSequenceOrdering _data:
+        ModelFactory.create("ActionSequenceOrdering", _root)
 
     // Bumped whenever the stored list changes, so the groups re-read it.
     property int _rev: 0

@@ -152,7 +152,8 @@ menus.STEPS = [
     ),
     (
         "picker",
-        "Qt.createQmlObject('import Gremlin.UI; FolderMemory {}', _lib)"
+        "Qt.createQmlObject('import QtQml; import Gremlin.UI; QtObject { id: o;"
+        " property var m: ModelFactory.create(\"FolderMemory\", o, {}) }', _lib).m"
         ".remember('device', '" + _FOLDER + "');"
         " deviceLibrary.select('set-00000002');"
         " _exportFile.currentFile = _lib._packName();"

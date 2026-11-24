@@ -40,7 +40,7 @@ Item {
     function requestCloseDisplay() { _appear.requestCloseDisplay() }
 
     // The one edit lock (06 S13): nothing is edited while the profile runs.
-    EditLock { id: _lock }
+    readonly property EditLock _lock: ModelFactory.create("EditLock", _root, {})
     readonly property bool editorLocked: _lock.locked
 
     readonly property bool _undoKeys: visible && !editorLocked && !actionOpen && !_listen.visible
@@ -79,7 +79,9 @@ Item {
         _pane.openAt(key, -1, _layout.selectionLabel)
     }
 
-    KeyboardLayoutModel { id: _layout }
+    // Made by ModelFactory (PySide6 never frees QML-made Python objects,
+    // PYSIDE-1407); the page is the parent, so they go with it.
+    readonly property KeyboardLayoutModel _layout: ModelFactory.create("KeyboardLayoutModel", _root, {})
     Connections {
         target: _layout
         function onPaneLost() { _pane.closeNow() }
@@ -488,12 +490,11 @@ Item {
     }
 
     // Add Key: waits for one key press (hold Esc to stop).
-    InputListenerModel {
-        id: _listener
-        eventTypes: ["key"]
-        multipleInputs: false
-        enabled: false
-        onListeningTerminated: function(inputs) {
+    readonly property InputListenerModel _listener: ModelFactory.create(
+        "InputListenerModel", _root, { eventTypes: ["key"], multipleInputs: false, enabled: false })
+    Connections {
+        target: _listener
+        function onListeningTerminated(inputs) {
             _listener.enabled = false
             _listen.close()
             if (inputs && inputs.length)

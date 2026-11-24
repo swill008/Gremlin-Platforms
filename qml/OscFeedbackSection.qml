@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
+import Gremlin.UI
 
 
 // OSC's Module Setup "Feedback" section (D-09-OSC-FEEDBACK): what Gremlin
@@ -22,7 +23,7 @@ Item {
     implicitWidth: _column.implicitWidth
     implicitHeight: _column.implicitHeight
 
-    property alias model: _model
+    readonly property OscFeedbackModel model: _model
 
     // The text of a {value, text} choice.
     function _choiceText(choices, value) {
@@ -48,11 +49,14 @@ Item {
     }
     Component.onDestruction: commit()
 
-    OscFeedbackModel {
-        id: _model
-        onMessageChanged: {
-            if (message.length)
-                _message.show(message, true)
+    // Made by ModelFactory (PYSIDE-1407); lives as long as this section.
+    readonly property OscFeedbackModel _model:
+        ModelFactory.create("OscFeedbackModel", _root)
+    Connections {
+        target: _model
+        function onMessageChanged() {
+            if (_model.message.length)
+                _message.show(_model.message, true)
             else
                 _message.clear()
         }

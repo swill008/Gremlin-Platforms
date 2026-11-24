@@ -10,6 +10,7 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
+import Gremlin.UI
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
 
@@ -58,10 +59,11 @@ Item {
     }
 
     // Read only here, for the HidHide update line; reloaded when Home shows.
-    DriversModel {
-        id: _homeDrivers
-        Component.onCompleted: reload()
-    }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this page.
+    readonly property DriversModel _homeDrivers:
+        ModelFactory.create("DriversModel", _page)
+    Component.onCompleted: _homeDrivers.reload()
     property var model: null
     // Cards on show, kept current as the model reloads.
     property int shownCount: 0

@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 Item {
     id: _root
@@ -15,7 +16,8 @@ Item {
     implicitWidth: Style.dp(420)
 
     // Only the reset; the card list itself lives on Home.
-    CardSizes { id: _sizes }
+    // Made by ModelFactory (PYSIDE-1407); it lives as long as this row.
+    readonly property CardSizes _sizes: ModelFactory.create("CardSizes", _root)
 
     RowLayout {
         id: _row

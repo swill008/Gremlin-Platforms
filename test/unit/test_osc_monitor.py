@@ -303,7 +303,15 @@ def _smoke() -> None:
     stand_ins = (OscDeviceManagementModel, OscSettingsInfo, OscBulkCapture)
     for cls in stand_ins:
         QtQml.qmlRegisterType(cls, "Gremlin.Device", 1, 0, cls.__name__)
+    # QML makes them with ModelFactory.create (Gremlin.UI), which looks the
+    # name up in ta.QML_TYPES: the stand-ins go there.
+    from gremlin.ui import model_factory  # noqa: F401  (the singleton)
+    from gremlin.ui import type_aliases as ta
+
+    for cls in stand_ins:
+        ta.QML_TYPES[cls.__name__] = cls
     QtQml.qmlRegisterType(WindowPlacement, "Gremlin.UI", 1, 0, "WindowPlacement")
+    ta.QML_TYPES["WindowPlacement"] = WindowPlacement
     engine = QtQml.QQmlApplicationEngine()
     engine.addImportPath(str(_ROOT / "theme"))
     backend = FakeBackend()

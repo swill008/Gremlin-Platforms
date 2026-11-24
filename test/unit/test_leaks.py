@@ -425,6 +425,132 @@ def test_pages_and_windows_opened_again_leave_no_shells(rounds: dict) -> None:
 
 
 # +-------------------------------------------------------------------------
+# | Stage 2 pages and windows (plan memory-qml-factory.md, stage 2); its own
+# | journey so each stays inside the journey time limit.
+
+_STAGE2_SCRIPT = r"""
+import gc, json, pathlib, sys
+sys.path.insert(0, str(pathlib.Path.cwd() / 'test' / 'journeys'))
+from _harness import Journey, pump
+
+NAMES = sys.argv[1].split(',')
+ROUNDS = int(sys.argv[2])
+PAGES = [('logical', 'logical'), ('keyboard', 'keyboard'), ('osc', 'osc')]
+WINDOWS = ['DialogProfileSettings.qml', 'DialogScripts.qml', 'DialogHistory.qml',
+           'DialogSearch.qml', 'DialogHealth.qml', 'DialogInputViewer.qml',
+           'DialogDeviceInformation.qml']
+
+
+def before(j):
+    j.input_module()
+    j.vjoy_module()
+
+
+def story(j):
+    import shiboken6
+    from gremlin.ui import type_aliases as ta
+
+    classes = {n: ta.QML_TYPES[n] for n in NAMES if n in ta.QML_TYPES}
+    j.out['missing'] = sorted(set(NAMES) - set(classes))
+    state = j.backend.uiState
+
+    def counts():
+        pump(100)
+        gc.collect()
+        valid = dict.fromkeys(classes, 0)
+        shells = dict.fromkeys(classes, 0)
+        by_cls = {cls: name for name, cls in classes.items()}
+        for obj in gc.get_objects():
+            name = by_cls.get(type(obj))
+            if name is None:
+                continue
+            if shiboken6.isValid(obj):
+                valid[name] += 1
+            else:
+                shells[name] += 1
+        return valid, shells
+
+    def home():
+        j.ev('uiState.setCurrentRoom("status")')
+        j.wait_until(lambda: state.currentRoom == 'status', 'Home', 10)
+        pump(150)
+
+    def page_round(slug, tab):
+        j.ev('openDeviceBindingsForCard(_moduleModel.cardMap(%s))' % json.dumps(slug))
+        j.wait_until(lambda: state.currentTab == tab
+                     and state.currentRoom == 'configuration', 'page ' + tab, 10)
+        pump(300)
+        home()
+
+    def window_round(qml):
+        j.ev('Helpers.createComponent("%s")' % qml)
+        pump(400)
+        j.ev('Helpers.windowOf("%s").close()' % qml)
+        pump(250)
+
+    def mapping_editor_round():
+        j.ev('openBlankDeviceMappingEditor()')
+        pump(500)
+        j.ev('Helpers.windowOf("DialogDeviceMappingEditor.qml").close()')
+        pump(300)
+
+    def one_round():
+        for slug, tab in PAGES:
+            page_round(slug, tab)
+        for qml in WINDOWS:
+            window_round(qml)
+        mapping_editor_round()
+
+    one_round()  # warm-up: caches and first-use objects
+    valid0, shells0 = counts()
+    for _ in range(ROUNDS):
+        one_round()
+    valid1, shells1 = counts()
+    j.out['shells'] = {n: c for n, c in shells1.items() if c}
+    j.out['shell-growth'] = {n: shells1[n] - shells0[n] for n in classes
+                             if shells1[n] != shells0[n]}
+    j.out['valid-growth'] = {n: valid1[n] - valid0[n] for n in classes
+                             if valid1[n] > valid0[n]}
+    j.out['done'] = True
+
+
+if __name__ == '__main__':
+    Journey(before).run(story)
+"""
+
+
+@pytest.fixture(scope="module")
+def stage2_rounds(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    sys.path.insert(0, str(_ROOT / "test" / "journeys"))
+    from _harness import run_journey  # pyright: ignore[reportMissingImports]
+
+    tmp_path = tmp_path_factory.mktemp("factory_rounds_stage2")
+    script = tmp_path / "factory_rounds_stage2.py"
+    script.write_text(_STAGE2_SCRIPT, encoding="utf-8")
+    names = _factory_made()
+    out = run_journey(script, tmp_path / "home", ",".join(names), "3")
+    print(f"factory types {len(names)}; stage 2 rounds ({out.get('_seconds')} s): "
+          f"{ {k: out.get(k) for k in ('shells', 'shell-growth', 'valid-growth')} }")
+    assert out.get("done"), (
+        f"{out.get('error')}\n{out.get('traceback', '')}\n{out.get('_stderr', '')}"
+    )
+    return out
+
+
+def test_stage2_pages_and_windows_opened_again_leave_no_shells(
+    stage2_rounds: dict,
+) -> None:
+    """Logical, Keyboard and OSC pages, Profile Settings, Scripts, History,
+    Search, Health, Input Viewer, Device Information and the Device Mapping
+    Editor, opened and closed 3 times: no shell of a factory-made type, and
+    no live one more than after the first round."""
+    assert stage2_rounds["missing"] == []
+    assert stage2_rounds["shells"] == {}
+    assert stage2_rounds["shell-growth"] == {}
+    assert stage2_rounds["valid-growth"] == {}
+
+
+# +-------------------------------------------------------------------------
 # | Live cards made by tests
 
 _OSC_CARDS = "test/unit/test_vjoy_viewer_lists_osc.py::"

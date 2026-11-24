@@ -323,7 +323,8 @@ def test_the_keyboard_page_uses_the_draft() -> None:
     # The Keyboard page (05 S128) has its own shared pane on its layout
     # model; Main loads it on the Keyboard tab.
     text = _read("KeyboardPage.qml")
-    assert "KeyboardLayoutModel { id: _layout }" in text
+    assert ('readonly property KeyboardLayoutModel _layout: '
+            'ModelFactory.create("KeyboardLayoutModel"') in text
     pane = text[text.index("ActionPane {"):]
     pane = pane[: pane.index("}")]
     assert "layout: _layout" in pane and 'namePrefix: "keyboard"' in pane

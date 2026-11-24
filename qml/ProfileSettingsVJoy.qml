@@ -8,6 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Base
 import Gremlin.Profile
 import Gremlin.Style
+import Gremlin.UI
 
 // Profile Settings › vJoy (04 S62, S96-S98): each vJoy as output or input,
 // and the initial axis values used when the profile runs.
@@ -28,7 +29,10 @@ ScrollView {
         GroupLabel { text: "vJoy Behavior" }
         Card {
             Repeater {
-                model: VJoyInputOrOutputModel {}
+                id: _modeRepeater
+                readonly property VJoyInputOrOutputModel _vjoyModes:
+                    ModelFactory.create("VJoyInputOrOutputModel", _modeRepeater)
+                model: _vjoyModes
 
                 delegate: OptionEntryCard {
                     Layout.fillWidth: true
@@ -67,7 +71,10 @@ ScrollView {
 
         GroupLabel { text: "vJoy Initial Values (used when the profile runs)" }
         Repeater {
-            model: OutputVJoyListModel {}
+            id: _initialRepeater
+            readonly property OutputVJoyListModel _outputVJoys:
+                ModelFactory.create("OutputVJoyListModel", _initialRepeater)
+            model: _outputVJoys
 
             delegate: Card {
                 id: _card

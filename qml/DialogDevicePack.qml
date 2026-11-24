@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 import "helpers.js" as Helpers
 
 ApplicationWindow {
@@ -78,7 +79,8 @@ ApplicationWindow {
     property var preview: null
 
     ListModel { id: _deviceModel }
-    HardwareProfile { id: _hw }
+    // Made by ModelFactory, freed with this window (memory-qml-factory.md).
+    readonly property HardwareProfile _hw: ModelFactory.create("HardwareProfile", _win, {})
     Connections {
         target: _hw
         function onPackExported(raw) {

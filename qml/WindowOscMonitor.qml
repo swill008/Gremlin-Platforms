@@ -8,6 +8,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 // The OSC Monitor's Pop out window (D-09-OSC-MONITOR): the same panel the
 // OSC page docks, in its own window. It holds OSC's port open while the
@@ -27,6 +28,11 @@ ApplicationWindow {
     readonly property alias monitor: _panel.monitor
 
     property bool _open: true
+
+    // The Add window's model. Made by ModelFactory (PYSIDE-1407); lives as
+    // long as this window.
+    readonly property OscDeviceManagementModel _devices:
+        ModelFactory.create("OscDeviceManagementModel", _win)
 
     ToolWindowMemory {
         host: _win
@@ -55,7 +61,7 @@ ApplicationWindow {
         id: _addDialog
         objectName: "oscMonitorAdd"
 
-        deviceModel: OscDeviceManagementModel {}
+        deviceModel: _win._devices
 
         onAccepted: (settings) => {
             if (!_panel.editorLocked)

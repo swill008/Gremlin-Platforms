@@ -10,6 +10,7 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 import Gremlin.Menus
+import Gremlin.UI
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
 import "rig_commands.js" as RigCommands
@@ -163,15 +164,22 @@ ApplicationWindow {
     property int gridSize: 8
     property bool saveOk: true
 
-    ViewerDeviceModel { id: _devices }
-    HardwareProfile { id: _hw }
-    ModuleFileWatch { id: _fileWatch }
-    DeviceMapOptions {
-        id: _opts
-        onChanged: _editorWin.applyOptionsToEditor()
+    // Made by ModelFactory, freed with this window (memory-qml-factory.md).
+    readonly property ViewerDeviceModel _devices:
+        ModelFactory.create("ViewerDeviceModel", _editorWin, {})
+    readonly property HardwareProfile _hw:
+        ModelFactory.create("HardwareProfile", _editorWin, {})
+    readonly property ModuleFileWatch _fileWatch:
+        ModelFactory.create("ModuleFileWatch", _editorWin, {})
+    readonly property DeviceMapOptions _opts:
+        ModelFactory.create("DeviceMapOptions", _editorWin, {})
+    Connections {
+        target: _opts
+        function onChanged() { _editorWin.applyOptionsToEditor() }
     }
     // Space held: the map pans with a left-drag in Edit (07 S14).
-    DeviceMapSpaceKey { id: _spaceKey }
+    readonly property DeviceMapSpaceKey _spaceKey:
+        ModelFactory.create("DeviceMapSpaceKey", _editorWin, {})
     Binding {
         target: _cardLoader.item && _cardLoader.item.editorItem ? _cardLoader.item.editorItem.face : null
         property: "spaceHeld"
@@ -205,9 +213,11 @@ ApplicationWindow {
         }
     }
 
-    DeviceNames {
-        id: _names
-        onChanged: _editorWin._nameTick++
+    readonly property DeviceNames _names:
+        ModelFactory.create("DeviceNames", _editorWin, {})
+    Connections {
+        target: _names
+        function onChanged() { _editorWin._nameTick++ }
     }
 
     function displayName(guid, name) {

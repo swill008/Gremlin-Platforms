@@ -302,8 +302,10 @@ class HealthModel(QtCore.QAbstractListModel):
         except Exception:  # noqa: BLE001 - the old rows stay
             log.exception("Health: the open profile could not be indexed again")
 
+    @QtCore.Slot()
     def close(self) -> None:
-        """Stop following notices and health (window closed, tests)."""
+        """Stop following notices and health (window closed, tests). A Slot,
+        or QML's onClosing call never reaches it."""
         if self._closed:
             return
         self._closed = True

@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 // The ViGEmBus check, like HidHide's: whether the Xbox driver is installed
 // and running, its version, what to do when it isn't, Open Drivers (06 S188)
@@ -21,7 +22,8 @@ Rectangle {
     // Asks again (installed, running, version).
     function reload() { _status.reload() }
 
-    XboxDriverStatus { id: _status }
+    readonly property XboxDriverStatus _status:
+        ModelFactory.create("XboxDriverStatus", _check)
 
     implicitHeight: _driverRow.implicitHeight + Style.dp(20)
     radius: Style.dp(3)

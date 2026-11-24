@@ -248,7 +248,7 @@ RowLayout {
         _place.setClosePaneAfterOk(closeAfterOk)
     }
 
-    WindowPlacement { id: _place }
+    readonly property WindowPlacement _place: ModelFactory.create("WindowPlacement", _pane)
 
     Component.onCompleted: {
         paneUnits = _place.actionPaneWidth()

@@ -1149,6 +1149,33 @@ class LabelValueSelectionModel(QtCore.QAbstractListModel):
     )
 
 
+def reuse_or_replace_selection_model(
+    current: LabelValueSelectionModel | None,
+    labels: list[Any],
+    values: list[str],
+    parent: QtCore.QObject,
+    bootstrap: list[str] = [],
+) -> LabelValueSelectionModel:
+    """A selection model with these entries: current if it holds the same
+    ones, else a new one owned by parent (current is deleted, its selection
+    kept when the new entries have it). Upstream 66bb2477."""
+    if current is not None:
+        if (
+            current._labels == labels
+            and current._values == values
+            and current._bootstrap == bootstrap
+        ):
+            return current
+        current.deleteLater()
+
+    model = LabelValueSelectionModel(labels, values, bootstrap=bootstrap, parent=parent)
+    if current is not None and current._current_index < len(current._values):
+        selected = current._values[current._current_index]
+        if selected in values:
+            model._current_index = values.index(selected)
+    return model
+
+
 @ta.QmlElement
 class StartupModeModel(QtCore.QAbstractListModel):
     """Model representing the startup mode setting of the current profile."""
@@ -1319,12 +1346,17 @@ class OutputVJoyListModel(QtCore.QAbstractListModel):
 
         self._profile = shared_state.current_profile
         self._vjoy_devices = self._output_devices()
+        # One child per row, made again only on reset (upstream 9602a510).
+        self._initial_values_models = self._create_initial_values_models()
         signal.profileChanged.connect(self._reset)
 
     def _reset(self) -> None:
         self.beginResetModel()
         self._profile = shared_state.current_profile
         self._vjoy_devices = self._output_devices()
+        for model in self._initial_values_models:
+            model.deleteLater()
+        self._initial_values_models = self._create_initial_values_models()
         self.endResetModel()
 
     @override
@@ -1342,9 +1374,7 @@ class OutputVJoyListModel(QtCore.QAbstractListModel):
             case "vjoyId":
                 return self._vjoy_devices[index.row()].vjoy_id
             case "initialValuesModel":
-                return OutputVJoyInitialValuesModel(
-                    self._vjoy_devices[index.row()], self
-                )
+                return self._initial_values_models[index.row()]
 
     @override
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
@@ -1356,6 +1386,9 @@ class OutputVJoyListModel(QtCore.QAbstractListModel):
             for d in _vjoy_devices()
             if self._profile.settings.vjoy_as_input.get(d.vjoy_id, False) is False
         ]
+
+    def _create_initial_values_models(self) -> list[OutputVJoyInitialValuesModel]:
+        return [OutputVJoyInitialValuesModel(d, self) for d in self._vjoy_devices]
 
 
 @ta.QmlElement
@@ -1370,14 +1403,9 @@ class OutputVJoyInitialValuesModel(QtCore.QAbstractListModel):
     def __init__(self, device: _VJoyDevice, parent: ta.OQO = None) -> None:
         super().__init__(parent)
 
+        # The list makes a new one per row on profile change.
         self._device = device
         self._profile = shared_state.current_profile
-        signal.profileChanged.connect(self._reset)
-
-    def _reset(self) -> None:
-        self.beginResetModel()
-        self._profile = shared_state.current_profile
-        self.endResetModel()
 
     @override
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:

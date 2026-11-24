@@ -13,7 +13,7 @@ Item {
     property int defaultWidth: Style.dp(800)
     property int defaultHeight: Style.dp(600)
 
-    WindowPlacement { id: _place }
+    readonly property WindowPlacement _place: ModelFactory.create("WindowPlacement", _mem)
 
     function restore() {
         if (host && name.length)

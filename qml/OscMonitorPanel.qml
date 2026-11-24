@@ -8,6 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
+import Gremlin.UI
 
 // The OSC Monitor (D-09-OSC-MONITOR): the last 200 OSC messages in and out.
 // Docked at the bottom of the OSC page (folded by default) and the body of
@@ -33,7 +34,7 @@ Rectangle {
     signal addAsInputRequested(var settings)
 
     readonly property bool holdsPort: visible && pageOpen && !folded
-    readonly property alias monitor: _model
+    readonly property OscMonitorModel monitor: _model
     readonly property bool editorLocked: typeof backend !== "undefined" && backend
         ? !!backend.gremlinActive : false
     readonly property int foldedHeight: _head.implicitHeight + Style.dp(12)
@@ -43,10 +44,13 @@ Rectangle {
 
     Label { id: _fontRef; visible: false }
 
-    OscMonitorModel {
-        id: _model
-        active: _root.holdsPort
-    }
+    // Made by ModelFactory (PYSIDE-1407); lives as long as this panel.
+    readonly property OscMonitorModel _model:
+        ModelFactory.create("OscMonitorModel", _root)
+    // Set by hand, not with Binding: release() turns active off from Python
+    // as the panel goes.
+    Component.onCompleted: _model.active = holdsPort
+    onHoldsPortChanged: _model.active = holdsPort
 
     Component.onDestruction: _model.release()
 

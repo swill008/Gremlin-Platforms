@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 // Tools › Drivers (06 S185): vJoy, ViGEmBus and HidHide with what is
 // installed and what is available, the vJoy device choice, and Apply, which
@@ -27,7 +28,7 @@ ApplicationWindow {
     color: Style.background
     U.Universal.theme: Style.theme
 
-    readonly property alias drivers: _drv
+    readonly property DriversModel drivers: _drv
 
     // The HidHide update's step 2 (06 S186): true runs the install once the
     // window is open (Main's start prompt and Home's Finish update set it).
@@ -51,13 +52,22 @@ ApplicationWindow {
 
     EscapeCloses { host: _win }
 
-    DriversModel {
-        id: _drv
-        // Our own Run holds vJoy devices: they aren't "in use by another
-        // program" (S185); the model reads the busy ids again after Stop.
-        runActive: typeof backend !== "undefined" && backend !== null
-                   && backend.gremlinActive === true
-        Component.onCompleted: reload()
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property DriversModel _drv: ModelFactory.create("DriversModel", _win)
+
+    // Our own Run holds vJoy devices: they aren't "in use by another
+    // program" (S185); the model reads the busy ids again after Stop.
+    // Set by hand, not with Binding: runActive's notify signal is the
+    // shared "changed".
+    function _syncRunActive() {
+        _drv.runActive = typeof backend !== "undefined" && backend !== null
+                         && backend.gremlinActive === true
+    }
+    Connections {
+        target: typeof backend !== "undefined" ? backend : null
+        ignoreUnknownSignals: true
+        function onActivityChanged() { _win._syncRunActive() }
     }
 
     // Yes on the Run box: Run is stopped, then the busy ids are read again
@@ -113,7 +123,11 @@ ApplicationWindow {
             _note = "Nothing was started."
         }
     }
-    Component.onCompleted: Qt.callLater(_runFinish)
+    Component.onCompleted: {
+        _syncRunActive()
+        _drv.reload()
+        Qt.callLater(_runFinish)
+    }
     onFinishHidHideOnOpenChanged: if (finishHidHideOnOpen) Qt.callLater(_runFinish)
 
     Connections {

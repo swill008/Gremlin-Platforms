@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Style
+import Gremlin.UI
 
 // Options' one OSC line: the settings live in OSC's file and are edited in
 // OSC › Module Setup (D-09-OSC-FILE point 4).
@@ -16,9 +17,9 @@ Item {
     implicitHeight: _row.implicitHeight
     implicitWidth: Style.dp(420)
 
-    OscModuleSetupLink {
-        id: _link
-    }
+    // Made by ModelFactory (PYSIDE-1407); lives as long as this item.
+    readonly property OscModuleSetupLink _link:
+        ModelFactory.create("OscModuleSetupLink", _root)
 
     RowLayout {
         id: _row

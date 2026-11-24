@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
 
@@ -127,8 +128,9 @@ ApplicationWindow {
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
 
-    HardwareProfile { id: _hw }
-    DriverInputModel { id: _driver }
+    // Made by ModelFactory, freed with this window (memory-qml-factory.md).
+    readonly property HardwareProfile _hw: ModelFactory.create("HardwareProfile", _win, {})
+    readonly property DriverInputModel _driver: ModelFactory.create("DriverInputModel", _win, {})
     Connections {
         target: _driver
         function onUserEdited() { claimDirty = true }

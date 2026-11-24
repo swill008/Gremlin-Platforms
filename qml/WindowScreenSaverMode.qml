@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 // Screen Saver Mode (12 S1-S20): Gremlin's own idle time from the keyboard
 // and mouse only; two timers on it, the screen saver and the displays off,
@@ -41,8 +42,11 @@ ApplicationWindow {
 
     EscapeCloses { host: _win }
 
-    ScreenSaverModeModel { id: _ssm }
-    readonly property alias ssm: _ssm
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property ScreenSaverModeModel _ssm:
+        ModelFactory.create("ScreenSaverModeModel", _win)
+    readonly property ScreenSaverModeModel ssm: _ssm
 
     onVisibleChanged: _ssm.setOpen(visible)
     Component.onCompleted: _ssm.setOpen(visible)

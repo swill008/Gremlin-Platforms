@@ -294,7 +294,8 @@ def test_map_parts_change_with_the_map_and_photo_only(folder: Path) -> None:
 def test_device_mapping_editor_asks_before_writing_over_a_change_and_follows_one(
 ) -> None:
     qml = (_ROOT / "qml" / "DialogDeviceMappingEditor.qml").read_text(encoding="utf-8")
-    assert "ModuleFileWatch { id: _fileWatch }" in qml
+    assert "readonly property ModuleFileWatch _fileWatch:" in qml
+    assert 'ModelFactory.create("ModuleFileWatch", _editorWin' in qml
     # In Edit, Save asks Keep Mine / Take Theirs (07 Q6; glossary D15).
     assert '"Keep Mine", "Take Theirs"' in qml
     # Outside Edit, the map follows the file.

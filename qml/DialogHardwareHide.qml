@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 import "confirm.js" as Confirm
 
@@ -31,9 +32,9 @@ ApplicationWindow {
     color: Style.background
     U.Universal.theme: Style.theme
 
-    HidHideModel {
-        id: _hh
-    }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property HidHideModel _hh: ModelFactory.create("HidHideModel", _win)
 
     onClosing: {
         _split.saveRatio()

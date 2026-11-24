@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 // Reset Devices (D-02-RESET-DEVICES): restarts the ticked USB game
 // controllers so every program opens them again and HidHide checks them.
@@ -29,11 +30,12 @@ ApplicationWindow {
     minimumWidth: Style.fitWidth(Style.dp(560), Screen)
     minimumHeight: Style.fitHeight(Style.dp(320), Screen)
 
-    property alias model: _m
+    readonly property ResetDevicesModel model: _m
 
-    ResetDevicesModel {
-        id: _m
-    }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); it lives as long as this window.
+    readonly property ResetDevicesModel _m:
+        ModelFactory.create("ResetDevicesModel", _win)
 
     // context: HidHideModel.resetContext().
     function openWith(context) {

@@ -268,15 +268,18 @@ _QML_BUILD = """
 from PySide6 import QtCore, QtGui, QtQml
 app = QtGui.QGuiApplication([])
 import gremlin.ui.keyboard_layout  # registers KeyboardLayoutModel
+import gremlin.ui.model_factory  # registers ModelFactory
 engine = QtQml.QQmlEngine()
 component = QtQml.QQmlComponent(engine)
 component.setData(
-    b"import QtQml; import Gremlin.Device; KeyboardLayoutModel {"
-    b" property var g: groups; property bool u: canUndo }",
+    b"import QtQml; import Gremlin.UI; QtObject { id: r;"
+    b" readonly property var m: ModelFactory.create('KeyboardLayoutModel', r, {});"
+    b" property var g: m.groups; property bool u: m.canUndo }",
     QtCore.QUrl(),
 )
 built = component.create()
-print("BUILT" if built is not None else "NULL " + component.errorString())
+print("BUILT" if built is not None and built.property("m") is not None
+      else "NULL " + component.errorString())
 """
 
 

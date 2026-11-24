@@ -90,7 +90,7 @@ ListAppearancePanel {
             _openPlace.setDisplayPanelOpen(pageKey, "page", displayOpen)
     }
 
-    WindowPlacement { id: _openPlace }
+    readonly property WindowPlacement _openPlace: ModelFactory.create("WindowPlacement", _part)
 
     Component.onCompleted: {
         load()

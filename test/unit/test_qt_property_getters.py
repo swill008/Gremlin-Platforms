@@ -45,22 +45,31 @@ def test_selector_with_valid_types_button_lists_only_buttons(
     logical: LogicalDevice,
 ) -> None:
     import gremlin.ui.device  # noqa: F401  (registers Gremlin.Device)
+    import gremlin.ui.model_factory  # noqa: F401  (registers Gremlin.UI)
 
     engine = QtQml.QQmlEngine()
     component = QtQml.QQmlComponent(engine)
+    # Made through the factory as every page now does (memory fix); QML
+    # still sets validTypes itself, which is what the getter must allow.
     component.setData(
-        b'import Gremlin.Device\nLogicalDeviceSelectorModel { validTypes: ["button"] }',
+        b"import QtQuick\nimport Gremlin.Device\nimport Gremlin.UI\n"
+        b"QtObject {\n  id: root\n"
+        b"  readonly property QtObject m:\n"
+        b'    ModelFactory.create("LogicalDeviceSelectorModel", root)\n'
+        b'  Component.onCompleted: m.validTypes = ["button"]\n}',
         QtCore.QUrl(),
     )
-    model = component.create()
-    assert model is not None, component.errorString()
+    holder = component.create()
+    assert holder is not None, component.errorString()
+    model = QtQml.QQmlProperty.read(holder, "m")
+    assert model is not None
     try:
         assert model.rowCount() == 1  # 2 (axis and button) when QML drops it
         assert model.property("validTypes") == ["button"]
         type_role = QtCore.Qt.ItemDataRole.UserRole + 3
         assert model.data(model.index(0, 0), type_role) == "button"
     finally:
-        model.deleteLater()
+        holder.deleteLater()
         engine.deleteLater()
 
 

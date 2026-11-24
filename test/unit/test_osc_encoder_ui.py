@@ -36,6 +36,7 @@ import QtQuick
 import QtQuick.Controls
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 ApplicationWindow {
     id: _win
@@ -45,7 +46,8 @@ ApplicationWindow {
     property var lastAccepted: null
     property var lastApplied: null
 
-    OscDeviceManagementModel { id: _model; objectName: "fakeModel" }
+    readonly property var _model: ModelFactory.create("OscDeviceManagementModel", _win,
+                                                      {"objectName": "fakeModel"})
 
     OscAddDialog {
         id: _add
@@ -122,6 +124,13 @@ def _smoke() -> None:
     )
     for cls in (OscDeviceManagementModel, OscSettingsInfo, OscBulkCapture):
         QtQml.qmlRegisterType(cls, "Gremlin.Device", 1, 0, cls.__name__)
+    # QML makes them with ModelFactory.create (Gremlin.UI), which looks the
+    # name up in ta.QML_TYPES: the stand-ins go there.
+    from gremlin.ui import model_factory  # noqa: F401  (the singleton)
+    from gremlin.ui import type_aliases as ta
+
+    for cls in (OscDeviceManagementModel, OscSettingsInfo, OscBulkCapture):
+        ta.QML_TYPES[cls.__name__] = cls
     engine = QtQml.QQmlApplicationEngine()
     engine.addImportPath(str(_ROOT / "theme"))
     backend = FakeBackend()

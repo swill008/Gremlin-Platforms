@@ -395,3 +395,22 @@ Split as in section 5 stage 2 plus S2-PY (caches, answer 8a) and S2-NATIVE
 S2-MEASURE staggered after the QML parts. Stage 1 probe numbers: memory.md
 "After stage 1" (Device Mapping Editor worst: 24 shells per open; most
 numerous: WindowPlacement, DebugMode, FolderMemory, EditLock).
+
+## Reference pick box (user, 2026-11-23: "approved as recommended")
+With upstream's selection-model reuse (66bb2477, S2-PY), the Reference
+editor's pick box keeps the picked entry when the editor's data changes
+(before: it jumped back to the first entry). Kept, as upstream. No spec
+statement covered the old behaviour (05 S57, S60, S60a).
+
+## LogicalDeviceSelector pick (user, 2026-11-23: "approved as recommended")
+Upstream's way: the selector emits logicalInputSelected(identifier) and never
+writes its own logicalInputIdentifier, so outside bindings stay; Script,
+Condition and Macro editors listen to the signal (agent FIX-LDS).
+
+## Release batch (user, 2026-11-23: "approved as recommended", twice)
+- S199 / D-01-RELEASE-UNUSED: release_unused(engine) after page unload /
+  window close / tray hide (native-growth.md).
+- Also fix the three small Python growths S2-MEASURE found (memory.md
+  "After stage 2"): HardwareLayoutModel store listeners (hardware_layout.py
+  444-492), the start-up qml_errors list (joystick_gremlin.py:1155, and which
+  warnings they are), action_analysis._feedback_cache stale entries.
