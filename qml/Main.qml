@@ -137,7 +137,13 @@ ApplicationWindow {
 
     property string lastSaveText: ""
 
-    WindowPlacement { id: _windowPlacement }
+    readonly property WindowPlacement _windowPlacement:
+        ModelFactory.create("WindowPlacement", _root, {})
+
+    // The mode selector's list (the toolbar): kept with the window, which
+    // lives for the app.
+    readonly property ModeListModel _modeList:
+        ModelFactory.create("ModeListModel", _root, {})
 
     // The commands that have a shortcut (main_commands.js).
     property var shortcutCommands: []
@@ -298,7 +304,8 @@ ApplicationWindow {
 
     // Options' settings by label, without opening Options (findSetting
     // ignores case; a repeated label also matches with its group).
-    ConfigSectionModel { id: _helpOptionLabels }
+    readonly property ConfigSectionModel _helpOptionLabels:
+        ModelFactory.create("ConfigSectionModel", _root, {})
 
     function _helpLinkCheck(link) {
         var parsed = HelpLinks.parse(link)
@@ -488,9 +495,8 @@ ApplicationWindow {
     property var configureWin: null
     onConfigureWinChanged: Registry.track("DialogConfigureModule.qml", configureWin)
 
-    ModuleListModel {
-        id: _moduleModel
-    }
+    readonly property ModuleListModel _moduleModel:
+        ModelFactory.create("ModuleListModel", _root, {})
 
     // The card's device name (its folder is found from it and its id).
     function cardDeviceName(card) {
@@ -1020,7 +1026,8 @@ ApplicationWindow {
     }
 
     // At start: a HidHide update waiting for its second half (06 S186).
-    DriversModel { id: _driversAtStart }
+    readonly property DriversModel _driversAtStart:
+        ModelFactory.create("DriversModel", _root, {})
 
     function offerHidHideFinish() {
         if (!_driversAtStart.pendingHidHide)
@@ -1432,15 +1439,13 @@ ApplicationWindow {
     }
 
     // Debug › Tracing (main_commands.js): tracing on or off (D-01-TRACE).
-    TraceSwitch {
-        id: _tracing
-    }
+    readonly property TraceSwitch _tracing:
+        ModelFactory.create("TraceSwitch", _root, {})
 
     // Tools › Input Tester… (main_commands.js, D-02-INPUT-TESTER): starts
     // the separate tester program; a message when it can't.
-    InputTesterLink {
-        id: _inputTesterLink
-    }
+    readonly property InputTesterLink _inputTesterLink:
+        ModelFactory.create("InputTesterLink", _root, {})
 
     // The device's background picture (07 S157): draws it, hidden, when
     // devicePhotoMaker asks (gremlin/ui/device_photo.py).
@@ -1737,7 +1742,8 @@ ApplicationWindow {
 
     // The one locked-while-running rule (B5a, 06 S13): Run asks about
     // open action panes only when it starts a Run.
-    EditLock { id: _editLock }
+    readonly property EditLock _editLock:
+        ModelFactory.create("EditLock", _root, {})
 
     // toggleRun(): Save / Discard / Cancel for an action pane with changes.
     DismissibleDialog {
@@ -2229,7 +2235,7 @@ ApplicationWindow {
                         Layout.minimumWidth: _root._modeListMinWidth
                         Layout.rightMargin: Style.dp(10)
 
-                        model: ModeListModel { id: _modeList }
+                        model: _root._modeList
                         textRole: "name"
                         valueRole: "name"
 

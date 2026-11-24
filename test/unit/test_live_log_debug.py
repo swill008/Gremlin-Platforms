@@ -53,7 +53,9 @@ def test_window_has_config_debug_and_input_monitor_tabs() -> None:
     assert 'TabButton { text: "Config"' in qml
     assert '"Debug ●" : "Debug"' in qml
     assert '"Input Monitor ●" : "Input Monitor"' in qml
-    assert "LiveLog {" in qml and "DebugLog {" in qml and "InputMonitor {" in qml
+    # Made through ModelFactory (plan memory-qml-factory.md, stage 1).
+    for name in ("LiveLog", "DebugLog", "InputMonitor"):
+        assert f'ModelFactory.create("{name}"' in qml, name
     # Live on the Debug tab, Monitor on the Input Monitor tab.
     assert 'caption: "Live"' in qml and 'caption: "Monitor"' in qml
     assert '{ text: "All logs", value: "all" }' in qml

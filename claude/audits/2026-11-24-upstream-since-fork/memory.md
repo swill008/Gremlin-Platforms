@@ -249,3 +249,128 @@ was waiting to be collected.
 4. **Update the stale records after the user's decision:**
    - the `test_leaks.py` comment and its `counts()` filter;
    - the program map page 01 PYSIDE-WRAPPERS gap.
+
+## After stage 1
+
+Agent S1-MEASURE, 2026-11-23, 18:55-19:02. Measured after the stage-1 QML
+conversion (plan `claude/plans/memory-qml-factory.md`: 10 QML files, the 19
+`FACTORY_ONLY` types, one `InputIdentifier` per input). No program code was
+changed and nothing was committed.
+
+### How it was run
+
+- Same probe, same set-up as above: off-screen, temporary `USERPROFILE`,
+  stand-in hardware, fake vJoy, 2 warm-up repetitions, then 3 blocks of 25.
+- Three changes to `tools/memory_probe.py`:
+  - **Factory types counted.** The probe found the QML-made types by
+    searching for `TypeName {`; converted types no longer match, so it
+    also reads `ModelFactory.create("TypeName", ...)`. The count is still 81.
+    (A first run without this counted only 62 types and was thrown away.)
+  - **`--no-qobjects`.** S1-PY found that Python's `findChildren` on a QML
+    item keeps the children it returns alive. The probe's QObject count
+    used it at every reading, so the main run skips that count (QObjects
+    read -1). A second run of C and E (10 repetitions per block) kept the
+    count on, to check `InputIdentifier`.
+  - **D per window.** `D=<file>` runs D with that one window. `--per-window`
+    splits D into one process per window, and `--jobs N` caps the processes.
+    This run had D (all seven) and D for each of the seven windows, 4
+    processes at a time.
+- Readings from the baseline were taken with the `findChildren` walk on. If
+  that walk kept objects alive, the baseline private bytes are a little
+  high. The C and E runs with the walk on show the same picture as without
+  it.
+- Raw JSON and logs: session scratchpad `s1run` and `s1qobj` (not in the
+  repo).
+
+### Before and after, block 1 to block 3 (50 repetitions)
+
+| Scenario | Private before | Private after | Heap before | Heap after | Shells per repetition before | after |
+|---|---|---|---|---|---|---|
+| A. Profile load | +3.6 MB (levels off) | +3.0 MB (+2.2, +0.8: levels off) | +0.03 MB | +0.01 MB | 0 | 0 |
+| B. Page switch (one round) | +52.4 MB | +26.7 MB (+20.4, +6.2) | +12.3 MB | +1.35 MB | 43 | 33 |
+| C. Action pane open and close | +4.9 MB | +3.6 MB (+1.4, +2.3) | +0.37 MB | +0.03 MB | 4 | **0** |
+| D. Seven windows (one round) | +33.1 MB | +12.6 MB (+4.2, +8.3) | +4.0 MB | +1.25 MB | 58 | 49 |
+| E. Load + pane, twice (10 per block) | +6.2 MB per 20 | +3.5 MB per 20 (+1.2, +2.4) | | +0.36 MB | 9 (`TreeNode` held) | 1 (`OutputModuleDevices`) |
+
+Reach (bytes the shells' `__dict__` keep) per block: B 5.9 MB before, 0.50
+MB after; D 1.75 MB before, 0.49 MB after; C 130 KB before, 0 after.
+The live `Profile` count stayed 1 everywhere. The valid object counts were
+flat. In the C and E runs with the QObject count on, QObjects were flat
+(C 4934, E 4962 in every block); before, they grew by 1 per pane open.
+
+### D, one window at a time (25 opens per block)
+
+| Window | Private, block 1 to 3 | Shells per open | Reach per open | What is left |
+|---|---|---|---|---|
+| Options | +1.5 MB | 11 | 2.8 KB | `HighlightSpeedModel` 8, `LogLevelModel`, `DebugMode`, `WindowPlacement` (`ConfigSectionModel`, 27 KB, gone) |
+| Input Viewer | +2.6 MB | 3 | 1.9 KB | `ModulePairDeviceModel`, `DebugMode`, `WindowPlacement` |
+| Manage Modes | +1.0 MB | 2 | 0.5 KB | `DebugMode`, `WindowPlacement` (mode models gone) |
+| Device Information | +1.4 MB | 3 | 2.2 KB | `DeviceListModel` (holds 2 `DeviceSummary`), `DebugMode`, `WindowPlacement` |
+| Calibration | +0.8 MB | 2 | 0.5 KB | `DebugMode`, `WindowPlacement` (`AxisCalibration` gone) |
+| Live Log | +2.2 MB | 4 | 1.0 KB | `LogLevelModel`, `FolderMemory`, `DebugMode`, `WindowPlacement` (`TraceView`, `LiveLog` gone) |
+| Device Mapping Editor | +5.6 MB | 24 | 10.6 KB | `FolderMemory` 8, `DebugMode` 4, `WindowPlacement` 4, `DeviceMapOptions` 2, `HardwareProfile` 2, `ViewerDeviceModel`, `ModuleFileWatch`, `DeviceNames`, `DeviceMapSpaceKey` |
+
+Each window alone grows 16-110 KB per open in private bytes, most of it
+outside the Python heap. Single-window figures are small and noisy (0.8-2.6
+MB per 50 opens); the Device Mapping Editor is the clear largest, about
+110 KB per open. The 2026-10-02 note ("1-2 MB kept, flat over later
+opens") does not hold for it: it grew +2.5 MB and +3.0 MB in the two
+blocks.
+
+### Verdicts
+
+- **A. Profile load: harmless, as before.** It levels off and keeps no
+  shells.
+- **B. Page switch: much smaller, still a leak.** Heap growth is down by
+  about 90% and the shells keep about 20 KB per round instead of about
+  240 KB. `HardwareLayoutModel`, `Device`, `DeviceLiveState` and
+  `DeviceListModel` (the Device Bindings holders, with their
+  `DeviceSummary` copies) are gone. Private bytes still grow about 0.25-0.8
+  MB per round (the two blocks differ: +20.4, +6.2), over the 1 MB per 25
+  line. Left per round: `WindowPlacement` 16, `EditLock` 8 (was 10), and 1
+  each of `KeyboardLayoutModel`, `LogicalLayoutModel`, `OscLayoutModel`
+  (the biggest left, about 3.6 KB), `OscDeviceManagementModel`,
+  `OscMonitorModel`, `InputListenerModel`, `FolderMemory`, `OscSettingsInfo`
+  and `OscBulkCapture`. All are stage-2 types (groups B, D, F).
+- **C. Action pane: shells and QObject growth fixed.** There are no shells.
+  `InputIdentifier` no longer grows. The heap is flat. Private bytes still
+  rise 1-2 MB per 25 opens (noisy: +1.4 and +2.3 in the main run, +1.2 and
+  +0.7 per 10 in the QObject run), outside the Python heap. The cause is
+  **unverified**.
+- **E. Profile load + pane: the mode-tree hold is gone.** No `TreeNode` or
+  `ModeListModel` is kept. The one shell left per repetition is
+  `OutputModuleDevices` (about 9 KB, its `_choices` and `_modules`;
+  `gremlin/ui/output_modules.py:120-121`), from `VJoySelector`, a stage-2
+  type (group D). Private bytes grow about 1-2.5 MB per 10 repetitions.
+- **D. Windows: much smaller, still a leak.** Heap growth is down by about
+  70%, and the biggest holders (`ConfigSectionModel`, `TraceView`,
+  `AxisCalibration`, `LiveLog`) are gone. Private bytes still grow about
+  0.17-0.33 MB per round (+4.2, then +8.3 per 25), over the line. Left per round:
+  `DebugMode` 10, `WindowPlacement` 10, `FolderMemory` 9,
+  `HighlightSpeedModel` 8, `LogLevelModel` 2, `DeviceMapOptions` 2,
+  `HardwareProfile` 2, and 1 each of `ViewerDeviceModel`,
+  `ModulePairDeviceModel`, `ModuleFileWatch`, `DeviceListModel`,
+  `DeviceNames` and `DeviceMapSpaceKey`. All are stage-2 types (groups A,
+  C, E, F).
+
+### What is left for stage 2
+
+1. Most shells left per round are the small shared types: `WindowPlacement`
+   (26 per B + D round), `DebugMode` (10), `FolderMemory` (10),
+   `EditLock` (8), `HighlightSpeedModel` (8). They are 230-430 B each, but
+   they are the most numerous (group F, plus group C for
+   `HighlightSpeedModel` and `LogLevelModel`).
+2. The biggest left per shell: `OscLayoutModel`, `LogicalLayoutModel` and
+   `KeyboardLayoutModel` (3-3.6 KB, page switch); `OutputModuleDevices`
+   (9 KB, Change Mode pane after a load); `ViewerDeviceModel`,
+   `DeviceListModel`, `LogLevelModel` and `HardwareProfile` (1.5-2.1 KB).
+   `DeviceListModel` in Device Information still holds `DeviceSummary`
+   copies.
+3. The Device Mapping Editor keeps 24 shells per open (about 10.6 KB), the
+   most of any window.
+4. In every scenario, private bytes grow faster than the Python heap. For
+   example, in B the heap grows +0.7 MB per block but private bytes grow
+   +6-20 MB. That part is outside Python, and its cause is still
+   **unverified**. The stage-2 re-run (S2-MEASURE) shows whether it goes
+   when no shells are left. If it does not, it is a separate question
+   (Qt, shiboken or QML internals).

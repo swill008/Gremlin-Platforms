@@ -182,6 +182,7 @@ if _startup_failure is None:
         import gremlin.ui.module_calibration  # noqa: F401
         import gremlin.ui.shell_option  # noqa: F401
         import gremlin.ui.folder_memory  # noqa: F401
+        import gremlin.ui.model_factory  # noqa: F401  # QML objects freed with their page
         import gremlin.osc_persist  # noqa: F401
         import gremlin.windows_event_hook
         # isort: on

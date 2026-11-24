@@ -12,12 +12,15 @@ of the journey harness (test/journeys/_harness.py): nothing reaches the PC.
 
     python tools/memory_probe.py                    # A B C D in parallel
     python tools/memory_probe.py --scenarios A,D --reps 10
+    python tools/memory_probe.py --per-window       # D split: one process per window
     python tools/memory_probe.py --child A ...      # one scenario (internal)
 
 Scenarios: A profile load (two profiles in turn), B page switch (Device
 Bindings, Keyboard, Logical Device, OSC, Home), C action pane open and close
 on a row with Change Mode and Macro, D windows opened and closed, E (not
 in the default set) C and A together: profile load, then the pane.
+"D=DialogOptions.qml" is D with that one window only; --per-window turns D
+into one such scenario per window, each in its own process.
 
 A run is 2 warm-up repetitions, then 3 blocks of --reps repetitions; after
 the warm-up and after each block a reading: private bytes, Python heap
@@ -98,16 +101,19 @@ def memory_mb() -> float:
 
 
 def qml_made_types() -> list[str]:
-    """Python types registered with QmlElement that QML files instantiate."""
+    """Python types registered with QmlElement that QML files instantiate
+    (`TypeName {}`) or get from `ModelFactory.create("TypeName", ...)`."""
     decorated = re.compile(r"QmlElement\s*\n(?:\s*@.*\n)*\s*class\s+(\w+)")
     names: set[str] = set()
     for folder in ("gremlin", "action_plugins", "theme"):
         for path in (ROOT / folder).rglob("*.py"):
             names.update(decorated.findall(path.read_text("utf-8", "replace")))
     made: set[str] = set()
+    factory = re.compile(r"ModelFactory\.create\(\s*\"(\w+)\"")
     for folder in ("qml", "action_plugins", "theme"):
         for path in (ROOT / folder).rglob("*.qml"):
             text = path.read_text("utf-8", "replace")
+            made.update(n for n in factory.findall(text) if n in names)
             for name in names:
                 if name not in made and re.search(rf"(?<![\w.]){name}\s*\{{", text):
                     made.add(name)
@@ -223,6 +229,10 @@ def reading(app: Any, names: list[str]) -> dict:  # noqa: ANN401
     roots = list(engine.rootObjects()) if engine is not None else []
     windows = list(QtGui.QGuiApplication.allWindows())
     seen: set[int] = set()
+    # findChildren makes Python wrappers that keep the children alive, so
+    # MEMPROBE_NO_QOBJECTS=1 skips the walk (QObject counts then read -1).
+    if os.environ.get("MEMPROBE_NO_QOBJECTS") == "1":
+        roots, windows, qobjects = [], [], -1
     for root in roots + windows:
         for obj in [root, *root.findChildren(QtCore.QObject)]:
             key = shiboken6.getCppPointer(obj)[0]
@@ -243,7 +253,7 @@ def reading(app: Any, names: list[str]) -> dict:  # noqa: ANN401
         "reach_by_type": reach_by_type,
         "qobjects": qobjects,
         "qobject_classes": qclasses,
-        "windows": len(windows),
+        "windows": len(QtGui.QGuiApplication.allWindows()),
         "profiles": profiles,
         "gc_objects": len(gc.get_objects()),
     }
@@ -438,9 +448,10 @@ def _setup(j: Any, scenario: str, pump: Any, say: Any) -> Any:  # noqa: ANN401
 
         return rep
 
-    if scenario == "D":
+    if scenario == "D" or scenario.startswith("D="):
         usable = []
-        for qml in WINDOWS:
+        chosen = [scenario[2:]] if scenario.startswith("D=") else WINDOWS
+        for qml in chosen:
             try:
                 j.ev(f'Helpers.createComponent("{qml}")')
                 pump(600)
@@ -477,9 +488,21 @@ def parent(args: argparse.Namespace) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     results: dict[str, Any] = {}
     threads = []
+    scenarios = []
+    for scenario in args.scenarios.split(","):
+        if scenario == "D" and args.per_window:
+            scenarios.extend(f"D={qml}" for qml in WINDOWS)
+        else:
+            scenarios.append(scenario)
+    slots = threading.Semaphore(args.jobs or len(scenarios))
 
     def one(scenario: str) -> None:
-        home = pathlib.Path(tempfile.mkdtemp(prefix=f"memprobe_{scenario}_"))
+        with slots:
+            run_one(scenario)
+
+    def run_one(scenario: str) -> None:
+        tag = re.sub(r"[^\w.-]", "_", scenario)
+        home = pathlib.Path(tempfile.mkdtemp(prefix=f"memprobe_{tag}_"))
         (home / "Gremlin Platforms").mkdir(parents=True, exist_ok=True)
         env = dict(
             os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
@@ -497,7 +520,7 @@ def parent(args: argparse.Namespace) -> int:
             cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
         )  # fmt: skip
-        log = (out_dir / f"{scenario}.log").open("w", encoding="utf-8")
+        log = (out_dir / f"{tag}.log").open("w", encoding="utf-8")
         result = None
         deadline = time.monotonic() + args.timeout
         timer = threading.Timer(args.timeout, tree.kill)
@@ -515,12 +538,12 @@ def parent(args: argparse.Namespace) -> int:
             tree.close()
             log.close()
         results[scenario] = result or {"error": "no RESULT line (see log)"}
-        (out_dir / f"{scenario}.json").write_text(
+        (out_dir / f"{tag}.json").write_text(
             json.dumps(results[scenario], indent=1, default=str), encoding="utf-8"
         )
         print(f"[{scenario}] finished", flush=True)
 
-    for scenario in args.scenarios.split(","):
+    for scenario in scenarios:
         t = threading.Thread(target=one, args=(scenario,))
         t.start()
         threads.append(t)
@@ -550,15 +573,30 @@ def main() -> int:
     parser.add_argument("--warm", type=int, default=2)
     parser.add_argument("--blocks", type=int, default=3)
     parser.add_argument(
+        "--per-window",
+        action="store_true",
+        help="run D as one process per window (D=<file>) instead of all seven",
+    )
+    parser.add_argument(
+        "--jobs", type=int, default=0, help="processes at once (0: all)"
+    )
+    parser.add_argument(
         "--js-gc",
         action="store_true",
         help="run the QML engine's JavaScript garbage collector before each reading",
+    )
+    parser.add_argument(
+        "--no-qobjects",
+        action="store_true",
+        help="skip the QObject walk (findChildren keeps what it returns alive)",
     )
     parser.add_argument("--timeout", type=float, default=900)
     parser.add_argument(
         "--out", default=str(pathlib.Path(tempfile.gettempdir()) / "memory_probe")
     )
     args = parser.parse_args()
+    if args.no_qobjects:
+        os.environ["MEMPROBE_NO_QOBJECTS"] = "1"
     if args.js_gc:
         os.environ["MEMPROBE_JS_GC"] = "1"  # the children inherit it
     if args.child:

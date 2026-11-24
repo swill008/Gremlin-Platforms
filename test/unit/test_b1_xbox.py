@@ -66,6 +66,9 @@ def test_missing_picture_shows_the_note(tmp_path: pathlib.Path) -> None:
     alone = tmp_path / "qml" / "Xbox360Face.qml"
     alone.parent.mkdir()
     shutil.copy(_FACE, alone)
+    # The face's own QML piece (the 100 ms hold) goes with it; only the
+    # picture folder is missing.
+    shutil.copy(_FACE.parent / "HeldLight.qml", alone.parent / "HeldLight.qml")
     out = _run(tmp_path, alone, "keep")
     assert out["status"] == _ERROR, out
     assert _MISSING in out["texts"], out

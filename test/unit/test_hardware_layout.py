@@ -345,23 +345,28 @@ import sys
 from PySide6 import QtCore, QtGui, QtQml
 app = QtGui.QGuiApplication([])
 import gremlin.ui.hardware_layout  # registers HardwareLayoutModel
+import gremlin.ui.model_factory  # QML makes it through ModelFactory
 engine = QtQml.QQmlEngine()
 component = QtQml.QQmlComponent(engine)
 component.setData(
-    b"import QtQml; import Gremlin.Device; HardwareLayoutModel {"
-    b" property string k: paneKey;"
-    b" property bool u: canUndo; property var d: destChoices;"
-    b" Component.onCompleted: setDevice('x', 'pJoy Pro') }",
+    b"import QtQml; import Gremlin.Device; import Gremlin.UI; QtObject {"
+    b" id: root; readonly property HardwareLayoutModel m:"
+    b" ModelFactory.create('HardwareLayoutModel', root);"
+    b" property bool made: m !== null; property string k: m.paneKey;"
+    b" property bool u: m.canUndo; property var d: m.destChoices;"
+    b" Component.onCompleted: m.setDevice('x', 'pJoy Pro') }",
     QtCore.QUrl(),
 )
 built = component.create()
-print("BUILT" if built is not None else "NULL " + component.errorString())
+made = built is not None and built.property("made")
+print("BUILT" if made else "NULL " + component.errorString())
 """
 
 
 def test_qml_builds_the_model_and_sets_a_device() -> None:
     # A property notified by a base class's signal (paneModelChanged) made
-    # QML crash (access violation) building the model; in a child process
+    # QML crash (access violation) building the model (now through
+    # ModelFactory, plan memory-qml-factory.md); in a child process
     # so a crash fails this test instead of the run.
     import os
     import sys

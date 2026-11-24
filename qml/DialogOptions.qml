@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Config
 import Gremlin.Style
+import Gremlin.UI
 import "helpers.js" as Helpers
 
 ApplicationWindow {
@@ -39,9 +40,9 @@ ApplicationWindow {
         backend.emitConfigChanged()
     }
 
-    ConfigSectionModel {
-        id: _sectionModel
-    }
+    // Made by ModelFactory (PYSIDE-1407); lives as long as this window.
+    readonly property ConfigSectionModel _sectionModel:
+        ModelFactory.create("ConfigSectionModel", _options)
 
     property int currentSection: 0
     // The page's title ("General"), or "Search" while searching.

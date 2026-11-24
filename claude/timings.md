@@ -1479,3 +1479,22 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent XBOXHOLD: HeldLight.qml shared, Xbox pad card + face 100 ms hold, test | agent fix | 3-8 min | 2 min | 18:29-18:31, XBOXHOLD |
 | 2026-11-23 | Agent SCRIPTMODE: switch_mode/previous_mode/cycle_modes + mode_manager.on_input_thread + 6 tests | agent fix | 3-8 min | 4 min | 18:28-18:32, SCRIPTMODE |
 | 2026-11-23 | Targeted tests (173) + rebuild + install + live check of Scripts/vJoy Viewer | build/test | ~5 min | 4 min | 18:32-18:36, lead |
+| 2026-11-23 | Commit 2096b35d (B1 + script mode switch + Xbox hold) + push | commit | ~3 min | 1 min | 18:36, lead |
+| 2026-11-23 | CI for 2096b35d | ci | ~25 min | - | 18:36-18:40, cancelled by the user's word: CI at the end |
+| 2026-11-23 | Agent P-MEM: memory factory plan (upstream 02a280e8 + follow-ups, our design, 2 stages) | review | 5-10 min | 5 min | 18:38-18:43, P-MEM |
+| 2026-11-23 | Lead: memory stage 1 answers + 10 briefs | lead planning | ~5 min | 3 min | 18:46-18:49, lead |
+| 2026-11-23 | Agent S1-MEASURE: probe one-window option (run waits) | agent fix | 3-8 min | 1 min | 18:47-18:48, S1-MEASURE |
+| 2026-11-23 | Agent S1-MAIN: Main.qml 8 types via ModelFactory | refactor | 5-10 min | 3 min | 18:47-18:50, S1-MAIN |
+| 2026-11-23 | Agent S1-ID: one InputIdentifier per input (Device, OSC model) + 4 tests | agent fix | 3-8 min | 3 min | 18:47-18:50, S1-ID |
+| 2026-11-23 | Agent S1-DOCS: map for the factory, PYSIDE-WRAPPERS gap rewritten | agent fix | 3-8 min | 4 min | 18:47-18:51, S1-DOCS |
+| 2026-11-23 | Agent S1-LOG: Live Log 4 types + Options via ModelFactory | refactor | 5-10 min | 4 min | 18:47-18:51, S1-LOG |
+| 2026-11-23 | Agent S1-BIND: DeviceBindingsPage 5 types via ModelFactory | refactor | 5-10 min | 6 min | 18:46-18:52, S1-BIND |
+| 2026-11-23 | Agent S1-MODES: 11 sites in 4 files via ModelFactory | refactor | 5-10 min | 5 min | 18:47-18:52, S1-MODES |
+| 2026-11-23 | Agent S1-OUT: OutputModuleView + Calibration 4 types via ModelFactory | refactor | 5-10 min | 6 min | 18:46-18:52, S1-OUT |
+| 2026-11-23 | Agent S1-GUARD: guard test, test_leaks shells + round test, 2 pinned tests updated | refactor | 5-10 min | 5 min | 18:47-18:52, S1-GUARD |
+| 2026-11-23 | Agent S1-PY: model_factory.py, QML_TYPES registry, FACTORY_ONLY (19), 8 tests | refactor | 5-10 min | 8 min | 18:46-18:54, S1-PY |
+| 2026-11-23 | Agent FIX-LIVE: DeviceLiveState deviceName/liveWhileActive own signals + 2 tests | agent fix | 3-8 min | 3 min | 18:53-18:56, FIX-LIVE |
+| 2026-11-23 | Agent FIX-LOCK: locked follows RunControl runStarted/runStopped + 3 tests | agent fix | 3-8 min | 2 min | 18:58-19:00, FIX-LOCK |
+| 2026-11-23 | Agent S1-MEASURE: probe rerun after stage 1 (A-E + per window) | run | ~8 min | 8 min | 18:55-19:03, S1-MEASURE |
+| 2026-11-23 | Quick tests --changed for memory stage 1 (5,000 tests) | test | ~10 min | 11 min | 19:01-19:12, lead: 1 failed |
+| 2026-11-23 | Stage 1: test fix (HeldLight copy) + build + install + live check (7 windows, Device Bindings) + run/trace | build/test | ~4 min | 3 min | 19:12-19:15, lead |

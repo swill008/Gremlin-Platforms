@@ -58,7 +58,12 @@ def _hat_xy(direction: object) -> tuple[int, int]:
 class DeviceLiveState(QtCore.QObject):
     """Live axis/button/hat values for the current physical device tab."""
 
+    # One signal per property, sent only when its value changes: a QML
+    # Binding on a property warns "changed from elsewhere" when its signal
+    # comes from another property's change.
     guidChanged = QtCore.Signal()
+    deviceNameChanged = QtCore.Signal()
+    liveWhileActiveChanged = QtCore.Signal()
     stampChanged = QtCore.Signal()
     lockedChanged = QtCore.Signal()
     drivenChanged = QtCore.Signal()
@@ -101,6 +106,20 @@ class DeviceLiveState(QtCore.QObject):
         event_handler.EventListener().device_change_event.connect(
             self._device_list_changed
         )
+        # locked reads the Run state: tell QML when a Run starts or stops.
+        # Emitted on the input thread: queued to this main-thread object
+        # (same owner and connection as backend.py).
+        from gremlin import code_runner
+
+        self._reported_locked = self._get_locked()
+        control = code_runner.run_control()
+        queued = (
+            QtCore.Qt.ConnectionType.AutoConnection
+            if input_thread.is_inline()
+            else QtCore.Qt.ConnectionType.QueuedConnection
+        )
+        control.runStarted.connect(self._on_run_started, queued)
+        control.runStopped.connect(self._on_run_stopped, queued)
 
     def _get_guid(self) -> str:
         return self._guid
@@ -109,6 +128,21 @@ class DeviceLiveState(QtCore.QObject):
         if self._live_while_active:
             return False
         return self._locked or shared_state.runtime_active()
+
+    @QtCore.Slot(bool, str)
+    def _on_run_started(self, _ok: bool, _error: str) -> None:
+        self._notify_locked()
+
+    @QtCore.Slot()
+    def _on_run_stopped(self) -> None:
+        self._notify_locked()
+
+    def _notify_locked(self) -> None:
+        value = self._get_locked()
+        if value == self._reported_locked:
+            return
+        self._reported_locked = value
+        self.lockedChanged.emit()
 
     def _get_live_while_active(self) -> bool:
         return self._live_while_active
@@ -131,7 +165,9 @@ class DeviceLiveState(QtCore.QObject):
         if flag == self._live_while_active:
             return
         self._live_while_active = flag
-        self.lockedChanged.emit()
+        self.liveWhileActiveChanged.emit()
+        # locked reads it too.
+        self._notify_locked()
         self._sync_poll()
 
     def _get_device_name(self) -> str:
@@ -144,15 +180,17 @@ class DeviceLiveState(QtCore.QObject):
         self._device_name = text
         self._resolve_vjoy()
         self._sync_poll()
+        self.deviceNameChanged.emit()
 
     def _set_locked(self, value: bool) -> None:
         flag = bool(value)
         if flag == self._locked:
             return
         self._locked = flag
-        self.lockedChanged.emit()
+        self._notify_locked()
 
     def _clear(self) -> None:
+        had_guid = bool(self._guid)
         self._device = None
         self._device_uuid = None
         self._guid = ""
@@ -163,7 +201,8 @@ class DeviceLiveState(QtCore.QObject):
         self._hat_y = []
         self._axis_rows = {}
         self._sync_poll()
-        self.guidChanged.emit()
+        if had_guid:
+            self.guidChanged.emit()
         self._bump()
 
     def _device_list_changed(self) -> None:
@@ -181,6 +220,7 @@ class DeviceLiveState(QtCore.QObject):
             return
         # Kept while the device isn't connected (_clear leaves it).
         self._wanted = guid
+        previous = self._guid
         try:
             self._device = hardware.device_info(guid)
             self._device_uuid = uuid.UUID(incoming)
@@ -222,7 +262,8 @@ class DeviceLiveState(QtCore.QObject):
             self._hat_x.append(0)
             self._hat_y.append(0)
         self._resolve_vjoy()
-        self.guidChanged.emit()
+        if self._guid != previous:
+            self.guidChanged.emit()
         self._bump()
         self._sync_poll()
 
@@ -439,13 +480,13 @@ class DeviceLiveState(QtCore.QObject):
         bool,
         fget=_get_live_while_active,
         fset=_set_live_while_active,
-        notify=lockedChanged,
+        notify=liveWhileActiveChanged,
     )
     deviceName = QtCore.Property(
         str,
         fget=_get_device_name,
         fset=_set_device_name,
-        notify=guidChanged,
+        notify=deviceNameChanged,
     )
     driven = QtCore.Property(bool, fget=_get_driven, notify=drivenChanged)
     stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)

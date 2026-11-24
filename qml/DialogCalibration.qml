@@ -9,6 +9,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 import "helpers.js" as Helpers
 
 ApplicationWindow {
@@ -218,13 +219,20 @@ ApplicationWindow {
             chooseModule(initialSlug)
     }
 
-    CalibrationModuleModel {
-        id: _modules
+    // Made by ModelFactory, freed with this window (memory-qml-factory.md).
+    // On the window, not the list, so the window-level uses of _calib resolve.
+    readonly property AxisCalibration _calib:
+        ModelFactory.create("AxisCalibration", _calibrationDialog, {})
+    Binding { target: _calib; property: "moduleSlug"; value: _calibrationDialog.shownSlug }
+    readonly property CalibrationModuleModel _modules:
+        ModelFactory.create("CalibrationModuleModel", _calibrationDialog, {})
+    Connections {
+        target: _modules
         // Sticks came or went: the drop-down keeps naming the device shown
         // (blank while its stick is unplugged; its axes and unsaved work stay).
         // The device a card asked for connected: it is shown (asking first
         // when another one has unsaved work).
-        onModelReset: Qt.callLater(function() {
+        function onModelReset() { Qt.callLater(function() {
             var slug = _calibrationDialog.waitingSlug
             if (slug.length && _moduleSelection.indexOfValue(slug) >= 0) {
                 _calibrationDialog.waitingSlug = ""
@@ -238,7 +246,7 @@ ApplicationWindow {
                 _moduleSelection.currentIndex = index
             else if (_calibrationDialog.shownSlug.length)
                 _moduleSelection.currentIndex = -1
-        })
+        }) }
     }
 
     ColumnLayout {
@@ -291,7 +299,7 @@ ApplicationWindow {
                 objectName: "calibrationUndoBar"
                 Layout.fillWidth: true
                 Layout.leftMargin: Style.dp(12)
-                // _calib is made with the list below, after these buttons.
+                // _calib can be gone (destroyed when the window closes).
                 canUndo: _calib ? _calib.canUndo : false
                 canRedo: _calib ? _calib.canRedo : false
                 undoTip: "Undo (Ctrl+Z)"
@@ -371,10 +379,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            model: AxisCalibration {
-                id: _calib
-                moduleSlug: _calibrationDialog.shownSlug
-            }
+            model: _calib
 
             delegate: CalibrationItem {
                 width: ListView.view.width

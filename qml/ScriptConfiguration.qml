@@ -11,6 +11,7 @@ import Gremlin.Base
 import Gremlin.Profile
 import Gremlin.Script
 import Gremlin.Style
+import Gremlin.UI
 
 
 // A script's variables (04 S85), one row each in the Options look: the
@@ -144,13 +145,19 @@ ColumnLayout {
             roleValue: "mode"
 
             VariableRow {
+                id: _modeRow
+
+                // Belongs to the delegate root, never the view.
+                readonly property ModeListModel _modes:
+                    ModelFactory.create("ModeListModel", _modeRow, {})
+
                 TooltipComboBox {
                     id: _mode
 
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignRight
 
-                    model: ModeListModel {}
+                    model: _modeRow._modes
                     textRole: "name"
                     valueRole: "name"
 

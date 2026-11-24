@@ -4,7 +4,9 @@
 
 """Things repeated many times keep a bounded number of objects (audit
 SHAKE-STRESS-02/03/04, AUD-LINT-09): button presses in one Run, opening and
-closing Options and the Input Viewer, and reading a response curve's points."""
+closing Options and the Input Viewer, and reading a response curve's points.
+Objects QML gets from ModelFactory leave no shells when their page or
+window closes (claude/plans/memory-qml-factory.md, stage 1)."""
 
 from __future__ import annotations
 
@@ -201,16 +203,26 @@ NAMES = sys.argv[1].split(',')
 
 import shiboken6
 
+from gremlin.ui import type_aliases as ta
+
+FACTORY = [ta.QML_TYPES[n] for n in sys.argv[3].split(',') if n in ta.QML_TYPES]
+
 def counts():
-    # Live objects only: PySide 6.11 keeps the Python wrapper of every
-    # Python object QML made after QML deletes it (C++ gone, no holder in
-    # Python, signals disconnected); those shells aren't ours to free.
+    # Live objects by name, and shells of the factory-made types: a shell
+    # is a Python wrapper whose C++ object is gone but which PySide still
+    # keeps reachable (its __dict__ and what that holds stay in memory);
+    # PySide 6.11 keeps one for every object QML instantiates (PYSIDE-1407).
     gc.collect()
     out = dict.fromkeys(NAMES, 0)
+    shells = 0
     for obj in gc.get_objects():
-        name = type(obj).__name__
+        cls = type(obj)
+        if cls in FACTORY and not shiboken6.isValid(obj):
+            shells += 1
+        name = cls.__name__
         if name in out and shiboken6.isValid(obj):
             out[name] += 1
+    out['_shells'] = shells
     return out
 
 def cycle(qml):
@@ -228,6 +240,7 @@ for qml in sys.argv[2].split(','):
         cycle(qml)
     after = counts()
     out[qml] = {name: after[name] - before[name] for name in NAMES}
+    out[qml]['_shells'] = after['_shells']
 print('RESULT ' + json.dumps(out), flush=True)
 os._exit(0)
 """
@@ -237,6 +250,18 @@ _NAMES = [
     "WindowPlacement", "PairLiveThrottle", "ModulePairAxisModel",
     "ModulePairButtonModel", "QTimer",
 ]
+
+
+def _factory_made() -> list[str]:
+    """The types QML makes only through ModelFactory (the guard's list)."""
+    import importlib.util
+
+    path = pathlib.Path(__file__).with_name("test_qml_factory_guard.py")
+    spec = importlib.util.spec_from_file_location("_qml_factory_guard", path)
+    assert spec is not None and spec.loader is not None
+    guard = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard)
+    return guard.factory_made()
 
 
 @pytest.fixture(scope="module")
@@ -253,7 +278,7 @@ def growth(tmp_path_factory: pytest.TempPathFactory) -> dict:
     )
     result = proc_tree.run(
         [sys.executable, str(path), ",".join(_NAMES),
-         "DialogOptions.qml,DialogInputViewer.qml"],
+         "DialogOptions.qml,DialogInputViewer.qml", ",".join(_factory_made())],
         cwd=_ROOT, env=env, text=True, timeout=240,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
@@ -264,6 +289,7 @@ def growth(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 
 def test_options_opened_and_closed_keeps_no_models(growth: dict) -> None:
+    """No live model more, and no shell of a factory-made type."""
     grown = growth["DialogOptions.qml"]
     assert {name: n for name, n in grown.items() if n > 0} == {}
 
@@ -271,6 +297,131 @@ def test_options_opened_and_closed_keeps_no_models(growth: dict) -> None:
 def test_input_viewer_opened_and_closed_keeps_no_objects(growth: dict) -> None:
     grown = growth["DialogInputViewer.qml"]
     assert {name: n for name, n in grown.items() if n > 0} == {}
+
+
+# +-------------------------------------------------------------------------
+# | Factory-made objects leave no shells (plan memory-qml-factory.md, stage 1)
+
+_ROUNDS_SCRIPT = r"""
+import gc, json, pathlib, sys
+sys.path.insert(0, str(pathlib.Path.cwd() / 'test' / 'journeys'))
+from _harness import Journey, pump
+
+NAMES = sys.argv[1].split(',')
+WINDOWS = ['DialogOptions.qml', 'DialogLiveLog.qml', 'DialogCalibration.qml',
+           'DialogManageModes.qml']
+ROUNDS = int(sys.argv[2])
+
+
+def before(j):
+    j.input_module()
+    j.vjoy_module()
+
+
+def story(j):
+    import shiboken6
+    from gremlin import plugin_manager
+    from gremlin.types import InputType
+    from gremlin.ui import type_aliases as ta
+
+    classes = {n: ta.QML_TYPES[n] for n in NAMES if n in ta.QML_TYPES}
+    j.out['missing'] = sorted(set(NAMES) - set(classes))
+
+    def counts():
+        pump(100)
+        gc.collect()
+        valid = dict.fromkeys(classes, 0)
+        shells = dict.fromkeys(classes, 0)
+        by_cls = {cls: name for name, cls in classes.items()}
+        for obj in gc.get_objects():
+            name = by_cls.get(type(obj))
+            if name is None:
+                continue
+            if shiboken6.isValid(obj):
+                valid[name] += 1
+            else:
+                shells[name] += 1
+        return valid, shells
+
+    # A Change Mode action on button 1, for the pane rounds.
+    pm = plugin_manager.PluginManager()
+    j.profile.modes.add_mode('Ground')
+    j.profile.modes.set_parent('Ground', 'Default')
+    uid = j.stick().device_guid.uuid
+    item = j.profile.get_input_item(uid, InputType.JoystickButton, 1, 'Default', True)
+    root = item.add_item_binding().root_action
+    root.insert_action(pm.create_instance('Change Mode', InputType.JoystickButton),
+                       'children')
+    state = j.backend.uiState
+
+    def page_round():
+        catalog = j.open_device_bindings('pjoy_pro')
+        j.open_input(catalog, 'button', 1)
+        pump(200)
+        catalog.endPane()
+        j.wait_until(lambda: catalog.paneModel is None, 'pane closed', 10)
+        j.ev('uiState.setCurrentRoom("status")')
+        j.wait_until(lambda: j.ev('uiState.currentRoom') == 'status', 'Home', 10)
+        pump(150)
+
+    def window_round(qml):
+        j.ev('Helpers.createComponent("%s")' % qml)
+        pump(400)
+        j.ev('Helpers.windowOf("%s").close()' % qml)
+        pump(250)
+
+    def one_round():
+        page_round()
+        for qml in WINDOWS:
+            window_round(qml)
+
+    one_round()  # warm-up: caches and first-use objects
+    valid0, shells0 = counts()
+    for _ in range(ROUNDS):
+        one_round()
+    valid1, shells1 = counts()
+    j.out['shells'] = {n: c for n, c in shells1.items() if c}
+    j.out['shell-growth'] = {n: shells1[n] - shells0[n] for n in classes
+                             if shells1[n] != shells0[n]}
+    j.out['valid-growth'] = {n: valid1[n] - valid0[n] for n in classes
+                             if valid1[n] > valid0[n]}
+    j.out['done'] = True
+
+
+if __name__ == '__main__':
+    Journey(before).run(story)
+"""
+
+
+@pytest.fixture(scope="module")
+def rounds(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    sys.path.insert(0, str(_ROOT / "test" / "journeys"))
+    from _harness import run_journey  # pyright: ignore[reportMissingImports]
+
+    tmp_path = tmp_path_factory.mktemp("factory_rounds")
+    script = tmp_path / "factory_rounds.py"
+    script.write_text(_ROUNDS_SCRIPT, encoding="utf-8")
+    names = _factory_made()
+    out = run_journey(script, tmp_path / "home", ",".join(names), "4")
+    print(f"factory types {len(names)}; rounds: "
+          f"{ {k: out.get(k) for k in ('shells', 'shell-growth', 'valid-growth')} }")
+    assert out.get("done"), (
+        f"{out.get('error')}\n{out.get('traceback', '')}\n{out.get('_stderr', '')}"
+    )
+    return out
+
+
+def test_factory_types_are_all_registered(rounds: dict) -> None:
+    assert rounds["missing"] == []
+
+
+def test_pages_and_windows_opened_again_leave_no_shells(rounds: dict) -> None:
+    """Device Bindings (with the Change Mode pane), Options, Live Log,
+    Calibration and Manage Modes, opened and closed 4 times: no shell of a
+    factory-made type, and no live one more than after the first round."""
+    assert rounds["shells"] == {}
+    assert rounds["shell-growth"] == {}
+    assert rounds["valid-growth"] == {}
 
 
 # +-------------------------------------------------------------------------

@@ -11,6 +11,7 @@ import QtQuick.Dialogs
 import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
+import Gremlin.UI
 import "helpers.js" as Helpers
 
 Item {
@@ -172,11 +173,14 @@ Item {
     readonly property bool metersOn: showMeters
     readonly property int btnCellH: buttonSize === "small" ? Style.dp(48) : (buttonSize === "large" ? Style.dp(68) : Style.dp(56))
 
-    ModuleClaimedInputModel {
-        id: _claimed
-        guid: _root.guid
-        deviceName: _root.deviceName
-        onCountChanged: _root.rebuild()
+    // Made by ModelFactory, freed with this view (memory-qml-factory.md).
+    readonly property ModuleClaimedInputModel _claimed:
+        ModelFactory.create("ModuleClaimedInputModel", _root, {})
+    Binding { target: _claimed; property: "guid"; value: _root.guid }
+    Binding { target: _claimed; property: "deviceName"; value: _root.deviceName }
+    Connections {
+        target: _claimed
+        function onCountChanged() { _root.rebuild() }
     }
 
     ColorDialog {
@@ -207,12 +211,10 @@ Item {
 
     ListModel { id: _copySources }
 
-    DeviceLiveState {
-        id: _live
-        guid: _root.guid
-        deviceName: _root.deviceName
-        liveWhileActive: true
-    }
+    readonly property DeviceLiveState _live:
+        ModelFactory.create("DeviceLiveState", _root, { liveWhileActive: true })
+    Binding { target: _live; property: "guid"; value: _root.guid }
+    Binding { target: _live; property: "deviceName"; value: _root.deviceName }
 
     Connections {
         target: moduleModel

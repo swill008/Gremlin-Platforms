@@ -42,25 +42,26 @@ ApplicationWindow {
         defaultHeight: Style.dp(640)
     }
 
-    LiveLog {
-        id: _log
-    }
+    // Made by ModelFactory (PYSIDE-1407: PySide6 never frees a Python object
+    // QML declares); each lives as long as this window.
+    readonly property LiveLog _log: ModelFactory.create("LiveLog", _win)
+    readonly property DebugLog _debug: ModelFactory.create("DebugLog", _win)
+    readonly property InputMonitor _monitor:
+        ModelFactory.create("InputMonitor", _win)
+    readonly property TraceView _trace: ModelFactory.create("TraceView", _win)
 
-    DebugLog {
-        id: _debug
-        warningColor: String(Style.warn)
-        errorColor: String(Style.dangerText)
-        dividerColor: String(Style.dangerText)
+    // The colours follow the theme. Set by hand, not with Binding: their
+    // notify signal is the shared "changed", which a Binding reports as
+    // "changed from elsewhere" on every refresh.
+    readonly property var _colours: [String(Style.warn), String(Style.dangerText),
+                                     String(Style.fgMuted)]
+    function _applyColours() {
+        _debug.warningColor = _colours[0]
+        _debug.errorColor = _colours[1]
+        _debug.dividerColor = _colours[1]
+        _monitor.mutedColor = _colours[2]
     }
-
-    InputMonitor {
-        id: _monitor
-        mutedColor: String(Style.fgMuted)
-    }
-
-    TraceView {
-        id: _trace
-    }
+    on_ColoursChanged: _applyColours()
 
     // Live and the Input Monitor stop when the window closes (tracing
     // doesn't: Debug › Tracing or the Trace tab turns it off).
@@ -124,6 +125,7 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        _applyColours()
         _debug.attachView(_debugView.document)
         // The last tab, Log and Show chosen (Find starts empty, Live off).
         var last = _debug.restoreChoices()

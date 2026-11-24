@@ -27,7 +27,7 @@ Item {
     property string deviceName: ""
     property string mode: "Default"
 
-    readonly property alias layout: _layout
+    readonly property HardwareLayoutModel layout: _layout
     readonly property bool actionOpen: _pane.open
     readonly property string paneKey: _pane.paneKey
     readonly property string paneTitle: _pane.paneTitle
@@ -51,7 +51,7 @@ Item {
     property bool _ready: false
 
     // The one edit lock (06 S13, S82): nothing is edited while the profile runs.
-    EditLock { id: _lock }
+    readonly property EditLock _lock: ModelFactory.create("EditLock", _root, {})
     readonly property bool editorLocked: _lock.locked
 
     // Same rules as the Undo and Redo menu items (S36). A focused text field keeps these keys.
@@ -124,7 +124,9 @@ Item {
     // +---------------------------------------------------------------------
     // | Models
 
-    HardwareLayoutModel { id: _layout }
+    // Made by ModelFactory (PySide6 never frees QML-made Python objects,
+    // PYSIDE-1407); the page is the parent, so they go with it.
+    readonly property HardwareLayoutModel _layout: ModelFactory.create("HardwareLayoutModel", _root, {})
     Connections {
         target: _layout
         // Its mode was deleted, or the device changed (the model closed the draft).
@@ -145,9 +147,11 @@ Item {
         }
         return out
     }
+    readonly property DeviceListModel _physicalSticks:
+        ModelFactory.create("DeviceListModel", _root, { deviceType: "physical" })
     Instantiator {
         id: _sticks
-        model: DeviceListModel { deviceType: "physical" }
+        model: _root._physicalSticks
         delegate: QtObject {
             required property string name
             required property string guid
@@ -157,21 +161,34 @@ Item {
         onObjectRemoved: _root._sticksRev++
     }
 
-    DeviceLiveState {
-        id: _live
-        guid: _root.guid
-        deviceName: _root.deviceName
-        locked: _root.editorLocked
-        liveWhileActive: false
-    }
+    readonly property DeviceLiveState _live:
+        ModelFactory.create("DeviceLiveState", _root, { liveWhileActive: false })
 
     // The device's inputs by index: the program's current input (uiState)
     // follows the selected row, as the highlight of a pressed input needs
     // it to be on this device (backend._highlight_input).
-    Device {
-        id: _device
-        guid: _root.guid
+    readonly property Device _device: ModelFactory.create("Device", _root, {})
+
+    // The page's device and lock go to _live and _device by hand, not by
+    // Binding objects: both emit their change signals on their own (a
+    // device plugged back in, the id read back in another form, the lock
+    // also following the Run),
+    // which a Binding reports as "changed from elsewhere".
+    function _passGuid() {
+        if (_live)
+            _live.guid = guid
+        if (_device)
+            _device.guid = guid
     }
+    function _passName() {
+        if (_live)
+            _live.deviceName = deviceName
+    }
+    function _passLock() {
+        if (_live)
+            _live.locked = editorLocked
+    }
+    onEditorLockedChanged: _passLock()
 
     // The device index of a listed parent key ("parent:button:3"); -1 when
     // not listed.
@@ -237,11 +254,22 @@ Item {
         onTriggered: _root._showCurrent()
     }
 
-    onGuidChanged: if (_ready) _applyDevice()
-    onDeviceNameChanged: if (_ready) _applyDevice()
+    onGuidChanged: {
+        _passGuid()
+        if (_ready)
+            _applyDevice()
+    }
+    onDeviceNameChanged: {
+        _passName()
+        if (_ready)
+            _applyDevice()
+    }
     onModeChanged: if (_ready) _layout.setMode(mode)
 
     Component.onCompleted: {
+        _passGuid()
+        _passName()
+        _passLock()
         if (uiState)
             mode = uiState.currentMode || mode
         _layout.setMode(mode)

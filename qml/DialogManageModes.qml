@@ -10,6 +10,7 @@ import QtQuick.Window
 import Gremlin.Profile
 import Gremlin.Menus as Menus
 import Gremlin.Style
+import Gremlin.UI
 
 import "confirm.js" as Confirm
 import "control_menu.js" as ControlMenu
@@ -36,8 +37,11 @@ ApplicationWindow {
 
     title: "Manage Modes"
 
-    property ModeHierarchyModel modeHierarchy : ModeHierarchyModel {}
-    property ModeListModel modeList : ModeListModel {}
+    // Made through ModelFactory (PYSIDE-1407): freed with the window.
+    readonly property ModeHierarchyModel modeHierarchy:
+        ModelFactory.create("ModeHierarchyModel", _root, {})
+    readonly property ModeListModel modeList:
+        ModelFactory.create("ModeListModel", _root, {})
 
     // A mode's right-click menu: Find uses… (D-01-SEARCH), Search on the
     // bindings that switch to it or run in it.

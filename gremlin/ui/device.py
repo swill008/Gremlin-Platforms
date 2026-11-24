@@ -302,6 +302,9 @@ class Device(QtCore.QAbstractListModel):
         self._mode: str = "Default"
         # The device asked for, kept while it isn't connected.
         self._wanted = ""
+        self._identifiers: dict[
+            tuple[uuid.UUID, InputType, int], InputIdentifier
+        ] = {}
 
         signal.profileChanged.connect(self._profile_changed_cb)
         signal.inputItemChanged.connect(self.refreshInput)
@@ -410,12 +413,16 @@ class Device(QtCore.QAbstractListModel):
             An InputIdentifier instance referring to the input item with
             the given index.
         """
-        identifier = InputIdentifier(parent=self)
-        identifier.device_guid = self._device.device_guid.uuid
-        input_info = self._convert_index(index)
-        identifier.input_type = input_info[0]
-        identifier.input_id = input_info[1]
-
+        guid = self._device.device_guid.uuid
+        input_type, input_id = self._convert_index(index)
+        # One per input, kept for the model's life: the pane asks on every
+        # open, and the backend holds the current one per device, so one
+        # from an earlier device must stay valid after a switch.
+        key = (guid, input_type, input_id)
+        identifier = self._identifiers.get(key)
+        if identifier is None:
+            identifier = InputIdentifier(guid, input_type, input_id, parent=self)
+            self._identifiers[key] = identifier
         return identifier
 
     def _name(self, identifier: tuple[InputType, int]) -> str:

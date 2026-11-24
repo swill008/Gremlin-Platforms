@@ -13,6 +13,7 @@ import Gremlin.Tools
 import Gremlin.Menus as Menus
 import Gremlin.Style
 import Gremlin.Config
+import Gremlin.UI
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
 
@@ -40,17 +41,12 @@ ApplicationWindow {
     Shortcut { sequence: "Return"; enabled: !_mapper._question; onActivated: {} }
     Shortcut { sequence: "Enter"; enabled: !_mapper._question; onActivated: {} }
 
-    AutoMappingToolInputModel {
-        id: _inputModules
-    }
-
-    AutoMappingToolOutputModel {
-        id: _outputModules
-    }
-
-    Tools {
-        id: tools
-    }
+    // Made through ModelFactory (PYSIDE-1407): freed with the window.
+    readonly property AutoMappingToolInputModel _inputModules:
+        ModelFactory.create("AutoMappingToolInputModel", _mapper, {})
+    readonly property AutoMappingToolOutputModel _outputModules:
+        ModelFactory.create("AutoMappingToolOutputModel", _mapper, {})
+    readonly property Tools tools: ModelFactory.create("Tools", _mapper, {})
 
     // The open Overwrite question (01 S140), for tests.
     property var _question: null
@@ -161,10 +157,16 @@ ApplicationWindow {
             ComboBox {
                 id: _modeSelector
 
-                model: ModeListModel {
-                    // Rebuilt when the profile changes (Create does): the
-                    // picked mode stays picked.
-                    onModelReset: Qt.callLater(_modeSelector.showChosen)
+                readonly property ModeListModel _modes:
+                    ModelFactory.create("ModeListModel", _modeSelector, {})
+
+                model: _modes
+
+                // Rebuilt when the profile changes (Create does): the
+                // picked mode stays picked.
+                Connections {
+                    target: _modeSelector._modes
+                    function onModelReset() { Qt.callLater(_modeSelector.showChosen) }
                 }
 
                 textRole: "name"

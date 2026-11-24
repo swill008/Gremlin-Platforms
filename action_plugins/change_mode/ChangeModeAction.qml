@@ -13,6 +13,7 @@ import Gremlin.ActionPlugins
 import Gremlin.Base
 import "../../qml"
 import Gremlin.Style
+import Gremlin.UI
 
 
 Item {
@@ -20,9 +21,9 @@ Item {
 
     property ChangeModeModel action
 
-    ModeHierarchyModel {
-        id: _modeHierarchyModel
-    }
+    // Made through ModelFactory (PYSIDE-1407): freed with this item.
+    readonly property ModeHierarchyModel _modeHierarchyModel:
+        ModelFactory.create("ModeHierarchyModel", _root, {})
 
     implicitHeight: _content.height
 
@@ -60,9 +61,12 @@ Item {
             TooltipComboBox {
                 id: _switch_combo
 
+                readonly property ModeListModel _modes:
+                    ModelFactory.create("ModeListModel", _switch_combo, {})
+
                 Layout.preferredWidth: Style.dp(200)
 
-                model: ModeListModel {}
+                model: _modes
                 textRole: "name"
                 valueRole: "name"
 
@@ -123,12 +127,18 @@ Item {
                     model: _root.action.targetModes
 
                     RowLayout {
+                        id: _cycleRow
+
                         required property int index
+
+                        // Belongs to the delegate root, never the Repeater.
+                        readonly property ModeListModel _modes:
+                            ModelFactory.create("ModeListModel", _cycleRow, {})
 
                         TooltipComboBox {
                             Layout.preferredWidth: Style.dp(200)
 
-                            model: ModeListModel {}
+                            model: _cycleRow._modes
                             textRole: "name"
                             valueRole: "name"
 
@@ -173,9 +183,12 @@ Item {
             TooltipComboBox {
                 id: temporary_combo
 
+                readonly property ModeListModel _modes:
+                    ModelFactory.create("ModeListModel", temporary_combo, {})
+
                 Layout.preferredWidth: Style.dp(200)
 
-                model: ModeListModel {}
+                model: _modes
                 textRole: "name"
                 valueRole: "name"
 

@@ -637,6 +637,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         self._capture: dict[str, Any] = {}
         # Bulk capture listens (osc_bulk.start_bulk sets it).
         self._bulk = False
+        self._identifiers: dict[tuple[InputType, int] | None, InputIdentifier] = {}
         runtime = OscRuntime()
         runtime.learned.connect(self._on_learned)
         runtime.listenChanged.connect(self.listenChanged)
@@ -894,13 +895,18 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(int, result=InputIdentifier)
     def inputIdentifier(self, index: int) -> InputIdentifier:
-        identifier = InputIdentifier(parent=self)
-        if index < 0 or index >= self.rowCount():
-            return identifier
-        item = self._index_to_input(index)
-        identifier.device_guid = self._osc.device_guid
-        identifier.input_type = item.type
-        identifier.input_id = item.id
+        # One per input, kept for the model's life (see Device.inputIdentifier).
+        key: tuple[InputType, int] | None = None
+        if 0 <= index < self.rowCount():
+            item = self._index_to_input(index)
+            key = (item.type, item.id)
+        identifier = self._identifiers.get(key)
+        if identifier is None:
+            identifier = InputIdentifier(parent=self)
+            if key is not None:
+                identifier.device_guid = self._osc.device_guid
+                identifier.input_type, identifier.input_id = key
+            self._identifiers[key] = identifier
         return identifier
 
     def _index_to_input(self, index: int) -> _RowView:

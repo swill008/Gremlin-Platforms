@@ -17,3 +17,4 @@
 | `help-fix-brief.md` | Shared brief for the 2026-11-22 Help fixes from the fresh-reader test |
 | `control-api.md` | Plan 2026-11-23 (not approved to build): API in the program over a private pipe, client library, `gremlin-ctl` CLI (ships) and MCP server (dev only); user answers recorded |
 | `older-scripts-compat.md` | Plan 2026-11-23 (not approved): R13 script names (`gremlin.input_devices`, `gremlin.control_action`, `deadzone`, optional `gremlin.user_plugin`) as thin modules over `user_script`; spec draft S99-S105, Help, tests, split, 5 questions |
+| `memory-qml-factory.md` | Plan 2026-11-23 (not approved to build): QML-made Python objects made by a `ModelFactory` with the QML item as Qt parent (PYSIDE-WRAPPERS, upstream 02a280e8 way); six biggest holders in stage 1, the other 55 QML files in stage 2, guard test, probe re-run; split tables, 8 questions |
