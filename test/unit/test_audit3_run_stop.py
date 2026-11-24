@@ -4,8 +4,7 @@
 
 """Run -> Stop -> Run leaves nothing behind (audit 3).
 
-- Keys a macro holds at Stop are released (Map to Keyboard: also when its
-  release macro was still queued and Stop dropped it).
+- Keys a macro or Map to Keyboard holds at Stop are released.
 - Mouse buttons held at Stop (Map to Mouse, a macro) are released.
 - Mouse motion of the last Run doesn't move the cursor in the next one.
 - The Logical Device relative axis loop ends with Stop and doesn't feed the
@@ -158,33 +157,38 @@ def test_a_key_a_macro_holds_is_released_at_stop(
     assert keys == [("a", True), ("a", False)]
 
 
-def test_map_to_keyboard_keys_are_released_when_stop_drops_the_release(
-    keys: list[tuple[str, bool]],
+def test_map_to_keyboard_keys_held_at_stop_are_released(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import win32api
+    import win32con
+
     from action_plugins.map_to_keyboard import MapToKeyboardData, MapToKeyboardFunctor
 
+    # Map to Keyboard sends at once through gremlin.keyboard (05 S85), so
+    # record at the driver call under it; run_scope still notes the keys.
+    sent: list[tuple[int, bool]] = []
+    monkeypatch.setattr(
+        win32api,
+        "keybd_event",
+        lambda vk, scan, flags, extra=0: sent.append(
+            (scan, not flags & win32con.KEYEVENTF_KEYUP)
+        ),
+    )
     data = MapToKeyboardData()
     data.keys = [key_from_name("leftcontrol"), key_from_name("a")]
     functor = MapToKeyboardFunctor(data)
     press = Event(InputType.JoystickButton, 1, _GUID, "Default", is_pressed=True)
-    release = Event(InputType.JoystickButton, 1, _GUID, "Default", is_pressed=False)
 
-    mm = _macros_in_a_run()
+    _macros_in_a_run()
     try:
         functor(press, Value(True))
-        assert _wait_for(lambda: len(keys) == 2)
-        # The release (a flushed pulse release does the same) only queues a
-        # macro; here it waits behind an exclusive one, and Stop drops it.
-        mm._is_executing_exclusive = True
-        functor(release, Value(False))
-        time.sleep(0.1)
-        assert len(keys) == 2  # the release hasn't run
+        assert len(sent) == 2  # down at once, no macro thread
     finally:
-        mm._is_executing_exclusive = False
-        run_scope.stop()
-    downs = [k for k, pressed in keys if pressed]
-    ups = [k for k, pressed in keys if not pressed]
-    assert sorted(ups) == sorted(downs)  # both used to stay down
+        run_scope.stop()  # the input is still held
+    downs = [k for k, pressed in sent if pressed]
+    ups = [k for k, pressed in sent if not pressed]
+    assert sorted(ups) == sorted(downs)
     assert ups[0] == downs[-1]  # last pressed, first released
 
 

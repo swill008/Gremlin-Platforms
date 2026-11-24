@@ -442,7 +442,6 @@ def test_map_to_keyboard_puts_modifiers_first_and_releases_in_reverse(
         MapToKeyboardFunctor,
         MapToKeyboardModel,
     )
-    from gremlin import macro
 
     m = keyboard.key_from_name("m")
     shift = keyboard.key_from_name("leftshift")
@@ -460,22 +459,20 @@ def test_map_to_keyboard_puts_modifiers_first_and_releases_in_reverse(
         shiboken6.delete(binding)
     assert data.keys == [shift, ctrl, m]  # recorded: modifiers first
 
-    queued: list[Any] = []
-    monkeypatch.setattr(macro.MacroManager(), "queue_macro", queued.append)
+    sent: list[tuple[str, bool]] = []
+    monkeypatch.setattr(
+        keyboard, "send_key_down", lambda k: sent.append((k.name, True))
+    )
+    monkeypatch.setattr(
+        keyboard, "send_key_up", lambda k: sent.append((k.name, False))
+    )
     functor = MapToKeyboardFunctor(data)
     functor(_button(True), Value(True))
     functor(_button(False), Value(False))
 
-    def keys(one: Any) -> list[tuple[str, bool]]:  # noqa: ANN401
-        return [
-            (step.key.name, step.is_pressed)
-            for step in one.sequence
-            if isinstance(step, macro.KeyAction)
-        ]
-
-    assert [keys(q) for q in queued] == [
-        [(shift.name, True), (ctrl.name, True), (m.name, True)],  # held
-        [(m.name, False), (ctrl.name, False), (shift.name, False)],  # let go
+    assert sent == [
+        (shift.name, True), (ctrl.name, True), (m.name, True),  # held
+        (m.name, False), (ctrl.name, False), (shift.name, False),  # let go
     ]
 
 

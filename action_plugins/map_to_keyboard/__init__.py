@@ -16,7 +16,6 @@ from PySide6 import QtCore
 
 from gremlin import (
     keyboard,
-    macro,
     references,
     util,
 )
@@ -44,17 +43,12 @@ if TYPE_CHECKING:
 
 
 class MapToKeyboardFunctor(AbstractFunctor):
-    def __init__(self, action: MapToKeyboardData) -> None:
-        super().__init__(action)
+    """Holds the keys while the input is held (05 S85).
 
-        self.press = macro.Macro()
-        for key in self.data.keys:
-            self.press.press(key)
-            self.press.pause(0.0)
-        self.release = macro.Macro()
-        for key in reversed(self.data.keys):
-            self.release.release(key)
-            self.release.pause(0.0)
+    Keys go out at once through gremlin.keyboard, not the macro queue, so an
+    exclusive macro never delays them. keyboard.send_key_down notes each key
+    in run_scope, so Stop releases any still held.
+    """
 
     @override
     def __call__(
@@ -65,9 +59,11 @@ class MapToKeyboardFunctor(AbstractFunctor):
     ) -> None:
         if self._should_execute(value):
             if value.current:
-                macro.MacroManager().queue_macro(self.press)
+                for key in self.data.keys:
+                    keyboard.send_key_down(key)
             else:
-                macro.MacroManager().queue_macro(self.release)
+                for key in reversed(self.data.keys):
+                    keyboard.send_key_up(key)
 
 
 class MapToKeyboardModel(ActionModel):
