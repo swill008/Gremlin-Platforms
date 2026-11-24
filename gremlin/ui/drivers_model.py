@@ -811,6 +811,7 @@ class DriversModel(QtCore.QObject):
         self.changed.emit()
         return True
 
+    @QtCore.Slot()
     def _poll(self) -> None:
         if not self._busy or self._results_path is None:
             self._timer.stop()

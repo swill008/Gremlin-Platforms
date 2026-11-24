@@ -1077,6 +1077,7 @@ class HardwareProfile(QtCore.QObject):
             return False
         return print_image(printer, page)
 
+    @QtCore.Slot()
     def _clipboard_changed(self) -> None:
         self._clipboard_serial += 1
         self.clipboardChanged.emit()

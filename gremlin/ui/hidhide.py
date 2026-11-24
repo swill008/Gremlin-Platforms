@@ -751,6 +751,7 @@ class HidHideModel(QtCore.QObject):
             except Exception:
                 logging.getLogger("system").exception("Input Tester watcher not connected")
 
+    @QtCore.Slot()
     def reload(self) -> None:
         self._present = driver_present()
         # 02 S67 (D-02-HIDHIDE-BUSY): access denied is HidHide's window open.
@@ -1072,6 +1073,7 @@ class HidHideModel(QtCore.QObject):
 
     # Input Tester ---------------------------------------------------------
 
+    @QtCore.Slot()
     def _read_result(self) -> None:
         link = _link()
         result = None
@@ -1087,6 +1089,7 @@ class HidHideModel(QtCore.QObject):
             self._result_text, self._result_failed = line
             self.changed.emit()
 
+    @QtCore.Slot()
     def _check_paths(self) -> None:
         """Wrong game copies running, old tester entry; and the result again
         in case its watch was missed."""
