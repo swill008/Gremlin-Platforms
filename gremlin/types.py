@@ -597,6 +597,18 @@ class ActionActivationMode(enum.Enum):
         return value
 
 
+class ModeType(enum.Enum):
+    """How a binding was reached by an event (06 S38, S38a).
+
+    Native: the binding belongs to the current mode. Foreign: the binding
+    belongs to the mode where the press happened and only gets the event that
+    ends the activation.
+    """
+
+    Native = 1
+    Foreign = 2
+
+
 class DataInsertionMode(enum.Enum):
     """Specifies to insertion type to be performed."""
 

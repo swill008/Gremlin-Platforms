@@ -57,6 +57,7 @@ from gremlin.types import (
     Event,
     HatDirection,
     InputType,
+    ModeType,
 )
 
 SLOW_RUN_MS = 300.0  # a Run start or stop this slow is written to system.log
@@ -236,17 +237,26 @@ class VirtualButtonFunctor:
 
     def __call__(self, event: Event, value: Value) -> None:
         states = self._virtual_button(event)
+        if value.mode_type == ModeType.Foreign:
+            # From the press mode only the release goes on (06 S38a, S38d).
+            states = [state for state in states if not state]
         for state in states:
             new_event = self._event_template.clone()
             new_event.is_pressed = state
             new_event.raw_value = state
             self._event_listener.virtual_event.emit(new_event)
 
+    def waits_for_end(self) -> bool:
+        """True while the virtual button is pressed (06 S38d)."""
+        return self._virtual_button._fsm.current_state == "down"
+
 
 class CallbackObject:
     """Represents the callback executed in reaction to an input."""
 
     c_next_virtual_identifier = 1
+    # The event handler gives it the mode type and asks waits_for_end (06 S38).
+    takes_mode_type = True
 
     def __init__(self, binding: profile.InputItemBinding) -> None:
         self._binding = binding
@@ -266,9 +276,20 @@ class CallbackObject:
         values = [ActionProperty.AlwaysExecute in a.properties for a in actions]
         return any(values)
 
-    def __call__(self, event: Event) -> None:
-        for value in self._generate_values(event):
+    def __call__(self, event: Event, mode_type: ModeType = ModeType.Native) -> None:
+        if mode_type == ModeType.Foreign and event.event_type == InputType.JoystickHat:
+            # The press mode's binding is centred (06 S38c).
+            event = event.clone()
+            event.value = HatDirection.Center
+            event.raw_value = HatDirection.Center
+        for value in self._generate_values(event, mode_type):
             self._functor(event, value)
+
+    def waits_for_end(self) -> bool:
+        """True while the binding still needs the event that ends its
+        activation, so it is kept pending across a mode change (06 S38)."""
+        waits = getattr(self._functor, "waits_for_end", None)
+        return bool(waits()) if callable(waits) else False
 
     def _physical_event_setup(self) -> None:
         root = self._binding.root_action
@@ -335,15 +356,17 @@ class CallbackObject:
             CallbackObject(virt_binding),
         )
 
-    def _generate_values(self, event: Event) -> list[Value]:
+    def _generate_values(
+        self, event: Event, mode_type: ModeType = ModeType.Native
+    ) -> list[Value]:
         if event.event_type in [InputType.JoystickAxis, InputType.JoystickHat]:
-            value = Value(event.value)
+            value = Value(event.value, mode_type)
         elif event.event_type in [
             InputType.JoystickButton,
             InputType.Keyboard,
             InputType.VirtualButton,
         ]:
-            value = Value(event.is_pressed)
+            value = Value(event.is_pressed, mode_type)
         else:
             raise error.GremlinError("Invalid event type")
 
@@ -681,9 +704,9 @@ class CodeRunner:
         self.event_handler.clear()
 
     def _drop_release_actions(self) -> None:
-        # Release actions waiting at Stop are dropped (decision R2): the held
-        # outputs are released and the drivers reset anyway.
-        event_helpers.ButtonReleaseActions().reset()
+        # Bindings waiting for a release at Stop are dropped (decision R2):
+        # the held outputs are released and the drivers reset anyway.
+        self.event_handler.clear_pending()
 
     def _end_scripts(self) -> None:
         # Script callbacks and timers end with the Run; sys.path is put back
@@ -713,7 +736,7 @@ class CodeRunner:
         self.event_handler._active_mode = self._profile.modes.first_mode
         self.event_handler._previous_mode = self._profile.modes.first_mode
         user_script.callback_registry.clear()
-        event_helpers.ButtonReleaseActions().reset()
+        self.event_handler.clear_pending()
         event_helpers.ModeChangeActions().reset()
 
     def _listen_to_mode_changes(self, on: bool) -> None:

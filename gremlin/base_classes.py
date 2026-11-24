@@ -42,6 +42,7 @@ from gremlin.types import (
     Event,
     HatDirection,
     InputType,
+    ModeType,
     PropertyType,
 )
 
@@ -73,14 +74,31 @@ class UserFeedback:
 class Value:
     """Represents an input value, keeping track of raw and "seen" value."""
 
-    def __init__(self, raw: bool | float | HatDirection) -> None:
+    def __init__(
+        self,
+        raw: bool | float | HatDirection,
+        mode_type: ModeType = ModeType.Native,
+    ) -> None:
         """Creates a new value and initializes it.
 
         Args:
             raw: the initial raw data
+            mode_type: how the binding getting the value was reached (06 S38)
         """
         self._raw = raw
         self._current = raw
+        self._mode_type = mode_type
+
+    def clone(self) -> Value:
+        """Returns a copy with the same raw, current value and mode type."""
+        value = Value(self._raw, self._mode_type)
+        value.current = self._current
+        return value
+
+    @property
+    def mode_type(self) -> ModeType:
+        """How the binding getting the value was reached."""
+        return self._mode_type
 
     @property
     def raw(self) -> bool | float | HatDirection:
@@ -634,6 +652,9 @@ class AbstractFunctor(Generic[T], ABC):
         """
         self.data: T = instance
         self.functors = {}
+        # Set by _should_execute: a Native run started a press and release
+        # pair whose end hasn't come yet (06 S38, waits_for_end).
+        self._awaiting_end = False
 
         # Recursively generate all functors
         for selector in instance._valid_selectors():
@@ -680,6 +701,7 @@ class AbstractFunctor(Generic[T], ABC):
             properties: additional property information to pass to child
                 functors
         """
+        # Every child runs, none skipped (upstream e30732f8).
         for functor in functors:
             functor(event, value, properties)
 
@@ -704,7 +726,7 @@ class AbstractFunctor(Generic[T], ABC):
                 functors
         """
         self._process_event(functors, event_press, value_press, properties)
-        value_release = Value(False)
+        value_release = Value(False, value_press.mode_type)
         event_release = event_press.clone()
         event_release.is_pressed = False
         event_release.raw_value = None
@@ -726,34 +748,94 @@ class AbstractFunctor(Generic[T], ABC):
         clock.sleep(0.05)
         release()
 
-    def _should_execute(self, value: Value) -> bool:
+    def _should_execute(self, value: Value, inverted: bool = False) -> bool:
         """Checks if the action should execute based on the value and
         internal activation behavior.
 
+        A Foreign value (the press happened in another mode, 06 S38a) runs
+        only the ending part: activation Both, the end value (a release, a
+        press when inverted, a hat centre), never an axis. A Native run that
+        starts a press and release pair marks the action as waiting for the
+        end (waits_for_end).
+
         Args:
             value: the current input value to consider
+            inverted: True if a release starts the pair and a press ends it
 
         Returns:
             True if the action should execute, False otherwise
         """
+        if value.mode_type == ModeType.Foreign:
+            run = (
+                self.data.activation_mode == ActionActivationMode.Both
+                and _is_end_value(value.current, inverted)
+            )
+            if run:
+                self._awaiting_end = False
+            return run
+
         match self.data.activation_mode:
             case ActionActivationMode.Both:
-                return True
+                run = True
             case ActionActivationMode.Deactivated:
-                return False
+                run = False
             case ActionActivationMode.Press:
-                return value.current
+                run = bool(value.current)
             case ActionActivationMode.Release:
-                return not value.current
+                run = not value.current
             case _:
                 raise GremlinError(
                     "Invalid activation mode encountered when executing "
                     + f"action '{self.data.id}'"
                 )
+        if run:
+            self._awaiting_end = self._starts_pair(value, inverted)
+        return run
+
+    def _starts_pair(self, value: Value, inverted: bool = False) -> bool:
+        """True if running with this value starts a press and release pair
+        (activation Both, not the end value, not an axis)."""
+        current = value.current
+        return (
+            self.data.activation_mode == ActionActivationMode.Both
+            and not isinstance(current, float)
+            and not _is_end_value(current, inverted)
+        )
+
+    def waits_for_end(self) -> bool:
+        """True while this functor or a child still needs the event that ends
+        the activation (06 S38): the event handler keeps the binding pending
+        across a mode change while this is True. Containers with their own
+        state override it."""
+        if getattr(self, "_awaiting_end", False):
+            return True
+        return any(
+            child.waits_for_end()
+            for children in getattr(self, "functors", {}).values()
+            for child in children
+        )
+
+    @staticmethod
+    def _sequence_value(value: Value, value_press: Value) -> Value:
+        """The value as part of the sequence its press started: a sequence
+        belongs to the press's mode, so it carries the press's mode type."""
+        sequence_value = Value(value.raw, value_press.mode_type)
+        sequence_value.current = value.current
+        return sequence_value
 
     def reset(self) -> None:
         """Stops outputs that go on without further input events (relative
         axis motion); nothing by default (05 S145, upstream d1cd7e1b)."""
+
+
+def _is_end_value(current: object, inverted: bool = False) -> bool:
+    """True for the value that ends an activation: a release (a press when
+    inverted) or a hat centre; never an axis float."""
+    if isinstance(current, HatDirection):
+        return current == HatDirection.Center
+    if isinstance(current, float):
+        return False
+    return current == inverted
 
 
 def reset_functor_tree(functor: AbstractFunctor) -> None:

@@ -23,7 +23,6 @@ from gremlin import (
     common,
     device_initialization,
     error,
-    event_helpers,
     input_monitor,
     keyboard,
     mode_manager,
@@ -44,6 +43,7 @@ from gremlin.osc import OSC_DEVICE_UUID
 from gremlin.types import (
     HatDirection,
     InputType,
+    ModeType,
 )
 from vigem.ids import is_vigem_xbox_summary
 
@@ -582,6 +582,10 @@ class EventHandler(QtCore.QObject):
         self.callbacks = {}
         self._event_lookup = {}
         self.known_modes: set[str] = set()
+        # Per input, the bindings still waiting for the event that ends
+        # their activation, in press order, with the mode they belong to
+        # (06 S38). Input thread only: no lock, no wait.
+        self._pending: dict[types.Event, list[tuple[str, Callable]]] = {}
 
     def add_plugin(self, plugin: Any) -> None:  # noqa: ANN401
         """Adds a new plugin to be attached to event callbacks.
@@ -633,12 +637,26 @@ class EventHandler(QtCore.QObject):
                 continue
             for event, callbacks in moved.items():
                 current.setdefault(event, []).extend(callbacks)
+        for event, entries in self._pending.items():
+            self._pending[event] = [
+                (new_name if mode == old_name else mode, cb) for mode, cb in entries
+            ]
 
     def drop_mode(self, name: str) -> None:
         """Remove callbacks registered for a deleted mode."""
         self.known_modes.discard(name)
         for device_cb in self.callbacks.values():
             device_cb.pop(name, None)
+        for event in list(self._pending):
+            kept = [(mode, cb) for mode, cb in self._pending[event] if mode != name]
+            if kept:
+                self._pending[event] = kept
+            else:
+                del self._pending[event]
+
+    def clear_pending(self) -> None:
+        """Forgets the bindings waiting for a release (Run start and Stop)."""
+        self._pending = {}
 
     def build_event_lookup(self, mode_list: list[tree.TreeNode]) -> None:
         """Builds the lookup table linking events to callbacks.
@@ -702,6 +720,7 @@ class EventHandler(QtCore.QObject):
         """Removes all attached callbacks."""
         self.callbacks = {}
         self.known_modes = set()
+        self._pending = {}
 
     @QtCore.Slot(types.Event)
     def process_event(self, event: types.Event) -> None:
@@ -716,6 +735,16 @@ class EventHandler(QtCore.QObject):
         threads.assert_input("EventHandler.process_event")
         if not event.mode:
             event.mode = mode_manager.ModeManager().current.name
+        elif (
+            event.event_type == InputType.VirtualButton
+            and event.mode != (current := mode_manager.ModeManager().current.name)
+        ):
+            # A button made from an axis range or hat directions of the press
+            # mode lets go after a mode change (06 S38d): it reaches that
+            # mode's binding as Foreign, through the pending table, never as
+            # Native.
+            event = event.clone()
+            event.mode = current
         if trace_timing.on:
             trace_timing.begin(event)
         # Process callbacks defined via actions or scripts.
@@ -763,25 +792,61 @@ class EventHandler(QtCore.QObject):
     def _run_callbacks(
         self, event: types.Event, callbacks: list[Callable[[types.Event], None]]
     ) -> None:
+        """Runs the bindings still waiting from an earlier mode (Foreign,
+        first) and then the current mode's (Native), and notes which of them
+        still wait for the event that ends the activation (06 S38)."""
+        pending = self._pending.pop(event, None) if self._pending else None
+        still: list[tuple[str, Callable]] = []
+        if pending:
+            for mode, cb in pending:
+                if any(cb is native for native in callbacks):
+                    continue  # the current mode routes the input to it
+                if not self.process_callbacks and not getattr(
+                    cb, "always_execute", False
+                ):
+                    still.append((mode, cb))
+                    continue
+                if self._run_foreign(event, cb):
+                    still.append((mode, cb))
         for cb in callbacks:
             # A vJoy error is logged like any other failure; it no longer
             # pauses the profile (decision 06 Q10).
             try:
                 cb(event)
             except Exception:
-                # One failing action doesn't stop the others, or the release
-                # handling below.
+                # One failing action doesn't stop the others.
                 logging.getLogger("system").exception(
                     f"An action for {event} failed"
                 )
+                continue
+            if _waits_after_native(event, cb):
+                still.append((event.mode, cb))
+        if still:
+            self._pending[event] = still
 
-        # Call button release callbacks after basic event processing completes.
+    def _run_foreign(self, event: types.Event, cb: Callable) -> bool:
+        """Gives a binding of the press mode the event as Foreign (06 S38a);
+        True while it still waits for the end."""
         try:
-            event_helpers.ButtonReleaseActions().process_release(event)
+            if _takes_mode_type(cb):
+                cb(event, ModeType.Foreign)
+                return bool(cb.waits_for_end())
+            # A script callback gets the release (a hat: a centre) once
+            # (06 S38b); a repeated press (key repeat) leaves it waiting.
+            if event.event_type == InputType.JoystickHat:
+                centre = event.clone()
+                centre.value = HatDirection.Center
+                centre.raw_value = HatDirection.Center
+                cb(centre)
+                return False
+            if event.is_pressed:
+                return True
+            cb(event)
         except Exception:
             logging.getLogger("system").exception(
                 f"A release action for {event} failed"
             )
+        return False
 
     def _matching_callbacks(
         self, event: types.Event
@@ -826,3 +891,26 @@ class EventHandler(QtCore.QObject):
             if keyword in signature:
                 callback = plugin.install(callback, functools.partial)
         return callback
+
+
+def _takes_mode_type(cb: object) -> bool:
+    """True for a binding's callback (CallbackObject), which takes the mode
+    type and answers waits_for_end; False for a script callback."""
+    return getattr(type(cb), "takes_mode_type", False) is True
+
+
+def _waits_after_native(event: types.Event, cb: Callable) -> bool:
+    """Whether a callback just run as Native waits for the end (06 S38)."""
+    if _takes_mode_type(cb):
+        return bool(cb.waits_for_end())
+    # A script callback waits while the button is down or the hat is off
+    # centre (06 S38b).
+    if event.event_type == InputType.JoystickHat:
+        return event.value not in (None, HatDirection.Center)
+    if event.event_type in (
+        InputType.JoystickButton,
+        InputType.Keyboard,
+        InputType.VirtualButton,
+    ):
+        return bool(event.is_pressed)
+    return False
