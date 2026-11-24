@@ -905,7 +905,7 @@ function topics() {
                 + _see([
                     "Share: both inputs use the same action, so a change to one changes both.",
                     "Duplicate: a separate copy you can change on its own.",
-                    "Each entry in the list reads <b>[mode] device - input › action</b>, for example <b>[Default] Joystick - Button 2 › Map to vJoy</b>.",
+                    "Each entry shows the mode in brackets, the device and input, then the action after an arrow, for example '[Default] Joystick - Button 2' followed by 'Map to vJoy'.",
                     "The list is in order, with numbers by value: Button 2 comes before Button 10. Each action is listed once.",
                     "Actions you are editing and haven't saved yet are listed the same way."
                 ])

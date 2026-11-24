@@ -374,7 +374,9 @@ def test_auto_load_held_by_unsaved_edits_stops_the_open_profile(
     calls: list = []
     settings = {
         ("profile", "automation", "enable-auto-loading"): True,
-        ("profile", "automation", "no-profile-action"): "keep" if keep_running else "stop",
+        ("profile", "automation", "no-profile-action"): (
+            "keep" if keep_running else "stop"
+        ),
         ("profile", "automation", "default-profile"): "",
     }
     _AUTOLOAD(_fake_backend(settings, True, calls), "C:/x/game.exe")

@@ -1551,3 +1551,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent B4-DOC: B3 leftovers + B4 map 05/06 + Help macro (a41d0834) | agent fix | 3-8 min | 4 min | 20:34-20:38, B4-DOC |
 | 2026-11-23 | Agent B4-PORT: 18 upstream macro tests ported, 8 fail on old code (35097cf6) | agent fix | 5-10 min | 7 min | 20:33-20:40, B4-PORT |
 | 2026-11-23 | Lead: merge B5 (6 commits) + targeted tests 227 | merge+test | ~5 min | 3 min | 20:37-20:39, lead |
+| 2026-11-23 | Agent B3-TEST2: fixture off ButtonReleaseActions, vJoy fakes read back, 4 new tests (d5633084) | refactor | 5-10 min | 8 min | 20:33-20:41, B3-TEST2 |
+| 2026-11-23 | Agent B4-TESTS: 11 test files on run/stop_macro, 157+18 passed (f7927a79) | refactor | 5-10 min | 3 min | 20:42-20:45, B4-TESTS |
+| 2026-11-23 | Agent MAPCHECK: today's map entries to built, names/tests/counts on 12 pages (30b71778) | agent docs | 8-10 min | 6 min | 20:47-20:53, MAPCHECK |
+| 2026-11-23 | Full run B3+B4+B5 merged (5 failed: 2 release fakes, Help bold, OSC regression, journey flake) | test | ~11 min | 8 min | 20:47-20:55, lead |
+| 2026-11-23 | Agent REL-FIX: release-live-mode fakes keep Logical state (82fa7757) | agent fix | 3-8 min | 1 min | 20:57-20:58, REL-FIX |
