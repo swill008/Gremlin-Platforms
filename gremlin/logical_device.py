@@ -5,13 +5,12 @@
 from __future__ import annotations
 
 import collections
-import re
 import threading
 import uuid
 from typing import cast
 
 import dill
-from gremlin.common import SingletonMetaclass
+from gremlin.common import SingletonMetaclass, natural_key
 from gremlin.edits import note_edit
 from gremlin.error import (
     GremlinError,
@@ -31,19 +30,6 @@ _VALUE_LOCK = threading.Lock()
 def _same_group(first: str, second: str) -> bool:
     """True when two group names differ only in capitals or spacing."""
     return " ".join(first.split()).casefold() == " ".join(second.split()).casefold()
-
-
-_DIGITS = re.compile(r'(\d+)')
-
-
-def _natural_key(text: str) -> tuple[tuple[str | int, ...], str]:
-    # From R16 (58499ab9): numbers sort by value, so Button 2 comes before Button 10.
-    parts = _DIGITS.split(text)
-    key = tuple(
-        int(part) if index % 2 else part.casefold()
-        for index, part in enumerate(parts)
-    )
-    return key, text
 
 
 def _short(entry: object) -> str:
@@ -628,7 +614,7 @@ class LogicalRows:
             e
             for e in sorted(
                 self._inputs.values(),
-                key=lambda x: (x.type.name, _natural_key(x.label)),
+                key=lambda x: (x.type.name, natural_key(x.label)),
             )
             if e.type in type_list
         ]
@@ -818,7 +804,7 @@ class LogicalRows:
                 if key_name == "user":
                     bucket.sort(
                         key=lambda item: (
-                            _natural_key(item.second_name or item.system_name),
+                            natural_key(item.second_name or item.system_name),
                             item.id,
                         )
                     )
@@ -829,7 +815,7 @@ class LogicalRows:
 
     def sort_groups(self) -> None:
         self._changed()
-        self._groups.sort(key=_natural_key)
+        self._groups.sort(key=natural_key)
 
     def memento(self) -> dict:
         return {

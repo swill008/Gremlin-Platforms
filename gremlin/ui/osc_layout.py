@@ -28,9 +28,10 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import clock, osc_device_file, osc_pattern, shared_state
+from gremlin.common import natural_key
 from gremlin.config import Configuration
 from gremlin.error import GremlinError
-from gremlin.logical_device import _natural_key, _same_group
+from gremlin.logical_device import _same_group
 from gremlin.modules import store
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime
 from gremlin.osc_rows import OscRow, OscRows
@@ -630,7 +631,7 @@ class OscLayoutStore:
             bucket = [item for item in items if (item.group or "") == folder]
             if key_name == "user":
                 bucket.sort(
-                    key=lambda i: (_natural_key(i.second_name or i.address), i.id)
+                    key=lambda i: (natural_key(i.second_name or i.address), i.id)
                 )
             else:
                 bucket.sort(key=lambda i: (i.address.casefold(), i.type.value, i.id))
@@ -639,7 +640,7 @@ class OscLayoutStore:
         self._save()
 
     def sort_groups(self) -> None:
-        self._groups.sort(key=_natural_key)
+        self._groups.sort(key=natural_key)
         self._save()
 
     def set_user_label(self, identifier: object, text: str) -> None:

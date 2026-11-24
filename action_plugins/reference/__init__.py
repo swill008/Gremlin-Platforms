@@ -22,8 +22,9 @@ from gremlin.base_classes import (
     UserFeedback,
     Value,
 )
+from gremlin.common import natural_key
 from gremlin.error import GremlinError
-from gremlin.profile import Library
+from gremlin.profile import InputItem, Library, Profile, reachable
 from gremlin.types import (
     ActionProperty,
     InputType,
@@ -118,17 +119,58 @@ class ReferenceModel(ActionModel):
         # Grab library and get all actions that fit with the given input
         # modality: those an input uses (not deleted or replaced ones) and
         # those in the input being edited.
-        actions = self.library.pick_list(
-            selector, self._data, self._binding_model.input_item_binding.input_item
-        )
+        item = self._binding_model.input_item_binding.input_item
+        actions = self.library.pick_list(selector, self._data, item)
+        entries = self._placed(actions, item)
         self._actions = reuse_or_replace_selection_model(
             self._actions,
-            [a.action_label for a in actions],
-            [str(a.id) for a in actions],
+            [label for label, _ in entries],
+            [str(a.id) for _, a in entries],
             self,
-            bootstrap=[a.icon for a in actions],
+            bootstrap=[a.icon for _, a in entries],
         )
         return self._actions
+
+    def _placed(
+        self, actions: list[AbstractActionData], item: InputItem | None
+    ) -> list[tuple[str, AbstractActionData]]:
+        """The offered actions as "[mode] device - input › action" (05 S60b),
+        inputs sorted by mode, device and input with numbers by value, each
+        action once under the first input that holds it, in its order there.
+        The input being edited (in a pane, its draft) comes first among
+        equals, so its actions carry its place."""
+        wanted = {a.id: a for a in actions}
+        inputs = ([item] if item is not None else []) + [
+            other for other in self.library._inputs() if other is not item
+        ]
+
+        def order(entry: InputItem) -> tuple:
+            mode_name, device, name = references.place_parts(entry)
+            uid = getattr(entry.device_id, "uuid", entry.device_id)
+            return (
+                natural_key(mode_name),
+                natural_key(device),
+                str(uid),
+                natural_key(name),
+            )
+
+        found: list[tuple[str, AbstractActionData]] = []
+        seen: set[uuid.UUID] = set()
+        for entry in sorted(inputs, key=order):
+            place = None
+            for action in reachable(Profile.roots_of([entry])):
+                if action.id not in wanted or action.id in seen:
+                    continue
+                if place is None:
+                    place = references.place_label(entry)
+                seen.add(action.id)
+                found.append((f"{place} › {action.action_label}", action))
+        # Anything held by no input (not expected: pick_list offers only
+        # those) keeps its bare label, last.
+        found.extend(
+            (a.action_label, a) for a in actions if a.id not in seen
+        )
+        return found
 
     @QtCore.Slot(str)
     def referenceAction(self, value: str) -> None:

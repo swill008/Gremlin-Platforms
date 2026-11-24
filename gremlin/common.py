@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import weakref
 from typing import (
@@ -20,6 +21,19 @@ from gremlin.types import (
 )
 
 T = TypeVar("T")
+
+_DIGITS = re.compile(r"(\d+)")
+
+
+def natural_key(text: str) -> tuple[tuple[str | int, ...], str]:
+    """Sort key with numbers by value, so Button 2 comes before Button 10
+    (R16, 58499ab9); capitals ignored, the text itself breaks ties."""
+    parts = _DIGITS.split(text)
+    key = tuple(
+        int(part) if index % 2 else part.casefold()
+        for index, part in enumerate(parts)
+    )
+    return key, text
 
 
 class SingletonDecorator(Generic[T]):

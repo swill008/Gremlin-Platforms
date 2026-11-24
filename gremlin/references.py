@@ -203,6 +203,25 @@ def device_name(guid: object) -> str:
     return binding_edit.device_name(uid)
 
 
+def place_parts(item: Any) -> tuple[str, str, str]:  # noqa: ANN401
+    """An input's mode, shown device name and input name, the parts of
+    place_label()."""
+    device = getattr(item, "device_id", None)
+    uid = getattr(device, "uuid", device)
+    return (
+        str(getattr(item, "mode", "") or ""),
+        device_name(uid),
+        input_label(item.input_type, item.input_id, uid),
+    )
+
+
+def place_label(item: Any) -> str:  # noqa: ANN401
+    """Where an input is, as pick lists show it: "[mode] device - input"
+    (05 S60b)."""
+    mode_name, device, name = place_parts(item)
+    return f"[{mode_name}] {device} - {name}"
+
+
 def in_step(number: int, ref: Reference) -> Reference:
     """A macro step's reference as its macro declares it."""
     where = (f"Step {number}", *ref.where)

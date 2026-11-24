@@ -25,8 +25,9 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import common
+from gremlin.common import natural_key
 from gremlin.error import GremlinError
-from gremlin.logical_device import _natural_key, _same_group
+from gremlin.logical_device import _same_group
 from gremlin.modules import hardware, store
 from gremlin.modules.claim import claim_friendly, claim_ids, read_claim, type_of
 from gremlin.modules.ids import guid_key
@@ -406,16 +407,16 @@ class HardwareLayoutStore:
             bucket = [item for item in items if (item.group or "") == folder]
             if key_name == "user":
                 bucket.sort(
-                    key=lambda i: (_natural_key(i.second_name or i.system_name), i.id)
+                    key=lambda i: (natural_key(i.second_name or i.system_name), i.id)
                 )
             else:
-                bucket.sort(key=lambda i: (_natural_key(i.system_name), i.id))
+                bucket.sort(key=lambda i: (natural_key(i.system_name), i.id))
             order.extend(item.identifier for item in bucket)
         self._order = order
         self._save()
 
     def sort_groups(self) -> None:
-        self._groups.sort(key=_natural_key)
+        self._groups.sort(key=natural_key)
         self._save()
 
     def set_user_label(self, identifier: object, text: str) -> None:

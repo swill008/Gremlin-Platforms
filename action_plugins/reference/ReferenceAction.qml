@@ -44,6 +44,8 @@ Item {
             onClicked: function () {
                 _root.action.referenceAction(_root.referencesModel.currentValue)
             }
+
+            PointerTip { text: "Share this action" }
         }
 
         IconButton {
@@ -53,6 +55,8 @@ Item {
             onClicked: function () {
                 _root.action.duplicateAction(_root.referencesModel.currentValue)
             }
+
+            PointerTip { text: "Duplicate this action" }
         }
     }
 }

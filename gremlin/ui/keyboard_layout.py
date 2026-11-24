@@ -13,7 +13,6 @@ The pane is the shared draft pane (05 Q5).
 
 from __future__ import annotations
 
-import re
 import uuid
 from collections.abc import Hashable
 from dataclasses import dataclass, replace
@@ -24,6 +23,7 @@ from PySide6 import QtCore
 import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import input_thread, keyboard, threads
+from gremlin.common import natural_key
 from gremlin.error import GremlinError
 from gremlin.modules import ids, store
 from gremlin.modules.claim import key_id, key_id_of
@@ -72,10 +72,6 @@ def key_row(code: tuple) -> str:
 def key_code(ident: int) -> tuple:
     """The profile's key ((scan code, extended)) of a key id."""
     return (ident & 0xFFFF, bool(ident & 0x10000))
-
-
-def _natural_key(text: str) -> list:
-    return [int(p) if p.isdigit() else p.casefold() for p in re.split(r"(\d+)", text)]
 
 
 def _sort_code(code: tuple) -> tuple:
@@ -333,15 +329,15 @@ class KeyboardLayoutStore:
         for folder in [""] + self._groups:
             bucket = [item for item in items if (item.group or "") == folder]
             if key_name_ == "user":
-                bucket.sort(key=lambda i: _natural_key(i.second_name or i.system_name))
+                bucket.sort(key=lambda i: natural_key(i.second_name or i.system_name))
             else:
-                bucket.sort(key=lambda i: _natural_key(i.system_name))
+                bucket.sort(key=lambda i: natural_key(i.system_name))
             order.extend(item.identifier for item in bucket)
         self._order = order
         self._save()
 
     def sort_groups(self) -> None:
-        self._groups.sort(key=_natural_key)
+        self._groups.sort(key=natural_key)
         self._save()
 
     def set_user_label(self, identifier: object, text: str) -> None:
