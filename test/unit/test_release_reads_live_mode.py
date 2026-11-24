@@ -2,8 +2,10 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The automatic release (06 S38) reads the mode from the mode system when
-the button is released, not from a copy kept up to date by `mode_changed`.
+"""The release after a mode change (06 S38) reads the mode from the mode
+system when the button is released, not from a copy kept up to date by
+`mode_changed`; since D-06-MODE-RELEASE the event handler's pending table
+sends it to the press mode's binding.
 
 A copy out of step sent an extra Logical Device release in the mode the
 button was pressed in (CI 7bfde51b, seed 836062: [True, False, False])."""
@@ -21,9 +23,9 @@ from typing import Any
 import pytest
 from PySide6 import QtCore
 
-from gremlin import event_handler, event_helpers, mode_manager
-from gremlin.base_classes import Value
+from gremlin import event_handler, mode_manager
 from gremlin.logical_device import LogicalDevice
+from gremlin.profile import Profile
 from gremlin.types import Event, InputType
 
 _GUID = uuid.UUID("77777777-5555-2222-3333-666666666666")
@@ -43,21 +45,20 @@ def modes(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     monkeypatch.setattr(mode_manager, "_known_modes", lambda: set())
     mm = mode_manager.ModeManager()
     stack = list(mm._mode_stack)
-    bra = event_helpers.ButtonReleaseActions()
-    bra.reset()
+    handler = event_handler.EventHandler()
+    handler.clear()
+    handler.resume()
     yield mm
-    bra.reset()
+    handler.clear()
     mm._mode_stack = stack
     mm.mode_changed.emit(mm.current.name)
 
 
 @pytest.fixture
-def ld_button(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Any, Any, list]]:
-    """A Map to Logical Device button functor, its control and its updates."""
-    from action_plugins.map_to_logical_device import (
-        MapToLogicalDeviceData,
-        MapToLogicalDeviceFunctor,
-    )
+def ld_button(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Any, list]]:
+    """A Map to Logical Device button bound in Default (a real
+    CallbackObject in the event handler), its control and its updates."""
+    from gremlin import code_runner
 
     control = LogicalDevice().create(InputType.JoystickButton)
     updates: list[tuple[Any, Any]] = []
@@ -66,10 +67,20 @@ def ld_button(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Any, Any, list]
         "update",
         lambda self, value: updates.append((self, value)),
     )
-    data = MapToLogicalDeviceData(InputType.JoystickButton)
-    data.logical_input_id = control.id
-    functor = MapToLogicalDeviceFunctor(data)
-    yield functor, control, updates
+    profile = Profile()
+    item = profile.get_input_item(
+        _GUID, InputType.JoystickButton, 3, "Default", create_if_missing=True
+    )
+    action = profile.library.create("Map to Logical Device", InputType.JoystickButton)
+    action.logical_input_id = control.id
+    item.add_item_binding().root_action.insert_action(action, "children")
+    event_handler.EventHandler().add_callback(
+        _GUID,
+        "Default",
+        Event(InputType.JoystickButton, 3, _GUID, "Default"),
+        code_runner.CallbackObject(item.action_sequences[0]),
+    )
+    yield control, updates
     LogicalDevice().delete(control.identifier)
 
 
@@ -77,63 +88,61 @@ def _switch(name: str) -> None:
     mode_manager.ModeManager().switch_to(mode_manager.Mode(name, None))
 
 
-def _button(mode: str, pressed: bool) -> Event:
-    return Event(InputType.JoystickButton, 3, _GUID, mode, is_pressed=pressed)
+def _button(pressed: bool) -> Event:
+    # No mode, as from the hardware: the handler reads the live one.
+    return Event(InputType.JoystickButton, 3, _GUID, "", is_pressed=pressed)
 
 
-def _press_release(functor: Any, mode_at_release: str) -> None:  # noqa: ANN401
-    """Press in Default; release in mode_at_release (the old mode's action
-    only sees the release when the mode stayed the same)."""
-    functor(_button("Default", True), Value(True))
-    if mode_at_release != "Default":
-        _switch(mode_at_release)
-    release = _button(mode_at_release, False)
-    if mode_at_release == "Default":
-        functor(release, Value(False))
-    event_handler.EventHandler().process_event(release)
+def _send(pressed: bool) -> None:
+    event_handler.EventHandler().process_event(_button(pressed))
 
 
 def test_a_missed_mode_change_sends_no_extra_logical_release(
     modes: Any,  # noqa: ANN401
-    ld_button: tuple[Any, Any, list],
+    ld_button: tuple[Any, list],
 ) -> None:
-    functor, control, updates = ld_button
+    control, updates = ld_button
     _switch("Flight")
-    # The release registry misses this change (as on CI): only the mode
-    # system knows the mode is Default again.
+    # No listener sees this change: only the mode system knows the mode
+    # is Default again.
     modes.blockSignals(True)
     try:
         _switch("Default")
     finally:
         modes.blockSignals(False)
-    _press_release(functor, "Default")
+    _send(True)
+    _send(False)
     assert [v for c, v in updates if c is control] == [True, False]
 
 
 def test_a_mode_change_while_held_releases_the_logical_button_once(
     modes: Any,  # noqa: ANN401
-    ld_button: tuple[Any, Any, list],
+    ld_button: tuple[Any, list],
 ) -> None:
-    functor, control, updates = ld_button
+    control, updates = ld_button
     _switch("Default")
-    _press_release(functor, "Flight")
+    _send(True)
+    _switch("Flight")
+    _send(False)
+    _send(False)  # a repeated release: nothing more
     assert [v for c, v in updates if c is control] == [True, False]
-    assert event_helpers.ButtonReleaseActions()._registry == {}
+    # The press mode's entry is spent (D-06-MODE-RELEASE pending table).
+    assert not any(event_handler.EventHandler()._pending.values())
 
 
-def test_a_mode_change_the_registry_missed_still_releases_the_button(
+def test_a_mode_change_the_listeners_missed_still_releases_the_button(
     modes: Any,  # noqa: ANN401
-    ld_button: tuple[Any, Any, list],
+    ld_button: tuple[Any, list],
 ) -> None:
     """The reverse: a copy left on the old mode used to skip the release
     and leave the Logical Device button held."""
-    functor, control, updates = ld_button
+    control, updates = ld_button
     _switch("Default")
-    functor(_button("Default", True), Value(True))
+    _send(True)
     modes.blockSignals(True)
     try:
         _switch("Flight")
     finally:
         modes.blockSignals(False)
-    event_handler.EventHandler().process_event(_button("Flight", False))
+    _send(False)
     assert [v for c, v in updates if c is control] == [True, False]

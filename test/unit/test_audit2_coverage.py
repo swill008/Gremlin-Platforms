@@ -120,28 +120,45 @@ def test_a_script_folder_goes_on_the_import_path_once(tmp_path: Path) -> None:
         sys.path[:] = saved
 
 
-def test_a_failing_action_still_runs_the_release_actions() -> None:
+def test_a_failing_action_still_runs_the_release_actions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failing callback in the press mode doesn't stop the others there
+    from getting the release after a mode change (06 S38, D-06-MODE-RELEASE)."""
+    from gremlin import mode_manager
     from gremlin.event_handler import EventHandler
-    from gremlin.event_helpers import ButtonReleaseActions
 
+    monkeypatch.setattr(mode_manager, "_known_modes", lambda: set())
+    mm = mode_manager.ModeManager()
+    stack = list(mm._mode_stack)
     handler = EventHandler()
-    press = Event(InputType.JoystickButton, 78, _GUID, "Default", is_pressed=True)
-    release = Event(InputType.JoystickButton, 78, _GUID, "Default", is_pressed=False)
-    released: list[bool] = []
+    template = Event(InputType.JoystickButton, 78, _GUID, "Default")
+    seen: list[bool] = []
 
     def fails(_event: Event) -> None:
         raise RuntimeError("an action failed")
 
-    releases = ButtonReleaseActions()
-    releases.register_callback(lambda e: released.append(e.is_pressed), press)
-    handler.add_callback(_GUID, "Default", release, fails)
+    handler.clear()
+    handler.add_callback(_GUID, "Default", template, fails)
+    handler.add_callback(
+        _GUID, "Default", template, lambda e: seen.append(e.is_pressed)
+    )
     handler.process_callbacks = True
     try:
-        handler.process_event(release)  # no error out of it
+        mm.switch_to(mode_manager.Mode("Default", None))
+        handler.process_event(
+            Event(InputType.JoystickButton, 78, _GUID, "", is_pressed=True)
+        )
+        mm.switch_to(mode_manager.Mode("Flight", None))
+        # No error out of it; the second callback still gets the release.
+        handler.process_event(
+            Event(InputType.JoystickButton, 78, _GUID, "", is_pressed=False)
+        )
     finally:
         handler.clear()
-        releases.reset()
-    assert released == [False]
+        mm._mode_stack = stack
+        mm.mode_changed.emit(mm.current.name)
+    assert seen == [True, False]
 
 
 # --- Load Profile -------------------------------------------------------------

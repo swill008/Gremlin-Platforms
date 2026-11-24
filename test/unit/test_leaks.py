@@ -28,8 +28,7 @@ from unittest import mock
 import pytest
 from PySide6 import QtCore
 
-from gremlin import event_handler, event_helpers, mode_manager
-from gremlin.base_classes import Value
+from gremlin import event_handler, mode_manager
 from gremlin.types import Event, InputType
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -46,14 +45,17 @@ def _app() -> Iterator[QtCore.QCoreApplication]:
 
 @pytest.fixture
 def release_actions() -> Iterator[Any]:
-    bra = event_helpers.ButtonReleaseActions()
+    """The event handler, emptied and back in its mode after (its pending
+    table holds the presses waiting for their release, D-06-MODE-RELEASE)."""
+    handler = event_handler.EventHandler()
     mm = mode_manager.ModeManager()
     stack = list(mm._mode_stack)
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(mode_manager, "_known_modes", lambda: set())  # any name
-        bra.reset()
-        yield bra
-        bra.reset()
+        handler.clear()
+        handler.resume()
+        yield handler
+        handler.clear()
     mm._mode_stack = stack
     mm.mode_changed.emit(mm.current.name)
 
@@ -63,13 +65,17 @@ def _switch(name: str) -> None:
     mode_manager.ModeManager().switch_to(mode_manager.Mode(name, None))
 
 
-def _button(mode: str, pressed: bool) -> Event:
-    return Event(InputType.JoystickButton, 6, _GUID, mode, is_pressed=pressed)
+def _button(pressed: bool) -> Event:
+    # No mode, as from the hardware: the handler reads the live one.
+    return Event(InputType.JoystickButton, 6, _GUID, "", is_pressed=pressed)
 
 
-def _map_to_vjoy_button(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, list]:
-    from action_plugins.map_to_vjoy import MapToVjoyData, MapToVjoyFunctor
+def _map_to_vjoy_button(monkeypatch: pytest.MonkeyPatch) -> list:
+    """A Map to vJoy button bound in Default (a real CallbackObject in the
+    event handler); what reaches the output module."""
+    from gremlin import code_runner
     from gremlin.modules import output
+    from gremlin.profile import Profile
 
     sent: list[tuple] = []
     monkeypatch.setattr(
@@ -78,14 +84,29 @@ def _map_to_vjoy_button(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, list]:
     monkeypatch.setattr(
         output, "release_vjoy_button", lambda *a: sent.append(("release",) + a) or True
     )
-    data = MapToVjoyData(InputType.JoystickButton)
-    data.vjoy_device_id = 1
-    data.vjoy_input_id = 4
-    return MapToVjoyFunctor(data), sent
+    profile = Profile()
+    item = profile.get_input_item(
+        _GUID, InputType.JoystickButton, 6, "Default", create_if_missing=True
+    )
+    action = profile.library.create("Map to vJoy", InputType.JoystickButton)
+    action.vjoy_device_id = 1
+    action.vjoy_input_id = 4
+    item.add_item_binding().root_action.insert_action(action, "children")
+    event_handler.EventHandler().add_callback(
+        _GUID,
+        "Default",
+        Event(InputType.JoystickButton, 6, _GUID, "Default"),
+        code_runner.CallbackObject(item.action_sequences[0]),
+    )
+    return sent
 
 
-def _pending(bra: Any) -> int:  # noqa: ANN401
-    return sum(len(entries) for entries in bra._registry.values())
+def _pending(handler: Any) -> int:  # noqa: ANN401
+    return sum(len(entries) for entries in handler._pending.values())
+
+
+def _releases(sent: list[tuple]) -> int:
+    return sent.count(("write", 1, "button", 4, False)) + sent.count(("release", 1, 4))
 
 
 # --- SHAKE-STRESS-02: release entries in one Run -----------------------------
@@ -95,35 +116,31 @@ def test_presses_in_one_mode_keep_no_release_entries(
     monkeypatch: pytest.MonkeyPatch,
     release_actions: Any,  # noqa: ANN401
 ) -> None:
-    functor, sent = _map_to_vjoy_button(monkeypatch)
+    sent = _map_to_vjoy_button(monkeypatch)
     _switch("Default")
-    handler = event_handler.EventHandler()
     for _ in range(200):
-        functor(_button("Default", True), Value(True))
-        handler.process_event(_button("Default", True))
-        functor(_button("Default", False), Value(False))
-        handler.process_event(_button("Default", False))
-    # Each press's entry is spent at its release; none pile up.
-    assert _pending(release_actions) <= 1
-    assert ("release", 1, 4) not in sent  # same mode: no doubled release
+        release_actions.process_event(_button(True))
+        release_actions.process_event(_button(False))
+    # Each press's pending entry is spent at its release; none pile up.
+    assert _pending(release_actions) == 0
+    assert _releases(sent) == 200  # one release each, never doubled
 
 
 def test_a_release_after_a_mode_change_still_lets_go_once(
     monkeypatch: pytest.MonkeyPatch,
     release_actions: Any,  # noqa: ANN401
 ) -> None:
-    """06 S38 holds with the bounded registry."""
-    functor, sent = _map_to_vjoy_button(monkeypatch)
+    """06 S38 holds with the bounded pending table."""
+    sent = _map_to_vjoy_button(monkeypatch)
     _switch("Default")
-    handler = event_handler.EventHandler()
     for _ in range(20):  # earlier presses in the same mode
-        functor(_button("Default", True), Value(True))
-        functor(_button("Default", False), Value(False))
-        handler.process_event(_button("Default", False))
-    functor(_button("Default", True), Value(True))
+        release_actions.process_event(_button(True))
+        release_actions.process_event(_button(False))
+    sent.clear()
+    release_actions.process_event(_button(True))
     _switch("Flight")
-    handler.process_event(_button("Flight", False))
-    assert sent.count(("release", 1, 4)) == 1
+    release_actions.process_event(_button(False))
+    assert _releases(sent) == 1
     assert _pending(release_actions) == 0
 
 

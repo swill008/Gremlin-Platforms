@@ -419,8 +419,9 @@ def test_a_tempo_timer_never_fires_after_stop(
 # --- GL-005 / GL-051 / S38: release callbacks --------------------------------
 
 
-def _map_to_vjoy_button(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, list]:
-    from action_plugins.map_to_vjoy import MapToVjoyData, MapToVjoyFunctor
+def _map_to_vjoy_button(monkeypatch: pytest.MonkeyPatch) -> tuple[Profile, list]:
+    """A profile with a Map to vJoy button on button 5 in Default; what
+    reaches the output module."""
     from gremlin.modules import output
 
     sent: list[tuple] = []
@@ -430,39 +431,54 @@ def _map_to_vjoy_button(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, list]:
     monkeypatch.setattr(
         output, "release_vjoy_button", lambda *a: sent.append(("release",) + a) or True
     )
-    data = MapToVjoyData(InputType.JoystickButton)
-    data.vjoy_device_id = 1
-    data.vjoy_input_id = 4
-    return MapToVjoyFunctor(data), sent
+    profile = Profile()
+    profile.modes.add_mode("Flight")
+    item = profile.get_input_item(
+        _GUID, InputType.JoystickButton, 5, "Default", create_if_missing=True
+    )
+    action = profile.library.create("Map to vJoy", InputType.JoystickButton)
+    action.vjoy_device_id = 1
+    action.vjoy_input_id = 4
+    item.add_item_binding().root_action.insert_action(action, "children")
+    return profile, sent
 
 
 def _button(mode: str, pressed: bool) -> Event:
     return Event(InputType.JoystickButton, 5, _GUID, mode, is_pressed=pressed)
 
 
+def _hw_button(pressed: bool) -> Event:
+    # No mode, as from the hardware: the handler reads the live one.
+    return Event(InputType.JoystickButton, 5, _GUID, "", is_pressed=pressed)
+
+
 def test_a_vjoy_button_pressed_before_a_mode_change_is_released(
+    runner: code_runner.CodeRunner,
     monkeypatch: pytest.MonkeyPatch,
     release_actions: Any,  # noqa: ANN401
 ) -> None:
-    functor, sent = _map_to_vjoy_button(monkeypatch)
-    _switch("Default")
-    functor(_button("Default", True), Value(True))
+    profile, sent = _map_to_vjoy_button(monkeypatch)
+    runner.start(profile, "Default")
+    runner.event_handler.process_event(_hw_button(True))
     _switch("Flight")  # the mode changes, held
-    # The physical release reaches the event handler in the new mode: the
-    # old mode's Map to vJoy doesn't run, the release registry lets go.
-    event_handler.EventHandler().process_event(_button("Flight", False))
-    assert sent == [("write", 1, "button", 4, True), ("release", 1, 4)]
+    # The physical release reaches the event handler in the new mode; the
+    # press mode's Map to vJoy lets go itself (D-06-MODE-RELEASE), through
+    # the output module, once.
+    runner.event_handler.process_event(_hw_button(False))
+    assert sent == [("write", 1, "button", 4, True), ("write", 1, "button", 4, False)]
 
 
 def test_in_the_same_mode_the_action_releases_the_button_itself(
+    runner: code_runner.CodeRunner,
     monkeypatch: pytest.MonkeyPatch,
     release_actions: Any,  # noqa: ANN401
 ) -> None:
-    functor, sent = _map_to_vjoy_button(monkeypatch)
-    _switch("Default")
-    functor(_button("Default", True), Value(True))
-    event_handler.EventHandler().process_event(_button("Default", False))
-    assert ("release", 1, 4) not in sent  # no second, doubled release
+    profile, sent = _map_to_vjoy_button(monkeypatch)
+    runner.start(profile, "Default")
+    runner.event_handler.process_event(_hw_button(True))
+    runner.event_handler.process_event(_hw_button(False))
+    # No second, doubled release.
+    assert sent == [("write", 1, "button", 4, True), ("write", 1, "button", 4, False)]
 
 
 def test_release_callbacks_waiting_at_stop_are_dropped(
@@ -470,12 +486,12 @@ def test_release_callbacks_waiting_at_stop_are_dropped(
     monkeypatch: pytest.MonkeyPatch,
     release_actions: Any,  # noqa: ANN401
 ) -> None:
-    runner.start(Profile(), "Default")
-    functor, _sent = _map_to_vjoy_button(monkeypatch)
-    functor(_button("Default", True), Value(True))
-    assert any(release_actions._registry.values())  # one is waiting
+    profile, _sent = _map_to_vjoy_button(monkeypatch)
+    runner.start(profile, "Default")
+    runner.event_handler.process_event(_hw_button(True))
+    assert any(runner.event_handler._pending.values())  # one is waiting
     runner.stop()
-    assert not any(release_actions._registry.values())
+    assert not any(runner.event_handler._pending.values())
 
 
 # --- GL-005: axis-range and hat virtual buttons ------------------------------

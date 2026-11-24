@@ -47,15 +47,20 @@ def _map_to_vjoy(button: int) -> object:
 
 
 def test_map_to_vjoy_writes_through_the_output_module(writes: list[tuple]) -> None:
-    from gremlin import event_helpers
+    from gremlin.base_classes import Value
+    from gremlin.types import ModeType
 
-    releases = event_helpers.ButtonReleaseActions()
-    with mock.patch.object(releases, "register_vjoy_button_release") as register:
-        _map_to_vjoy(10)(SimpleNamespace(), SimpleNamespace(current=True))
-        _map_to_vjoy(57)(SimpleNamespace(), SimpleNamespace(current=True))
-    assert writes == [(3, "button", 10, True), (3, "button", 57, True)]
-    # Only the button that reached vJoy gets an auto-release.
-    assert register.call_count == 1
+    claimed, blocked = _map_to_vjoy(10), _map_to_vjoy(57)
+    claimed(SimpleNamespace(), Value(True))
+    blocked(SimpleNamespace(), Value(True))
+    # The release after a mode change (a Foreign value, D-06-MODE-RELEASE)
+    # also goes through the output module: no other release path.
+    claimed(SimpleNamespace(), Value(False, mode_type=ModeType.Foreign))
+    assert writes == [
+        (3, "button", 10, True),
+        (3, "button", 57, True),
+        (3, "button", 10, False),
+    ]
 
 
 def test_scripts_get_the_firewalled_vjoy(writes: list[tuple]) -> None:
