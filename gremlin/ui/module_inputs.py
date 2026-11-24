@@ -71,6 +71,7 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
                 self._device = None
                 self._mapping = None
 
+    @QtCore.Slot()
     def _device_list_changed(self) -> None:
         # Set while its stick was unplugged: read it now it is back.
         if self._device is None and self._guid:
@@ -161,6 +162,7 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
         self.endResetModel()
         self.countChanged.emit()
 
+    @QtCore.Slot(int)
     def _refresh_one(self, index: int) -> None:
         if not self._rows:
             return

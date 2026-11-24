@@ -2059,6 +2059,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return self._row_map(self._rows[0])
         return {}
 
+    @QtCore.Slot()
     def _schedule_reload(self) -> None:
         self._reload_timer.start()
 
@@ -2066,6 +2067,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def _schedule_refresh(self) -> None:
         self._refresh_timer.start()
 
+    @QtCore.Slot()
     def _refresh_inplace(self) -> None:
         self._dest_targets = {}
         self._source_claims = {}
@@ -2274,6 +2276,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if not self._joy_timer.isActive():
             self._joy_timer.start()
 
+    @QtCore.Slot()
     def _drain_joy(self) -> None:
         pending, self._joy_pending = self._joy_pending, {}
         for event in pending.values():
@@ -2357,6 +2360,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_targets[row.slug] = target
         return target
 
+    @QtCore.Slot()
     def _poll_dest_last(self) -> None:
         # Outputs only change while a profile runs.
         if not runtime_active():
@@ -2386,6 +2390,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._hw.setDeviceGuid(guid)
         return self._hw.profilePhotoUrl(device_name)
 
+    @QtCore.Slot()
     def _reload(self) -> None:
         self._dest_targets = {}
         self._source_claims = {}
@@ -2599,6 +2604,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         row = self._rows[index.row()]
         return row.get(bytes(self.roles[role]).decode())
 
+    @QtCore.Slot()
     def _device_list_changed(self) -> None:
         """The stick came or went while its setup is open: Save is refused
         while it is unplugged (and allowed again, with the work on screen,
@@ -2811,6 +2817,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self.endResetModel()
         self.changed.emit()
 
+    @QtCore.Slot(object)
     def _on_key(self, event: Event) -> None:
         if event is None or not self._is_keyboard():
             return
@@ -2876,6 +2883,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 return True
         return False
 
+    @QtCore.Slot(object)
     def _on_joy(self, event: Event) -> None:
         try:
             if event is None or not self._rows:
