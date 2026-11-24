@@ -208,6 +208,7 @@ def test_osc_row(qapp: object, modules: Any) -> None:  # noqa: ANN401
     from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime
     from gremlin.ui import osc_device_model
     from gremlin.ui.osc_layout import OscLayoutModel
+    from test.unit._osc_page import close_osc_page
 
     OscDevice().rows.reset()
     OscRuntime().reset_live()
@@ -228,7 +229,7 @@ def test_osc_row(qapp: object, modules: Any) -> None:  # noqa: ANN401
         rows = _summaries(model)
         assert rows[f"parent:{word}:{row.input_id}"] == (1, [_dest(made[0])])
     finally:
-        model.endPane()
+        close_osc_page(model)
         OscDevice().rows.reset()
         OscRuntime().reset_live()
         shared_state.current_profile = saved

@@ -25,6 +25,7 @@ from gremlin.ui import osc_device_model
 from gremlin.ui.backend import Backend
 from gremlin.ui.osc_layout import OscLayoutModel
 from test.unit._device_folders import module_path
+from test.unit._osc_page import close_osc_page
 
 
 @pytest.fixture
@@ -72,7 +73,7 @@ def setup(
     assert not profile.has_unsaved_changes()
     model = OscLayoutModel()
     yield model, profile, fpath
-    model.endPane()
+    close_osc_page(model)
     OscDevice().rows.reset()
     OscRuntime().reset_live()
     shared_state.current_profile = saved
@@ -134,7 +135,7 @@ def test_save_writes_layout_and_names_with_the_inputs_once(
         assert list(again._layout.group_names()) == ["Stream Deck"]
         assert again._layout[two].second_name == "Mute"
     finally:
-        again.endPane()
+        close_osc_page(again)
 
 
 def test_discard_drops_unsaved_layout_changes(

@@ -27,6 +27,7 @@ from gremlin.ui.osc_device_model import (
     settings_of,
 )
 from gremlin.ui.osc_layout import OscLayoutModel
+from test.unit._osc_page import close_osc_page
 
 
 @pytest.fixture
@@ -55,7 +56,7 @@ def page(
     shared_state.current_profile = Profile()
     p = OscLayoutModel()
     yield p
-    p.endPane()
+    close_osc_page(p)
 
 
 def _qml(model: object, body: str) -> Any:  # noqa: ANN401

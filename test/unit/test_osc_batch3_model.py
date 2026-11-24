@@ -29,6 +29,7 @@ from gremlin.ui.osc_device_model import OscDeviceManagementModel
 from gremlin.ui.osc_layout import OscLayoutModel, settings_line
 from gremlin.ui.osc_monitor_model import OscMonitorModel
 from gremlin.ui.osc_option import OscServerModel
+from test.unit._osc_page import close_osc_page
 
 
 @pytest.fixture
@@ -49,7 +50,7 @@ def page(qapp: object, modules: Path) -> Iterator[OscLayoutModel]:
     shared_state.current_profile = Profile()
     model = OscLayoutModel()
     yield model
-    model.endPane()
+    close_osc_page(model)
     OscDevice().rows.reset()
     OscRuntime().reset_live()
     shared_state.current_profile = saved

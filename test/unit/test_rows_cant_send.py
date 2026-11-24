@@ -247,6 +247,7 @@ def test_osc_rows_and_find_tick(qapp: object, cant: dict, modules: Any) -> None:
 
     from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime
     from gremlin.ui.osc_layout import OscLayoutModel
+    from test.unit._osc_page import close_osc_page
 
     OscDevice().rows.reset()
     OscRuntime().reset_live()
@@ -267,7 +268,7 @@ def test_osc_rows_and_find_tick(qapp: object, cant: dict, modules: Any) -> None:
         signal.profileChanged.emit()
         _check(model, _key("/bad"), _key("/good"))
     finally:
-        model.endPane()
+        close_osc_page(model)
         OscDevice().rows.reset()
         OscRuntime().reset_live()
         shared_state.current_profile = saved

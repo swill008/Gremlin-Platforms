@@ -26,6 +26,7 @@ from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui import osc_feedback_model
 from gremlin.ui.osc_layout import OscLayoutModel
+from test.unit._osc_page import close_osc_page
 
 
 @pytest.fixture
@@ -64,8 +65,8 @@ def page(qapp: object, modules: Path, ld: LogicalDevice) -> Iterator[OscLayoutMo
     shared_state.current_profile = Profile()
     model = OscLayoutModel()
     yield model
-    model.endPane()
     model.endFeedback()
+    close_osc_page(model)
     OscDevice().rows.reset()
     OscRuntime().reset_live()
     shared_state.current_profile = saved

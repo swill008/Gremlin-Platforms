@@ -33,6 +33,7 @@ from gremlin.ui.osc_layout import (
     settings_line,
 )
 from test.unit._device_folders import module_path
+from test.unit._osc_page import close_osc_page
 
 
 @pytest.fixture
@@ -62,7 +63,7 @@ def page(qapp: object, modules: Path) -> Iterator[OscLayoutModel]:
     shared_state.current_profile = profile
     model = OscLayoutModel()
     yield model
-    model.endPane()
+    close_osc_page(model)
     OscDevice().rows.reset()
     OscRuntime().reset_live()
     shared_state.current_profile = saved

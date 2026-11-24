@@ -26,7 +26,9 @@ def rt(monkeypatch: pytest.MonkeyPatch) -> OscRuntime:
     if QtCore.QCoreApplication.instance() is None:
         QtCore.QCoreApplication([])
     runtime = OscRuntime()
-    runtime._running = True
+    # Put back after the test: the runtime is shared, and a later test
+    # would see a Run (seed 809820, unit-2).
+    monkeypatch.setattr(runtime, "_running", True)
     return runtime
 
 

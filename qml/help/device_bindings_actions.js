@@ -612,7 +612,7 @@ function topics() {
                 + _see([
                     "<b>Average</b>, <b>Minimum</b>, <b>Maximum</b> and <b>Sum</b> combine the two values that way.",
                     "<b>Maximum Deflection</b> uses whichever axis is furthest from center. When both are equally far, the second axis wins.",
-                    "<b>Bidirectional</b> and <b>Prefer Center</b> are also offered."
+                    "<b>Bidirectional</b> and <b>Closest to Center</b> are also offered."
                 ])
                 + _good([
                     "A new Merge Axis starts on its own setup, named \"Merge Axis 1\" or the next free number.",

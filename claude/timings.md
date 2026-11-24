@@ -1515,3 +1515,13 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent S2-NATIVE: growth outside Python investigated (component cache, JS GC, heap retention) | review | rough 10-15 min | 15 min | 19:19-19:34, S2-NATIVE |
 | 2026-11-23 | Agent S2-MEASURE: probe after stage 2 (A-E, per window, QObject, JS GC runs) | run | ~8 min | 12 min | 19:31-19:43, S2-MEASURE |
 | 2026-11-23 | Lead: stage 2 commit a4845a3e (local), B2 spec (05 S114/S116/S144-S146/S105, 02 S10), 10 worktree briefs | lead planning | ~8 min | 8 min | 19:48-19:56, lead; --changed selection hung 15+ min (to investigate) |
+| 2026-11-23 | Agent B2-MACRO: changed macro steps start Pressed + 3 tests (branch 61c8c94c) | agent fix | 3-8 min | 2 min | 19:51-19:52, B2-MACRO |
+| 2026-11-23 | Agent B2-DROP: S144 move guard + 7 tests (b32017ab) | agent fix | 3-8 min | 3 min | 19:51-19:54, B2-DROP |
+| 2026-11-23 | Agent B2-CLOSEST: closest-to-center stored name + tests (9b818533) | agent fix | 3-8 min | 3 min | 19:51-19:54, B2-CLOSEST |
+| 2026-11-23 | Agent R-FEEDBACK: feedback cache drops expired entries + 2 tests (32705ec7) | agent fix | 3-8 min | 4 min | 19:51-19:55, R-FEEDBACK |
+| 2026-11-23 | Agent B2-DOCS: Help + map gaps/tests for B2 and the release batch (c68c8e10) | agent fix | 3-8 min | 4 min | 19:51-19:55, B2-DOCS |
+| 2026-11-23 | Agent R-LISTENERS: layout listener removed on destroy + 3 tests (6758722b) | agent fix | 3-8 min | 6 min | 19:51-19:57, R-LISTENERS |
+| 2026-11-23 | Full run for memory stage 2 (6 parts, ~9,000 tests) | test | ~8 min | 10 min | 19:49-19:59, lead: 4 failed (OSC) |
+| 2026-11-23 | Lead: diagnosed 4 OSC full-run failures (leftover OscLayoutModel reacts in later tests) | review | ~5 min | 5 min | 19:59-20:04, lead |
+| 2026-11-23 | Agent B2-COND: S145 branch memory + reset hook, S146 unplugged false + stored name, 17 tests (be433dcc) | agent fix | 5-10 min | 11 min | 19:51-20:02, B2-COND |
+| 2026-11-23 | Agent FIX-OSCLAYOUT: test isolation (flag race fixture, OSC models deleted) + test | agent fix | 3-8 min | 4 min | 20:00-20:04, FIX-OSCLAYOUT |

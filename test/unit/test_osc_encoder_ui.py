@@ -378,6 +378,7 @@ def page(
     from gremlin.modules import store
     from gremlin.profile import Profile
     from gremlin.ui.osc_layout import OscLayoutModel
+    from test.unit._osc_page import close_osc_page
 
     folder = tmp_path / "modules"
     folder.mkdir()
@@ -385,7 +386,7 @@ def page(
     shared_state.current_profile = Profile()
     p = OscLayoutModel()
     yield p
-    p.endPane()
+    close_osc_page(p)
 
 
 def _rows() -> list[Any]:
