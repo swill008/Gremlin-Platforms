@@ -4,16 +4,18 @@
 
 from __future__ import annotations
 
+import collections
 import ctypes
 import functools
 import logging
+import threading
 from ctypes import wintypes
 from typing import Callable
 
 import win32api
 import win32con
 
-from gremlin import run_scope
+from gremlin import clock, input_thread, run_scope, threads
 from gremlin.error import KeyboardError
 
 
@@ -211,22 +213,138 @@ def _unicode_to_key(character: str) -> Key | None:
     return Key(character, scan_code, is_extended, virtual_code)
 
 
+# | The key sender. In the installed program, real key presses stopped
+# | reaching the program once keybd_event had been called on the input
+# | thread (live test 2026-11-23, gap B4-KBD-INPUT-THREAD; why, inside
+# | Windows and the low-level hook, is unverified). So keys sent on the
+# | input thread go to one sender thread, in order. Keys sent elsewhere
+# | (macros, the window) go at once, unless keys are still queued, which
+# | they then follow so the order holds. The run_scope bookkeeping is done
+# | by the caller at once; Stop waits (bounded) for the queue after it has
+# | released the held keys, so nothing is sent after Stop's release.
+
+# Seconds the sender waits for work before it ends (the next key starts it
+# again); Stop waits at most SENDER_FLUSH_S for queued keys.
+SENDER_IDLE_S = 0.5
+SENDER_FLUSH_S = 1.0
+SENDER_NAME = "key sender"
+
+_sender_cond = threading.Condition()
+# (virtual code, scan code, flags) still to send, oldest first.
+_sender_queue: collections.deque[tuple[int, int, int]] = collections.deque()
+# Keys taken off the queue but not sent yet (0 or 1).
+_sender_busy = 0
+_sender_thread: threading.Thread | None = None
+_sender_quit = False
+_flush_run: int | None = None
+
+
+def _keybd_event(virtual_code: int, scan_code: int, flags: int) -> None:
+    # Here, not at the top: windows_event_hook -> common -> keyboard.
+    from gremlin.windows_event_hook import OWN_KEY_MARK
+
+    # Marked, so the keyboard hook knows the key came from the program.
+    win32api.keybd_event(virtual_code, scan_code, flags, OWN_KEY_MARK)
+
+
+def _sender_loop() -> None:
+    global _sender_busy, _sender_thread, _sender_quit
+    while True:
+        with _sender_cond:
+            deadline = clock.monotonic() + SENDER_IDLE_S
+            while not _sender_queue and not _sender_quit:
+                left = deadline - clock.monotonic()
+                if left <= 0:
+                    break
+                _sender_cond.wait(left)
+            if not _sender_queue:
+                # Idle, or asked to end: the next key starts it again.
+                if _sender_thread is threading.current_thread():
+                    _sender_thread = None
+                _sender_quit = False
+                _sender_cond.notify_all()
+                return
+            item = _sender_queue.popleft()
+            _sender_busy += 1
+        try:
+            _keybd_event(*item)
+        except Exception:
+            logging.getLogger("system").exception("Could not send a key")
+        finally:
+            with _sender_cond:
+                _sender_busy -= 1
+                _sender_cond.notify_all()
+
+
+def _stop_sender() -> None:
+    """Asks the sender to end once its queue is empty (threads.shutdown)."""
+    global _sender_quit
+    with _sender_cond:
+        _sender_quit = True
+        _sender_cond.notify_all()
+
+
+def _send(virtual_code: int, scan_code: int, flags: int) -> None:
+    """Sends the key now, or through the sender (see above)."""
+    global _sender_thread
+    with _sender_cond:
+        queued = bool(_sender_queue) or _sender_busy > 0
+        direct = not (queued or input_thread.is_input_thread())
+        if not direct:
+            _sender_queue.append((virtual_code, scan_code, flags))
+            if _sender_thread is None or not _sender_thread.is_alive():
+                _sender_thread = threads.start(
+                    SENDER_NAME, _sender_loop, stop=_stop_sender
+                )
+            _sender_cond.notify_all()
+    if direct:
+        _keybd_event(virtual_code, scan_code, flags)
+
+
+def wait_sent(timeout: float = SENDER_FLUSH_S) -> bool:
+    """Waits up to timeout seconds until every queued key was sent.
+
+    Returns False (and logs it) if some were still waiting."""
+    deadline = clock.monotonic() + timeout
+    with _sender_cond:
+        while _sender_queue or _sender_busy > 0:
+            left = deadline - clock.monotonic()
+            if left <= 0:
+                logging.getLogger("system").warning(
+                    f"Keys still waiting to be sent after {timeout:.1f} s"
+                )
+                return False
+            _sender_cond.wait(left)
+    return True
+
+
+def _note_flush_at_stop() -> None:
+    """This Run's Stop waits for the sender once it has released the held
+    keys (registered once per Run)."""
+    global _flush_run
+    if not run_scope.running() or run_scope.stopping():
+        return
+    run = run_scope.number()
+    if _flush_run == run:
+        return
+    _flush_run = run
+    run_scope.on_stop(run_scope.Stage.RELEASE_HELD, "send queued keys", wait_sent)
+
+
 def send_key_down(key: Key) -> None:
     """Sends the KEYDOWN event for a single key.
 
     A key sent while a profile runs (a macro, Map to Keyboard, a script) is
     held in run_scope until it is sent up again; Stop releases it if nothing
-    else did. Keys sent with no Run on are left alone (decision R4).
+    else did. Keys sent with no Run on are left alone (decision R4). On the
+    input thread the key goes through the key sender (see above).
 
     Args:
         key: the key for which to send the KEYDOWN event
     """
-    # Here, not at the top: windows_event_hook -> common -> keyboard.
-    from gremlin.windows_event_hook import OWN_KEY_MARK
-
     flags = win32con.KEYEVENTF_EXTENDEDKEY if key.is_extended else 0
-    # Marked, so the keyboard hook knows the key came from the program.
-    win32api.keybd_event(key.virtual_code, key.scan_code, flags, OWN_KEY_MARK)
+    _note_flush_at_stop()
+    _send(key.virtual_code, key.scan_code, flags)
     run_scope.hold(
         run_scope.current_owner(),
         "key",
@@ -241,11 +359,9 @@ def send_key_up(key: Key) -> None:
     Args:
         key: the key for which to send the KEYUP event
     """
-    from gremlin.windows_event_hook import OWN_KEY_MARK
-
     flags = win32con.KEYEVENTF_EXTENDEDKEY if key.is_extended else 0
     flags |= win32con.KEYEVENTF_KEYUP
-    win32api.keybd_event(key.virtual_code, key.scan_code, flags, OWN_KEY_MARK)
+    _send(key.virtual_code, key.scan_code, flags)
     run_scope.let_go(run_scope.current_owner(), "key", (key.scan_code, key.is_extended))
 
 
