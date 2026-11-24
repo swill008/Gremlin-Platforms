@@ -47,7 +47,6 @@ from PySide6 import QtCore, QtQml
 from gremlin import (
     code_runner,
     event_handler,
-    event_helpers,
     mode_manager,
     shared_state,
     signal,
@@ -105,15 +104,16 @@ def runner(monkeypatch: pytest.MonkeyPatch) -> Iterator[code_runner.CodeRunner]:
 
 @pytest.fixture
 def release_actions() -> Iterator[Any]:
-    """The shared release registry, emptied and back in its mode after."""
-    bra = event_helpers.ButtonReleaseActions()
+    """The event handler's pending table (presses waiting for their release,
+    D-06-MODE-RELEASE), emptied and back in its mode after."""
+    handler = event_handler.EventHandler()
     mm = mode_manager.ModeManager()
     stack = list(mm._mode_stack)
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(mode_manager, "_known_modes", lambda: set())  # any name
-        bra.reset()
-        yield bra
-        bra.reset()
+        handler.clear_pending()
+        yield handler
+        handler.clear_pending()
     mm._mode_stack = stack
     mm.mode_changed.emit(mm.current.name)
 
@@ -425,12 +425,28 @@ def _map_to_vjoy_button(monkeypatch: pytest.MonkeyPatch) -> tuple[Profile, list]
     from gremlin.modules import output
 
     sent: list[tuple] = []
+    # The vJoy state the fake writes leave, read back by vjoy_value (Map to
+    # vJoy's waits_for_end reads it, 06 S38).
+    state: dict[tuple, object] = {}
+    neutral = {"axis": 0.0, "button": False, "hat": HatDirection.Center}
     monkeypatch.setattr(
-        output, "write_vjoy", lambda *a: sent.append(("write",) + a) or True
+        output,
+        "vjoy_value",
+        lambda vid, kind, iid: state.get((vid, kind, int(iid)), neutral[kind]),
     )
-    monkeypatch.setattr(
-        output, "release_vjoy_button", lambda *a: sent.append(("release",) + a) or True
-    )
+
+    def write(vid: int, kind: str, iid: int, value: object) -> bool:
+        sent.append(("write", vid, kind, iid, value))
+        state[(vid, kind, int(iid))] = value
+        return True
+
+    def release(vid: int, iid: int) -> bool:
+        sent.append(("release", vid, iid))
+        state[(vid, "button", int(iid))] = False
+        return True
+
+    monkeypatch.setattr(output, "write_vjoy", write)
+    monkeypatch.setattr(output, "release_vjoy_button", release)
     profile = Profile()
     profile.modes.add_mode("Flight")
     item = profile.get_input_item(

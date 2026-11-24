@@ -82,16 +82,28 @@ def rig(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
 
     vjoy: list[tuple] = []
     released: list[tuple] = []
+    # The vJoy state the fake writes leave, read back by vjoy_value (Map to
+    # vJoy's waits_for_end reads it, 06 S38).
+    state: dict[tuple, object] = {}
+    neutral = {"axis": 0.0, "button": False, "hat": HatDirection.Center}
     monkeypatch.setattr(
         output,
-        "write_vjoy",
-        lambda vid, kind, iid, value: vjoy.append((kind, iid, value)) or True,
+        "vjoy_value",
+        lambda vid, kind, iid: state.get((vid, kind, int(iid)), neutral[kind]),
     )
-    monkeypatch.setattr(
-        output,
-        "release_vjoy_button",
-        lambda vid, iid: released.append(("button", iid)) or True,
-    )
+
+    def write(vid: int, kind: str, iid: int, value: object) -> bool:
+        vjoy.append((kind, iid, value))
+        state[(vid, kind, int(iid))] = value
+        return True
+
+    def release(vid: int, iid: int) -> bool:
+        released.append(("button", iid))
+        state[(vid, "button", int(iid))] = False
+        return True
+
+    monkeypatch.setattr(output, "write_vjoy", write)
+    monkeypatch.setattr(output, "release_vjoy_button", release)
     for name in ("output", "OscRuntime", "audio_player", "tts"):
         monkeypatch.setattr(code_runner, name, mock.MagicMock())
     bus = _Bus()

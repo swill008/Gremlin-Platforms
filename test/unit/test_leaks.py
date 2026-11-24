@@ -29,7 +29,7 @@ import pytest
 from PySide6 import QtCore
 
 from gremlin import event_handler, mode_manager
-from gremlin.types import Event, InputType
+from gremlin.types import Event, HatDirection, InputType
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _GUID = uuid.UUID("77777777-5555-2222-3333-555555555555")
@@ -78,12 +78,28 @@ def _map_to_vjoy_button(monkeypatch: pytest.MonkeyPatch) -> list:
     from gremlin.profile import Profile
 
     sent: list[tuple] = []
+    # The vJoy state the fake writes leave, read back by vjoy_value (Map to
+    # vJoy's waits_for_end reads it, 06 S38).
+    state: dict[tuple, object] = {}
+    neutral = {"axis": 0.0, "button": False, "hat": HatDirection.Center}
     monkeypatch.setattr(
-        output, "write_vjoy", lambda *a: sent.append(("write",) + a) or True
+        output,
+        "vjoy_value",
+        lambda vid, kind, iid: state.get((vid, kind, int(iid)), neutral[kind]),
     )
-    monkeypatch.setattr(
-        output, "release_vjoy_button", lambda *a: sent.append(("release",) + a) or True
-    )
+
+    def write(vid: int, kind: str, iid: int, value: object) -> bool:
+        sent.append(("write", vid, kind, iid, value))
+        state[(vid, kind, int(iid))] = value
+        return True
+
+    def release(vid: int, iid: int) -> bool:
+        sent.append(("release", vid, iid))
+        state[(vid, "button", int(iid))] = False
+        return True
+
+    monkeypatch.setattr(output, "write_vjoy", write)
+    monkeypatch.setattr(output, "release_vjoy_button", release)
     profile = Profile()
     item = profile.get_input_item(
         _GUID, InputType.JoystickButton, 6, "Default", create_if_missing=True
@@ -263,9 +279,14 @@ os._exit(0)
 """
 
 _NAMES = [
-    "ConfigGroupModel", "ConfigEntryModel", "HighlightSpeedModel",
-    "WindowPlacement", "PairLiveThrottle", "ModulePairAxisModel",
-    "ModulePairButtonModel", "QTimer",
+    "ConfigGroupModel",
+    "ConfigEntryModel",
+    "HighlightSpeedModel",
+    "WindowPlacement",
+    "PairLiveThrottle",
+    "ModulePairAxisModel",
+    "ModulePairButtonModel",
+    "QTimer",
 ]
 
 
@@ -287,20 +308,30 @@ def growth(tmp_path_factory: pytest.TempPathFactory) -> dict:
     path = tmp_path / "leaks_app.py"
     path.write_text(_SCRIPT, encoding="utf-8")
     env = dict(
-        os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen",
+        os.environ,
+        USERPROFILE=str(tmp_path),
+        QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1",
     )
     env.setdefault(
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     result = proc_tree.run(
-        [sys.executable, str(path), ",".join(_NAMES),
-         "DialogOptions.qml,DialogInputViewer.qml", ",".join(_factory_made())],
-        cwd=_ROOT, env=env, text=True, timeout=240,
+        [
+            sys.executable,
+            str(path),
+            ",".join(_NAMES),
+            "DialogOptions.qml,DialogInputViewer.qml",
+            ",".join(_factory_made()),
+        ],
+        cwd=_ROOT,
+        env=env,
+        text=True,
+        timeout=240,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-2000:] + result.stderr[-4000:]
-    out = json.loads(lines[0][len("RESULT "):])
+    out = json.loads(lines[0][len("RESULT ") :])
     print(f"growth over 6 opens: {out}")
     return out
 
@@ -420,8 +451,10 @@ def rounds(tmp_path_factory: pytest.TempPathFactory) -> dict:
     script.write_text(_ROUNDS_SCRIPT, encoding="utf-8")
     names = _factory_made()
     out = run_journey(script, tmp_path / "home", ",".join(names), "4")
-    print(f"factory types {len(names)}; rounds: "
-          f"{ {k: out.get(k) for k in ('shells', 'shell-growth', 'valid-growth')} }")
+    print(
+        f"factory types {len(names)}; rounds: "
+        f"{ {k: out.get(k) for k in ('shells', 'shell-growth', 'valid-growth')} }"
+    )
     assert out.get("done"), (
         f"{out.get('error')}\n{out.get('traceback', '')}\n{out.get('_stderr', '')}"
     )
@@ -546,8 +579,10 @@ def stage2_rounds(tmp_path_factory: pytest.TempPathFactory) -> dict:
     script.write_text(_STAGE2_SCRIPT, encoding="utf-8")
     names = _factory_made()
     out = run_journey(script, tmp_path / "home", ",".join(names), "3")
-    print(f"factory types {len(names)}; stage 2 rounds ({out.get('_seconds')} s): "
-          f"{ {k: out.get(k) for k in ('shells', 'shell-growth', 'valid-growth')} }")
+    print(
+        f"factory types {len(names)}; stage 2 rounds ({out.get('_seconds')} s): "
+        f"{ {k: out.get(k) for k in ('shells', 'shell-growth', 'valid-growth')} }"
+    )
     assert out.get("done"), (
         f"{out.get('error')}\n{out.get('traceback', '')}\n{out.get('_stderr', '')}"
     )
@@ -611,16 +646,32 @@ def test_no_live_card_outlives_its_test(tmp_path: pathlib.Path) -> None:
     broke it (CI 38277644763, test_new_action_defaults)."""
     (tmp_path / "card_check.py").write_text(_CARD_PLUGIN, encoding="utf-8")
     env = dict(
-        os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen",
+        os.environ,
+        USERPROFILE=str(tmp_path),
+        QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1",
         PYTHONPATH=os.pathsep.join(
             p for p in (str(tmp_path), os.environ.get("PYTHONPATH")) if p
         ),
     )
     result = proc_tree.run(
-        [sys.executable, "-m", "pytest", "-q", "-p", "no:randomly",
-         "-p", "no:cacheprovider", "-p", "card_check", *_CARD_TESTS],
-        cwd=_ROOT, env=env, text=True, timeout=240,
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:randomly",
+            "-p",
+            "no:cacheprovider",
+            "-p",
+            "card_check",
+            *_CARD_TESTS,
+        ],
+        cwd=_ROOT,
+        env=env,
+        text=True,
+        timeout=240,
     )
     kept = re.search(r"CARDS KEPT (\[.*\])", result.stdout)
     assert kept, result.stdout[-3000:] + result.stderr[-3000:]
