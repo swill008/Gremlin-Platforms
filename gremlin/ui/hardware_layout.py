@@ -490,6 +490,10 @@ class HardwareLayoutModel(ControlLayoutModel):
         self._announcing = False
         self._relay = _pending_relay(self)
         store.add_pending_listener(self._relay)
+        # Gone with the model, not at the store's next change: page
+        # switches don't pile up listeners. The hook doesn't hold the model.
+        relay = self._relay
+        self.destroyed.connect(lambda *_: store.remove_pending_listener(relay))
         signal.inputItemChanged.connect(self._on_input_changed)
         signal.configChanged.connect(self.reload)
         try:
