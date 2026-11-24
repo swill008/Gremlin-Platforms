@@ -32,7 +32,7 @@ def model() -> Iterator[tuple[option.ConfigEntryModel, dict[str, int]]]:
         )
     if not cfg.exists(*_FILE):
         cfg.register(
-            *_FILE, PropertyType.Path, Path(""), "", {"is_folder": False}, True,
+            *_FILE, PropertyType.Path, "", "", {"is_folder": False}, True,
         )
     before = (cfg.value(*_CHOICE), cfg.value(*_FILE))
     entries = option.ConfigEntryModel("profile", "automation", keys=[_CHOICE, _FILE])
@@ -41,7 +41,10 @@ def model() -> Iterator[tuple[option.ConfigEntryModel, dict[str, int]]]:
         yield entries, roles
     finally:
         cfg.set(*_CHOICE, before[0])
-        cfg.set(*_FILE, Path(before[1]))
+        # Back exactly as found: the program registers "" (set() takes only a
+        # Path, and Path("") would leave "." for the next test).
+        with cfg._lock:  # noqa: SLF001
+            cfg._data[_FILE]["value"] = before[1]  # noqa: SLF001
 
 
 def test_the_rows_replace_the_keep_running_switch() -> None:

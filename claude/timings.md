@@ -1594,3 +1594,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-24 | Lead: quick tests (--changed ran 6 parts, 5 min), order-dependent test fix (arrival retry leak), build + silent install + Run/trace on | test/build | ~10 min | 9 min | 09:00-09:09, lead; --changed picked nearly the whole suite |
 | 2026-11-24 | SSM-RETRY: device-change retry counts as switching only when it switches a device + 3 tests (12 S21 gap) | agent fix | 3-8 min | 4 min | 09:35-09:39 |
 | 2026-11-24 | Lead review + targeted tests (78) + ruff/pyright + build + silent install | test/build | ~10 min | 2 min | 09:39-09:41, lead |
+| 2026-11-24 | Commit 3b5cf4b7 + push 7 commits (2fe32018..3b5cf4b7) | lead | ~2 min | 1 min | 10:15-10:16, lead; CI run 45435202801 started |
+| 2026-11-24 | CI run 45435202801 (push of 7 commits) | CI | ~27 min | 27 min | 10:16-10:43; 1 failure: test_autoload_default_profile::test_settings_are_registered (leak from test_options_default_profile) |
+| 2026-11-24 | CI failure: find the leak (Path("") restore -> "."), test-only fix, repro before/after | lead | ~5 min | 6 min | 10:44-10:50, lead |
