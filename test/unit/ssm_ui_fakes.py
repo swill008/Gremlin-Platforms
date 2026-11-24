@@ -367,6 +367,7 @@ def install(target: Any = None) -> tuple[FakeManager, Calls]:  # noqa: ANN401
     core.Settings = Settings  # type: ignore[attr-defined]
     core.Status = Status  # type: ignore[attr-defined]
     core.manager = lambda: manager  # type: ignore[attr-defined]
+    core.hold_now = lambda: ("", "")  # type: ignore[attr-defined]
     core.HOLD_NO_WAKE_DEVICE = HOLD_NO_WAKE_DEVICE  # type: ignore[attr-defined]
     core.InputDevice = InputDevice  # type: ignore[attr-defined]
 

@@ -96,9 +96,15 @@ def _warn(text: str) -> None:
         window_trace.warn(text)
 
 
+_display_notify_warned = False
+
+
 def _register_display_notify(hwnd: int) -> int:
     """Asks Windows to tell the tray's window about display power changes
-    (GUID_CONSOLE_DISPLAY_STATE); the handle to unregister, 0 on failure."""
+    (GUID_CONSOLE_DISPLAY_STATE); the handle to unregister, 0 on failure.
+    A failure warns once per program start (01 S176)."""
+    global _display_notify_warned
+    handle = 0
     try:
         user32 = ctypes.WinDLL("user32", use_last_error=True)
         register = user32.RegisterPowerSettingNotification
@@ -111,11 +117,19 @@ def _register_display_notify(hwnd: int) -> int:
         guid = (ctypes.c_ubyte * 16).from_buffer_copy(
             _GUID_CONSOLE_DISPLAY_STATE.bytes_le
         )
-        return int(
+        handle = int(
             register(hwnd, ctypes.byref(guid), _DEVICE_NOTIFY_WINDOW_HANDLE) or 0
         )
     except (AttributeError, OSError):
-        return 0
+        pass
+    if not handle and not _display_notify_warned:
+        _display_notify_warned = True
+        _warn(
+            "display power report registration failed "
+            f"(Windows error {ctypes.get_last_error()}); the displays "
+            "off/on lines are missing until the next start"
+        )
+    return handle
 
 
 def _unregister_display_notify(handle: int) -> None:

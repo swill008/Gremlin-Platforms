@@ -40,6 +40,9 @@ HOLD_FULLSCREEN = "fullscreen"
 HOLD_DISPLAY_REQUEST = "display_request"
 # S31: Wake PC has nothing ticked; both timers wait.
 HOLD_NO_WAKE_DEVICE = "no_wake_device"
+# The trace's state-snapshot section the hold in effect now is part of
+# (01 S185); the UI's model builds the section's lines.
+SNAPSHOT_SECTION = "Screen Saver Mode"
 
 RESET_KEYBOARD = "keyboard"
 RESET_MOUSE = "mouse"
@@ -96,6 +99,18 @@ def _trace(text: str, ring: bool = True, t: float | None = None) -> None:
             write(text, ring=ring, t=t)
     except Exception:
         _log().exception("Screen Saver Mode: trace failed")
+
+
+def _snapshot_changed() -> None:
+    """The hold in effect now changed: the trace rewrites the Screen Saver
+    Mode snapshot section (01 S185). A no-op while tracing is off."""
+    changed = getattr(trace, "snapshot_changed", None)
+    if changed is None:
+        return
+    try:
+        changed(SNAPSHOT_SECTION)
+    except Exception:
+        _log().exception("Screen Saver Mode: the state snapshot could not be updated")
 
 
 def _error(text: str) -> None:
@@ -1911,11 +1926,14 @@ class ScreenSaverMode:
         else:
             self._clock.stop()
         self._listening = False
+        held = bool(self._last_hold)
         self._last_hold = ""
         self._last_problems = ("", "", "")
         self._hold_program = ""
         self._last_reset_traced = None
         _trace("listener stopped")
+        if held:
+            _snapshot_changed()
         self._arm_drain()
 
     # ----- timer
@@ -2074,6 +2092,7 @@ class ScreenSaverMode:
             _log().exception("Screen Saver Mode: hold check failed")
             _trace("hold check failed (see the log)")
         program = self._foreground() if hold == HOLD_FULLSCREEN else ""
+        hold_changed = hold != self._last_hold or program != self._hold_program
         if hold != self._last_hold:
             if self._last_hold:
                 _trace(f"hold ended: {self._last_hold}")
@@ -2084,6 +2103,8 @@ class ScreenSaverMode:
         elif hold == HOLD_FULLSCREEN and program and program != self._hold_program:
             _trace(f"hold program: {program}")
         self._hold_program = program
+        if hold_changed:
+            _snapshot_changed()
         self._trace_reset()
         if hold:
             # Held: both countdowns start again when the hold ends (S7,
@@ -2700,6 +2721,13 @@ class ScreenSaverMode:
         )
         self._status_live = True
 
+    def hold_now(self) -> tuple[str, str]:
+        """The hold as of the last tick and its full-screen program;
+        ("", "") while off."""
+        if not self._running:
+            return "", ""
+        return self._last_hold, self._hold_program
+
     def status(self) -> Status:
         """The status as of the last tick (cheap; the UI polls it). While
         off it carries Windows' waits for both timers."""
@@ -2764,6 +2792,15 @@ def _timer_text(on: bool, typed: int) -> str:
 
 _manager: ScreenSaverMode | None = None
 _manager_lock = threading.Lock()
+
+
+def hold_now() -> tuple[str, str]:
+    """The hold in effect now and its full-screen program (01 S185):
+    ("", "") while Screen Saver Mode is off or not made yet."""
+    mode = _manager
+    if mode is None:
+        return "", ""
+    return mode.hold_now()
 
 
 def manager() -> ScreenSaverMode:

@@ -1580,3 +1580,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-24 | Map line + lint + guard tests + local commit (Map to Mouse live check) | lead | ~1 min | 1 min | 04:13-04:14, lead |
 | 2026-11-24 | Read the overnight trace (date line, wake-cause lines) | lead | no data | 4 min | 04:15-04:19, lead |
 | 2026-11-24 | Display-off cause (powercfg, event log, code) + to-do 152-154 + local commit | lead | no data | 5 min | 04:19-04:24, lead |
+| 2026-11-24 | TRAY-WARN: display notify registration warning + 3 tests (01 S176, to-do 152) | agent fix | 3-8 min | 1 min | 04:23-04:24 |
+| 2026-11-24 | Read trace after user's Turn displays off now check | lead | ~1 min (guess) | 2 min | 04:25-04:27, lead |
+| 2026-11-24 | SNAP-HOLD: Hold now snapshot line + rewrite on hold change + 3 tests (01 S185, to-do 153) | agent fix | 3-8 min | 3 min | 04:23-04:26 |
+| 2026-11-24 | Lead review + quick tests (--changed 352, pyright) + build + silent install + live check (Hold now line) | test/build | ~20 min end to end | 6 min | 04:26-04:32, lead; install wait hung on -Wait (installer's child process), stopped |

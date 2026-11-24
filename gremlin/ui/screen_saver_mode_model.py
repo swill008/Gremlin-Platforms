@@ -339,10 +339,22 @@ def _on_off(on: bool) -> str:
     return "on" if on else "off"
 
 
+def _hold_now_line() -> str:
+    """01 S185: the hold in effect now, with its full-screen program."""
+    try:
+        hold, program = _core().hold_now()
+    except Exception:
+        _log.exception("Screen Saver Mode: the hold in effect could not be read")
+        hold, program = "", ""
+    if not hold:
+        return "Hold now: none"
+    return f"Hold now: {hold}" + (f" ({program})" if program else "")
+
+
 def snapshot_lines() -> list[str]:
-    """Every setting, the Switch off list by name, the ticked Wake PC
-    devices and the Ignore lists, one line each, for the trace's state
-    snapshot and Save Diagnostics."""
+    """Every setting, the hold in effect now, the Switch off list by name,
+    the ticked Wake PC devices and the Ignore lists, one line each, for the
+    trace's state snapshot and Save Diagnostics."""
     lines: list[str] = []
     try:
         lines.append(f"Screen Saver Mode: {_on_off(bool(_value(ENABLED)))}")
@@ -357,6 +369,7 @@ def snapshot_lines() -> list[str]:
         )
         hold = _on_off(bool(_value(HOLD_FULLSCREEN)))
         lines.append(f"Hold during full-screen programs: {hold}")
+        lines.append(_hold_now_line())
         lines.append(f"Wait for devices to switch off: {saved_devices_wait_s()} s")
         for row in saved_devices():
             virtual = " (virtual)" if row["virtual"] else ""
