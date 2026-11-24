@@ -1572,3 +1572,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent META-DRV: @Slot on DriversModel, HidHideModel, HardwareProfile, 6 tests (b37e10f0) | agent fix | 5-10 min | 4 min | 22:53-22:57, META-DRV |
 | 2026-11-23 | Agent META-DEV: @Slot on 5 device.py types, 10 tests (3598402f); found metaObject()-on-parented trap | agent fix | 5-10 min | 5 min | 22:52-22:57, META-DEV |
 | 2026-11-23 | Agent META-MOD: @Slot on 3 module models, 6 tests (f92f2cc4) | agent fix | 5-10 min | 5 min | 22:53-22:58, META-MOD |
+| 2026-11-23 | Agent META-SAFE: metaObject() trap — tests unparented + guard, action_model/control_windows safe reads (6550bd7c) | agent fix | 8-10 min | 13 min | 22:58-23:11, META-SAFE |
