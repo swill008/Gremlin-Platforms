@@ -745,26 +745,30 @@ class MacroFunctor(AbstractFunctor):
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
+        manager = macro.MacroManager()
         is_hold = self.data.repeat_mode == MacroRepeatModes.Hold
         # A release stops a Hold macro, also one from the mode where the
         # press happened (06 S38).
         if is_hold and self._holding and not value.current:
             self._holding = False
-            macro.MacroManager().terminate_macro(self.macro)
+            manager.stop_macro(self.macro)
             return
-        if self._should_execute(value):
-            from gremlin import logical_loop
+        if not self._should_execute(value):
+            return
+        from gremlin import logical_loop
 
-            # Its Logical Device steps continue this event's chain (06 S94a).
-            macro.MacroManager().queue_macro(
-                self.macro, logical_loop.chain_of(getattr(event, "ld_chain", ()))
-            )
-            if is_hold:
-                if value.current:
-                    self._holding = True
-                else:
-                    # Started by a release: the input is already up.
-                    macro.MacroManager().terminate_macro(self.macro)
+        # Its Logical Device steps continue this event's chain (06 S94a).
+        chain = logical_loop.chain_of(getattr(event, "ld_chain", ()))
+        if self.data.repeat_mode == MacroRepeatModes.Toggle:
+            manager.toggle_macro(self.macro, chain)
+            return
+        manager.run_macro(self.macro, chain)
+        if is_hold:
+            if value.current:
+                self._holding = True
+            else:
+                # Started by a release: the input is already up.
+                manager.stop_macro(self.macro)
 
     @override
     def waits_for_end(self) -> bool:

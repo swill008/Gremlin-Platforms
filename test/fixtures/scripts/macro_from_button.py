@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Test script: a stick button queues a macro.
+"""Test script: a stick button runs a macro.
 
 The macro presses vJoy 1 button "Macro button", waits 0.05 s and releases
 it. It is run by the program's macro scheduler (MacroManager), as a Macro
@@ -31,4 +31,4 @@ def on_button(event: types.Event) -> None:
     tap.add_action(macro.VJoyAction(1, btn, target.value, True))
     tap.add_action(macro.PauseAction(0.05))
     tap.add_action(macro.VJoyAction(1, btn, target.value, False))
-    macro.MacroManager().queue_macro(tap)
+    macro.MacroManager().run_macro(tap)

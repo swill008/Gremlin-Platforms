@@ -52,4 +52,4 @@ class RefreshPhysicalInputs:
                         guid, InputType.JoystickAxis, axis_id, value
                     )
                 )
-                macro_manager.queue_macro(action)
+                macro_manager.run_macro(action)

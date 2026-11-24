@@ -201,7 +201,7 @@
     },
     {
       "file": "macro_from_button.py",
-      "purpose": "A stick button queues a macro (vJoy press, 0.05 s pause, release) on the program's macro scheduler.",
+      "purpose": "A stick button runs a macro (vJoy press, 0.05 s pause, release) on the program's macro manager (run_macro).",
       "variables": {
         "Mode": "ModeVariable",
         "Button": "PhysicalInputVariable",
