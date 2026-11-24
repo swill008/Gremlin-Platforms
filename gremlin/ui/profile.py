@@ -864,6 +864,7 @@ class ModeListModel(QtCore.QAbstractListModel):
         signal.profileChanged.connect(self._reset)
         signal.modesChanged.connect(self._reset)
 
+    @QtCore.Slot()
     def _reset(self) -> None:
         self.beginResetModel()
         self._lookup = {}
@@ -1234,6 +1235,7 @@ class StartupModeModel(QtCore.QAbstractListModel):
         signal.profileChanged.connect(self._reset)
         signal.modesChanged.connect(self._reset)
 
+    @QtCore.Slot()
     def _reset(self) -> None:
         self.beginResetModel()
         self._profile = cast(gremlin.profile.Profile, shared_state.current_profile)
@@ -1314,6 +1316,7 @@ class VJoyInputOrOutputModel(QtCore.QAbstractListModel):
         self._vjoy_devices = _vjoy_devices()
         signal.profileChanged.connect(self._reset)
 
+    @QtCore.Slot()
     def _reset(self) -> None:
         self.beginResetModel()
         self._profile = shared_state.current_profile
@@ -1389,6 +1392,7 @@ class OutputVJoyListModel(QtCore.QAbstractListModel):
         self._initial_values_models = self._create_initial_values_models()
         signal.profileChanged.connect(self._reset)
 
+    @QtCore.Slot()
     def _reset(self) -> None:
         self.beginResetModel()
         self._profile = shared_state.current_profile
@@ -1507,6 +1511,7 @@ class ProfileSettingsModel(QtCore.QObject):
         # The Options macro delay shows here while the profile follows it.
         signal.configChanged.connect(self.settingsChanged)
 
+    @QtCore.Slot()
     def _reset(self) -> None:
         self._profile = shared_state.current_profile
         self.settingsChanged.emit()
