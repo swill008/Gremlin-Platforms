@@ -27,6 +27,7 @@ import json
 import os
 import pathlib
 import subprocess
+import threading
 from collections.abc import Iterator
 
 import pytest
@@ -50,6 +51,15 @@ def settings_file(
     monkeypatch.setattr(deferred_write, "_scheduler", lambda: None)
     SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
     yield path
+    SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
+
+
+def _write_settings(path: pathlib.Path, text: str) -> None:
+    """Write the test's settings file, then drop any Configuration made
+    since the fixture ran: one made by another test's leftover thread (or a
+    finalizer) loaded the file before it existed and would be the one the
+    test gets (CI run 45320393185: "good" read as its default, 1)."""
+    path.write_text(text, encoding="utf-8")
     SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
 
 
@@ -97,7 +107,8 @@ def test_bad_value_does_not_hang_start_up(tmp_path: pathlib.Path) -> None:
 def test_bad_settings_fall_back_and_good_ones_are_kept(
     settings_file: pathlib.Path,
 ) -> None:
-    settings_file.write_text(
+    _write_settings(
+        settings_file,
         json.dumps({
             "global": {
                 "general": {
@@ -110,7 +121,6 @@ def test_bad_settings_fall_back_and_good_ones_are_kept(
                 "broken-group": "not a group",
             }
         }),
-        encoding="utf-8",
     )
     cfg = gremlin.config.Configuration()
     for name, data_type, default in [
@@ -131,7 +141,7 @@ def test_bad_settings_fall_back_and_good_ones_are_kept(
 def test_unreadable_file_is_kept_aside_and_announced_once(
     settings_file: pathlib.Path, text: str
 ) -> None:
-    settings_file.write_text(text, encoding="utf-8")
+    _write_settings(settings_file, text)
     gremlin.config.Configuration()
 
     copies = list(settings_file.parent.glob("configuration.json.bad-*"))
@@ -153,7 +163,7 @@ def test_unreadable_file_is_kept_aside_and_announced_once(
 @pytest.mark.parametrize("text", ["", "  \n"])
 def test_empty_file_is_like_no_file(settings_file: pathlib.Path, text: str) -> None:
     # Nothing to keep aside and nothing to tell: there were no settings.
-    settings_file.write_text(text, encoding="utf-8")
+    _write_settings(settings_file, text)
     gremlin.config.Configuration()
     assert list(settings_file.parent.glob("configuration.json.bad-*")) == []
     assert gremlin.config._damaged_copy == ""
@@ -186,3 +196,22 @@ def test_saving_creates_the_settings_folder(
     finally:
         SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
     assert path.is_file()
+
+
+def test_a_configuration_made_elsewhere_first_does_not_hide_the_file(
+    settings_file: pathlib.Path,
+) -> None:
+    # Another test's leftover thread asks for the settings before this test
+    # has written its file (what CI run 45320393185 met at random).
+    stray = threading.Thread(target=gremlin.config.Configuration)
+    stray.start()
+    stray.join(10)
+    _write_settings(
+        settings_file,
+        json.dumps({"global": {"general": {"good": _entry("int", "42")}}}),
+    )
+    cfg = gremlin.config.Configuration()
+    cfg.register(
+        "global", "general", "good", PropertyType.Int, 1, "", {"min": 0, "max": 100}
+    )
+    assert cfg.value("global", "general", "good") == 42

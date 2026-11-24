@@ -385,7 +385,7 @@ Duplicated logic
 
 ### Settings file
 - S24 Settings should live in `configuration.json` in `%USERPROFILE%\Gremlin Platforms`, even when the data folder is moved, so the moved folder can be found. [user confirmed 2026-10-06; was code only]
-- S25 A single setting that can't be read should fall back to its default; every other setting is kept. [user decision: APP1/APP2 keep good settings] [test: test_settings_file_damage.py::test_bad_settings_fall_back_and_good_ones_are_kept]
+- S25 A single setting that can't be read should fall back to its default; every other setting is kept. [user decision: APP1/APP2 keep good settings] [test: test_settings_file_damage.py::test_bad_settings_fall_back_and_good_ones_are_kept, ::test_a_configuration_made_elsewhere_first_does_not_hide_the_file]
 - S26 A file that can't be read at all should be kept as `configuration.json.bad-<date-time>`. The program starts with defaults and says so once ("Settings Reset" with the copy's path) when the main window is up. [user decision: APP2 back up, tell once] [test: test_settings_file_damage.py::test_unreadable_file_is_kept_aside_and_announced_once]
 - S27 An empty file should count as no settings (nothing kept aside). [test: test_settings_file_damage.py::test_empty_file_is_like_no_file]
 - S28 A bad value should never hang the start; the file is read once at start. [tracker: APP1] [test: test_settings_file_damage.py::test_bad_value_does_not_hang_start_up, ::test_settings_are_read_once_before_the_application_runs]
@@ -706,7 +706,7 @@ Size (9 Oct): about 17,000 lines across ~85 files. Python is ~8,600 lines (`joys
 
 Covered by tests (about 40 files, ~250 tests):
 - Start-up, second copy, could not start, off-screen and imports: `test_could_not_start.py` (3), `test_second_copy_detection.py` (10), `test_audit3_startup.py` (12), `test_audit2_startup_devices.py` (part), `test_program_imports.py`, `test_modules_import_alone.py`, `test_startup_messages.py` (9), `test_startup_settings_kept.py` (2), `test_restart_command.py` (2), `test_user_data_folder.py` (2), `test_open_folders.py` (4).
-- Settings: `test_config.py` (4), `test_settings_file_damage.py` (7), `test_settings_versions.py` (3), `test_write_less.py` (8), `test_meta_config_option.py` (4).
+- Settings: `test_config.py` (4), `test_settings_file_damage.py` (8), `test_settings_versions.py` (3), `test_write_less.py` (8), `test_meta_config_option.py` (4).
 - Options: `test_options_layout.py` (3), `test_option_list_saving.py` (3), `test_audit2_options_text.py` (part).
 - Quit closes Qt (S154): `test_quit_closes_qt.py` (2). Clock use: `test_clock_use.py` (7). Second-copy lock owner: `test_lock_owner_pid.py` (1).
 - Threads, errors, freeze: `test_threads.py` (9), `test_bounded_waits.py` (6), `test_error_report.py` (5), `test_watchdog.py` (4), `test_qt_log.py` (4).
