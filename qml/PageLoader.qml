@@ -4,8 +4,9 @@
 import QtQuick
 
 // A page Loader that tells the Window trace (01 S176, D-01-WINDOW-TRACE)
-// when its page loads, unloads or fails to load. Handlers set where it is
-// used run as well as these.
+// when its page loads, unloads or fails to load, and asks for the unused
+// QML memory to be released after an unload (01 S199). Handlers set where
+// it is used run as well as these.
 Loader {
     // The page's glossary name, e.g. "Home", "Device Bindings".
     property string traceName: ""
@@ -16,8 +17,11 @@ Loader {
     }
 
     onActiveChanged: {
-        if (!active)
+        if (!active) {
             _tell("unloaded")
+            if (typeof memoryRelease !== "undefined" && memoryRelease)
+                memoryRelease.request()
+        }
     }
     onLoaded: _tell("loaded")
     onStatusChanged: {

@@ -6,7 +6,8 @@
 While Gremlin runs a profile from the tray nobody sees its pages, so:
 the main window unloads them (Main.qml enterTray: Home, Scripts, Profile
 Settings, and Device Bindings unless it holds unsaved edits), Qt drops the
-hidden window's graphics, unused compiled QML and garbage, and Windows is
+hidden window's graphics, unused compiled QML and garbage (memory_release,
+01 S199), and Windows is
 told it may take back the memory pages nothing is using. Showing the window
 again (leaveTray) loads the pages afresh. The profile keeps running
 throughout: none of this touches the input or output side.
@@ -17,10 +18,11 @@ from __future__ import annotations
 import contextlib
 import ctypes
 import ctypes.wintypes
-import gc
 import logging
 
 from PySide6 import QtCore, QtGui, QtQml
+
+from gremlin.ui import memory_release
 
 # Let the pages finish unloading before the clean-up.
 _SETTLE_MS = 400
@@ -56,13 +58,9 @@ def release(window: QtGui.QWindow, engine: QtQml.QQmlEngine | None) -> None:
     if window.isVisible() or QtCore.QCoreApplication.closingDown():
         _note("tray: release skipped")
         return
-    if engine is not None:
-        engine.collectGarbage()
-    gc.collect()
+    memory_release.release_unused(engine)
     if isinstance(window, QtGui.QWindow) and hasattr(window, "releaseResources"):
         window.releaseResources()
-    if engine is not None:
-        engine.trimComponentCache()
     trim_working_set()
     _note("tray: release done")
 

@@ -29,9 +29,15 @@ _SCRIPT = r"""
 import os, sys, time
 sys.path.insert(0, sys.argv[1])
 from PySide6 import QtGui, QtQml, QtTest
-from gremlin.ui import tray_memory
+from gremlin.ui import memory_release, tray_memory
 
 released = []
+unused = []
+_unused = memory_release.release_unused
+def _unused_counted(engine):
+    unused.append(engine)
+    return _unused(engine)
+memory_release.release_unused = _unused_counted
 _release = tray_memory.release
 def _counted(window, engine):
     released.append(window.isVisible())
@@ -40,6 +46,7 @@ tray_memory.release = _counted
 
 app = QtGui.QGuiApplication([])
 engine = QtQml.QQmlApplicationEngine()
+memory_release.expose(engine)
 engine.loadData(b'''
 import QtQuick
 import QtQuick.Window
@@ -58,6 +65,11 @@ end = time.monotonic() + 30  # generous: a busy PC is slow
 while not released and time.monotonic() < end:
     QtTest.QTest.qWait(20)
 print("cleaned-up", released == [False], flush=True)
+# Through the one release helper (01 S199), which drops a waiting release.
+print("one-helper", unused == [engine], flush=True)
+memory_release.of(engine).request()
+memory_release.release_unused(engine)
+print("waiting-dropped", not memory_release.of(engine).pending(), flush=True)
 left_result = tray_memory.leave_tray(window)
 shown = window.property("trayed") is False and left_result is True
 print("shown-again", shown, flush=True)
@@ -77,6 +89,8 @@ def test_hidden_window_unloads_and_reloads() -> None:
     assert lines == {
         "hidden-trayed": "True",
         "cleaned-up": "True",
+        "one-helper": "True",
+        "waiting-dropped": "True",
         "shown-again": "True",
     }, result.stderr[-2000:]
 

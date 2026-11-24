@@ -58,7 +58,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 
 **Tray**
 - `gremlin/ui/system_tray.py` (637): `SystemTrayIcon` (Win32 tray icon and hidden helper window, idle/active icon, menu: Show/Hide Gremlin-Platforms, Run Profile/Stop Profile, Exit Gremlin-Platforms; minimize/close to tray; one-time balloon; re-adds the icon when Explorer restarts).
-- `gremlin/ui/tray_memory.py` (91): gives memory back while hidden (`enter_tray`, `leave_tray`, `release`, `trim_working_set`).
+- `gremlin/ui/tray_memory.py` (89): gives memory back while hidden (`enter_tray`, `leave_tray`, `release`, `trim_working_set`); from 2026-11-23 `release` uses page 01's `memory_release.release_unused` (01 S199) for the JavaScript and Python collections and the component cache trim, then the window's graphics and the working-set trim.
 - `qml/Main.qml` (part, owned by page 01: `trayed`, `enterTray`, `leaveTray`), `joystick_gremlin.py` (part, owned by page 01: settings `minimize-to-tray`, `tray-notice-shown` in `register_config_options` (the old `close-to-tray` carry-over removed 2026-10-12, D-AUDIT-TRAY-CARRY), the tray icon made in `JoystickGremlinApp.__init__` unless off-screen, `--start-minimized` in `process_cmd_args`).
 
 **Look: theme, colours, UI scale, Windows scaling**

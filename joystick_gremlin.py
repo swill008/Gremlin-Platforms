@@ -1269,6 +1269,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         from gremlin.ui import window_trace
 
         window_trace.expose(self.engine)
+        # Unused QML memory released after unloads and closes (01 S199).
+        from gremlin.ui import memory_release
+
+        memory_release.expose(self.engine)
         # What's New (01 S183): made before UpdateModel, which records the
         # version that ran, so it can still see the previous one.
         from gremlin.ui.whats_new_model import WhatsNewModel

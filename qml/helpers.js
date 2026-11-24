@@ -53,7 +53,12 @@ function createComponent(componentSpec, properties)
             if (_openWindows[componentSpec] === window) {
                 delete _openWindows[componentSpec]
             }
-            Qt.callLater(function() { window.destroy() })
+            Qt.callLater(function() {
+                window.destroy()
+                // Unused QML memory released a moment later (01 S199).
+                if (typeof memoryRelease !== "undefined" && memoryRelease)
+                    memoryRelease.request()
+            })
         })
         _openWindows[componentSpec] = window
         window.show();
