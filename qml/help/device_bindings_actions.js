@@ -513,7 +513,8 @@ function topics() {
                 ])
                 + _good([
                     "Shift, Ctrl, Alt and Win are pressed first. The other keys follow in the order you pressed them.",
-                    "The keys are pressed once and don't repeat while you hold the input. For a key that repeats, use a " + _link("macro", "Macro") + " with Repeat Mode <b>Hold</b>."
+                    "The keys are pressed once and don't repeat while you hold the input. For a key that repeats, use a " + _link("macro", "Macro") + " with Repeat Mode <b>Hold</b>.",
+                    "The keys go out at once, even while an Exclusive macro is playing."
                 ]),
             related: ["device-bindings-actions-macro", "device-bindings-actions-keyboard-page"]
         },
@@ -554,15 +555,18 @@ function topics() {
                 + "<table cellpadding=\"3\"><tr><th align=\"left\">Choice</th><th align=\"left\">What it does</th></tr>"
                 + "<tr><td><b>Single</b></td><td>Plays the steps once per press.</td></tr>"
                 + "<tr><td><b>Count</b></td><td>Plays the steps the number of <b>Times</b> you set.</td></tr>"
-                + "<tr><td><b>Toggle</b></td><td>One press starts repeating; the next press stops it.</td></tr>"
+                + "<tr><td><b>Toggle</b></td><td>One press starts repeating; the next press stops it. A second press while it is still waiting to play also switches it off.</td></tr>"
                 + "<tr><td><b>Hold</b></td><td>Repeats while you hold the input. It always plays at least once.</td></tr>"
                 + "<tr><td><b>Delay (sec)</b></td><td>The wait between repeats, for Count, Toggle and Hold.</td></tr>"
                 + "<tr><td><b>Exclusive</b></td><td>Waits for any macro that is playing to finish. Other macros then wait until this one is done.</td></tr>"
-                + "<tr><td><b>Pre-Emptive</b></td><td>Shows when Exclusive is ticked. The macro starts at once and pauses the others; they carry on when it ends.</td></tr>"
+                + "<tr><td><b>Pre-Emptive</b></td><td>Shows when Exclusive is ticked. The macro starts at once and pauses the others; they carry on when it ends. If it paused an Exclusive macro, other macros still wait until that one is done.</td></tr>"
                 + "</table>"
                 + "<p>For example, a key that repeats while you hold a button: add a Keyboard step set to Press, then one for the same key set to Release. Choose Repeat Mode <b>Hold</b> and set <b>Delay (sec)</b> for the gap between key presses.</p>"
                 + _good([
                     "<b>Delay (sec)</b> comes after the last step, before the steps play again. It doesn't change the wait between steps.",
+                    "The delay ends at once when you release a Hold macro or switch a Toggle macro off. A Count macro has no delay after its last time.",
+                    "Release and press again during the delay, and the macro starts again.",
+                    "Map to Keyboard keys go out at once, even while an Exclusive macro is playing.",
                     "Between steps without a <b>Pause</b>, the macro waits for <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a> <a href=\"show:toolbar/Profile Settings\">Show me ›</a>.",
                     "If the profile doesn't set one, it uses <b>Default delay</b> in Options <a href=\"show:option/Default delay\">Show me ›</a>.",
                     "A Joystick step acts like the stick itself. It only works for controls ticked in the stick's Module Setup.",

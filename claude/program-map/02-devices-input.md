@@ -133,7 +133,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | Mouse button / wheel (only while hook started) | `process_mouse_event` -> `_mouse_handler` | emit `mouse_event` | mouse hook thread |
 | Run | `code_runner.start` | `EventHandler.add_callback` x N, `build_event_lookup`, connect `InputModuleRuntime.event/key_event` and `virtual_event` to `process_event`, `resume`, `refresh_axes` | main |
 | Stop | `code_runner.stop` | disconnect, `gremlin_active=False`, `EventHandler.clear` | main |
-| Event reaches profile | `EventHandler.process_event` | `_matching_callbacks` (filter when paused); an ending event after a mode change first runs the press mode's pending callbacks (B3, 06 S38, being built); each callback, `ButtonReleaseActions.process_release`; VJoyError pauses | main (queued) |
+| Event reaches profile | `EventHandler.process_event` | `_matching_callbacks` (filter when paused); an ending event after a mode change first runs the press mode's pending callbacks (B3, 06 S38); each callback; VJoyError pauses | main (queued) |
 | Pause and Resume action | `pause_resume` plugin | `EventHandler.pause/resume/toggle_active` | main |
 | Mode renamed / deleted | `mode_manager.py:250,264` | `rename_mode`, `drop_mode` | main |
 | Change Mode to a mode not in the running profile | `ModeManager.switch_to` | `_known_modes()` reads `EventHandler.known_modes`; ignored, logged once | main |
