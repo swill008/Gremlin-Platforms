@@ -266,12 +266,30 @@ def _run(j: Journey) -> Any:  # noqa: ANN401
     j.backend.toggleActiveState()
     runtime = osc.OscRuntime()
     listener = j.wait_until(lambda: runtime._listener, "the OSC listener", 10)
+    # An open port isn't a Run taking packets: with the port already open
+    # (always listening) a packet sent before the input thread has finished
+    # the start (route on, Initial Values sent) goes to the window only, or
+    # is overwritten, and the input never moves.
+    j.wait_until(
+        lambda: not j.backend.gremlinStarting
+        and j.backend.runner.is_running()
+        and runtime._route(),
+        "the Run taking OSC packets",
+        10,
+    )
     return SimpleUDPClient("127.0.0.1", _bound_port(listener))
 
 
 def _stop(j: Journey) -> None:
     if j.backend.runner.is_running():
         j.backend.toggleActiveState()
+    # The Stop runs on the input thread: edits made before it has finished
+    # land on a profile that is still running.
+    j.wait_until(
+        lambda: not j.backend.gremlinStarting and not j.backend.runner.is_running(),
+        "the Run to stop",
+        10,
+    )
     j.settle()
 
 
