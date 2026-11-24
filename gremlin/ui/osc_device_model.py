@@ -780,6 +780,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         )
         return settings
 
+    @QtCore.Slot(str, object)
     def _on_learned(self, address: str, args: object) -> None:
         if not OscRuntime().listens_for(self):
             # another model's Listen (the OSC Monitor has its own)
@@ -848,6 +849,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     def refreshInput(self, index: int) -> None:
         self.dataChanged.emit(self.createIndex(index, 0), self.createIndex(index, 0))
 
+    @QtCore.Slot()
     def _full_refresh(self) -> None:
         self.beginResetModel()
         self.endResetModel()
@@ -855,6 +857,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     def _get_guid(self) -> str:
         return str(self._osc.device_guid)
 
+    @QtCore.Slot()
     def _profile_changed_cb(self) -> None:
         self.beginResetModel()
         self.endResetModel()

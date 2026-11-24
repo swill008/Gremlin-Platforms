@@ -910,11 +910,13 @@ class OscLayoutModel(ControlLayoutModel):
         ]
         return out
 
+    @QtCore.Slot()
     def _on_feedback_changed(self) -> None:
         if self._writing or self._fb_writing:
             return
         self._rebuild()
 
+    @QtCore.Slot()
     def _on_logical_changed(self) -> None:
         if self._writing or self._fb_writing:
             return
@@ -998,6 +1000,7 @@ class OscLayoutModel(ControlLayoutModel):
             return
         super().redo()
 
+    @QtCore.Slot()
     def _on_external(self) -> None:
         if self._writing:
             return
@@ -1020,12 +1023,14 @@ class OscLayoutModel(ControlLayoutModel):
         self._seen_edit = serial
         self._rebuild()
 
+    @QtCore.Slot()
     def _on_file_read(self) -> None:
         self._store.load()
         self._on_reloaded()
 
     # Live value and last seen (S141): only that input's row changes.
 
+    @QtCore.Slot(str)
     def _on_live(self, uid: str) -> None:
         tapped = OscRuntime().take_press(uid)
         for index, row in enumerate(self._rows):

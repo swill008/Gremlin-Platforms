@@ -557,6 +557,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
 
     # Signals from the rest of the program.
 
+    @QtCore.Slot(str, str)
     def _on_mode_renamed(self, old: str, new: str) -> None:
         # Steps and the open pane follow the new name.
         for entry in self._undo + self._redo:
@@ -569,6 +570,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         if self._pane_shadow is not None and self._pane_shadow.mode == old:
             self._pane_shadow.mode = new
 
+    @QtCore.Slot(str)
     def _on_mode_deleted(self, name: str) -> None:
         # Steps could bring inputs back into the deleted mode.
         if self._undo or self._redo:
@@ -583,6 +585,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                 f"The mode {name} was deleted, so its action editor closed.",
             )
 
+    @QtCore.Slot()
     def _on_profile(self) -> None:
         self._undo = self._steps_after_profile(self._undo)
         self._redo = self._steps_after_profile(self._redo)
@@ -594,6 +597,9 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         self._just_undid = False
         self.revisionChanged.emit()
 
+    # Hooks a page may override, so no @QtCore.Slot here: PySide keeps a
+    # connection to a decorated slot a subclass overrides alive after the
+    # object is deleted. A page that connects them decorates its own.
     def _on_reloaded(self) -> None:
         self.drop_steps()
         self._rebuild()

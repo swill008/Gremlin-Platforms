@@ -658,10 +658,12 @@ class HardwareLayoutModel(ControlLayoutModel):
         else:
             self._rebuild()
 
+    @QtCore.Slot(int)
     def _on_input_changed(self, _index: int) -> None:
         if not self._announcing:
             self._on_external()
 
+    @QtCore.Slot()
     def _on_devices_changed(self) -> None:
         if self._store.device is None and self._store.guid:
             self.reload()

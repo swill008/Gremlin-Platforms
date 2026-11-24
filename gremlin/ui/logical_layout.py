@@ -283,9 +283,19 @@ class LogicalLayoutModel(ControlLayoutModel):
         if follows(kind, value, was, bool(getattr(event, "synthetic", False))):
             self.followInput.emit(_parent_key(event.event_type, event.identifier))
 
+    @QtCore.Slot()
     def _bump(self) -> None:
         self._stamp += 1
         self.stampChanged.emit()
+
+    # Slots for the Logical Device notices (one QMetaObject per type).
+    @QtCore.Slot()
+    def _on_external(self) -> None:
+        super()._on_external()
+
+    @QtCore.Slot()
+    def _on_reloaded(self) -> None:
+        super()._on_reloaded()
 
     @QtCore.Property(int, notify=stampChanged)
     def stamp(self) -> int:
