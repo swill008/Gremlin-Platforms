@@ -200,7 +200,9 @@ def shown_name(device_guid: object) -> str:
         return f"{dev.name} {dev.vjoy_id}"
     if dev is not None:
         return dev.name
-    return device_name(uid)
+    # Unplugged: the driver's name, else the one the open profile stored
+    # (05 S146, upstream c479d342).
+    return device_name(uid) or _profile_names().get(str(uid).upper(), "")
 
 
 # Device Information marks the devices the program leaves out (02 Q6).

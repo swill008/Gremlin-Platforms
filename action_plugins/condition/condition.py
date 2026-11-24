@@ -48,6 +48,7 @@ from gremlin.input_cache import (
 from gremlin.keyboard import key_from_code
 from gremlin.logical_device import LogicalDevice
 from gremlin.modules import ids, inputs, output
+from gremlin.signal import signal
 from gremlin.types import (
     ConditionType,
     Event,
@@ -685,16 +686,41 @@ class JoystickCondition(AbstractCondition):
                 input_name = self.device_lookup.input_name(
                     (self.input_type, self.input_id)
                 )
-            if self.joystick is None:
-                return f"Unknown Joystick - {input_name}"
-            else:
-                return f"{self.joystick.name} - {input_name}"
+            # The shown name (alias, twin name); for an unplugged stick the
+            # name the profile stored (05 S146).
+            from gremlin.ui import device_names
+
+            name = device_names.shown_name(self.device_uuid)
+            return f"{name or 'Unknown Joystick'} - {input_name}"
+
+        def is_connected(self) -> bool:
+            """The stick is plugged in now; an OSC input always counts as
+            there (its own missing case is E8, MissingOscInput)."""
+            if self.device_uuid == ids.OSC:
+                return True
+            from gremlin.modules import hardware
+
+            return hardware.device_connected(self.device_uuid)
 
     def __init__(self, parent: ta.OQO = None) -> None:
         """Creates a new instance."""
         super().__init__(parent)
 
         self._condition_type = ConditionType.Joystick
+        # The editor's names follow renames and device scans (05 S140).
+        signal.deviceNamesChanged.connect(self._follow_names)
+
+    def _follow_names(self) -> None:
+        self.statesChanged.emit(self.states)
+
+    def __call__(self, value: Value) -> bool:
+        # A check on an unplugged stick counts as false, whatever it checks
+        # (05 S146); its value is still read through the input module.
+        if not all(
+            cast(JoystickCondition.State, s).is_connected() for s in self._states
+        ):
+            return False
+        return super().__call__(value)
 
     def references(self) -> Iterable[refs.Reference]:
         found = []

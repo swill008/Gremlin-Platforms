@@ -377,11 +377,12 @@ def test_condition_missing_osc_input_is_bounded_no_traceback(
     def truth(_value: object) -> bool:
         return bool(state.get(None))  # type: ignore[arg-type]
 
+    # The functor picks its list in _select_functors (05 S145): no list.
     action = SimpleNamespace(
-        _should_execute=lambda v: True, _condition_truth_state=truth
+        _condition_truth_state=truth, functors={"true": ["t"], "false": ["f"]}
     )
     for _ in range(15):
-        ConditionFunctor.__call__(action, None, None)  # type: ignore[arg-type]
+        assert ConditionFunctor._select_functors(action, None) == []  # type: ignore[arg-type]
     assert logs.at(logging.ERROR) == []
     warnings = logs.at(logging.WARNING)
     assert 1 <= len(warnings) <= 11 and "gone" in warnings[0]

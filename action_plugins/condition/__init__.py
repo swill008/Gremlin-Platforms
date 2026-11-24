@@ -26,6 +26,7 @@ from gremlin.base_classes import (
     AbstractFunctor,
     UserFeedback,
     Value,
+    reset_functor_tree,
 )
 from gremlin.edits import note_edit
 from gremlin.logical_device import LogicalDevice
@@ -36,6 +37,7 @@ from gremlin.types import (
     ActionProperty,
     ConditionType,
     Event,
+    HatDirection,
     InputType,
     LogicalOperator,
     PropertyType,
@@ -59,6 +61,10 @@ QML_IMPORT_MAJOR_VERSION = 1
 class ConditionFunctor(AbstractFunctor):
     def __init__(self, action: ConditionModel) -> None:
         super().__init__(action)
+        # The list the last press (hat push, axis move) went to, and whether
+        # there is one: the release goes there (05 S145, upstream a448e3f3).
+        # Written only on the input thread; functors are rebuilt each Run.
+        self._functor_cache: tuple[list[AbstractFunctor], bool] = ([], False)
 
     @override
     def __call__(
@@ -70,22 +76,76 @@ class ConditionFunctor(AbstractFunctor):
         if not self._should_execute(value):
             return
 
-        actions = []
+        match self.data.behavior_type:
+            case InputType.JoystickAxis:
+                self._process_axis(event, value, properties)
+            case InputType.JoystickHat:
+                self._process_hat(event, value, properties)
+            case _:
+                self._process_button(event, value, properties)
+
+    def _process_axis(
+        self, event: Event, value: Value, properties: list[ActionProperty]
+    ) -> None:
+        """Every move is evaluated; a change of list resets the old one so
+        what it left running stops (upstream d1cd7e1b)."""
+        functors = self._select_functors(value)
+        old, cached = self._functor_cache
+        if cached and functors is not old:
+            for functor in old:
+                reset_functor_tree(functor)
+        self._functor_cache = (functors, True)
+        self._process_event(functors, event, value, properties)
+
+    def _process_button(
+        self, event: Event, value: Value, properties: list[ActionProperty]
+    ) -> None:
+        """The press picks the list; the release goes to it, or is evaluated
+        when no press was seen."""
+        if value.current:
+            self._functor_cache = (self._select_functors(value), True)
+            self._process_event(self._functor_cache[0], event, value, properties)
+        else:
+            functors, cached = self._functor_cache
+            if not cached:
+                functors = self._select_functors(value)
+            self._functor_cache = ([], False)
+            self._process_event(functors, event, value, properties)
+
+    def _process_hat(
+        self, event: Event, value: Value, properties: list[ActionProperty]
+    ) -> None:
+        """Centre goes to the list of the last push; a push that changes
+        list first centres the old one."""
+        old, cached = self._functor_cache
+        if value.current == HatDirection.Center:
+            functors = old if cached else self._select_functors(value)
+            self._functor_cache = ([], False)
+            self._process_event(functors, event, value, properties)
+            return
+        functors = self._select_functors(value)
+        if cached and functors is not old:
+            centre = event.clone()
+            centre.value = HatDirection.Center
+            self._process_event(old, centre, Value(HatDirection.Center), properties)
+        self._functor_cache = (functors, True)
+        self._process_event(functors, event, value, properties)
+
+    def _select_functors(self, value: Value) -> list[AbstractFunctor]:
+        """The list the condition picks now; none on an error."""
         try:
-            actions = (
+            return (
                 self.functors["true"]
                 if self._condition_truth_state(value)
                 else self.functors["false"]
             )
         except ca.MissingOscInput:
-            return  # logged (bounded) and traced where it was found
+            return []  # logged (bounded) and traced where it was found
         except error.GremlinError as e:
             logging.getLogger("system").error(
                 f"ConditionAction: Error executing condition - {e}"
             )
-            return
-        for action in actions:
-            action(event, value, properties)
+            return []
 
     def _condition_truth_state(self, value: Value) -> bool:
         """Returns the truth value of the condition.

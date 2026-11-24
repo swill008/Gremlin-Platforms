@@ -100,6 +100,11 @@ class RelativeAxisLoop:
         """Ends the relative axis loop after its current step."""
         self.thread_running = False
 
+    def reset(self) -> None:
+        """A Condition's axis branch changed away from this action: the
+        loop stops (05 S145)."""
+        self._ask_to_stop()
+
     def _current(self, run: int, token: object) -> bool:
         """This loop still runs: its Run goes on (06 Q17), it wasn't asked
         to stop and no newer loop replaced it."""

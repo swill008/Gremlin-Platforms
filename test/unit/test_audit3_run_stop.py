@@ -291,6 +291,14 @@ def test_a_condition_on_a_stick_plugged_in_later_works(
 
     monkeypatch.setattr(ca, "Joystick", Sticks)
     monkeypatch.setattr(ca.inputs, "button_pressed", lambda guid, ident: True)
+    # The editor's name comes from the shown-name owner (05 S146).
+    from gremlin import device_initialization
+
+    monkeypatch.setattr(
+        device_initialization,
+        "shown_name",
+        lambda guid: getattr(plugged.get(guid), "name", ""),
+    )
     state = ca.JoystickCondition.State(_GUID, InputType.JoystickButton, 3)
     with pytest.raises(error.GremlinError):
         state.get(Value(True))  # not plugged in yet

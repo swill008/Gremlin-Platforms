@@ -750,3 +750,15 @@ class AbstractFunctor(Generic[T], ABC):
                     "Invalid activation mode encountered when executing "
                     + f"action '{self.data.id}'"
                 )
+
+    def reset(self) -> None:
+        """Stops outputs that go on without further input events (relative
+        axis motion); nothing by default (05 S145, upstream d1cd7e1b)."""
+
+
+def reset_functor_tree(functor: AbstractFunctor) -> None:
+    """Resets the functor and every functor below it."""
+    functor.reset()
+    for children in functor.functors.values():
+        for child in children:
+            reset_functor_tree(child)
