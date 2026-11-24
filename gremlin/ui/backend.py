@@ -9,6 +9,7 @@ import sys
 import uuid
 from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol
 
 from PySide6 import (
     QtCore,
@@ -334,6 +335,31 @@ def _switch_mode(name: str) -> None:
         mm.switch_to(mode_manager.Mode(name, mm.current.name))
 
 
+_Configuration = config.Configuration
+
+
+class _AutoLoadState(Protocol):
+    """What auto-load's helpers read on Backend."""
+
+    config: _Configuration
+    _autoload_held: str | None
+
+
+def _no_profile_action(backend: _AutoLoadState) -> str:
+    """02 S90: "stop", "keep" or "default"."""
+    return str(backend.config.value("profile", "automation", "no-profile-action"))
+
+
+def _note_missing_once(backend: _AutoLoadState, profile_path: str) -> None:
+    """Auto-load's missing-file notice, once per file (02 S89, S90a)."""
+    if backend._autoload_held != profile_path:  # noqa: SLF001
+        backend._autoload_held = profile_path  # noqa: SLF001
+        signal.showNotification.emit(
+            "Auto-load",
+            f"{Path(profile_path).name} was not loaded: the file is missing.",
+        )
+
+
 @common.SingletonDecorator
 class Backend(QtCore.QObject):
     windowTitleChanged = QtCore.Signal()
@@ -573,50 +599,51 @@ class Backend(QtCore.QObject):
         if util.same_path(path, sys.executable):
             return
         profile_path = config.get_profile_with_regex(path)
+        own = bool(profile_path)
         if profile_path and not os.path.isfile(profile_path):
-            # Its profile is gone: say so once, and don't run the open one
-            # in its place (it kept running: this game got the last game's
-            # bindings), unless it is set to keep running.
-            if self._autoload_held != profile_path:
-                self._autoload_held = profile_path
-                signal.showNotification.emit(
-                    "Auto-load",
-                    f"{Path(profile_path).name} was not loaded: the file is missing.",
-                )
-            if self._wanted_active and not self.config.value(
-                "profile", "automation", "remain-active-on-focus-loss"
-            ):
+            # Its profile is gone: say so once, then as a program with no
+            # profile (02 S89): it never runs the last game's bindings.
+            _note_missing_once(self, profile_path)
+            profile_path = None
+            own = False
+        if not profile_path and _no_profile_action(self) == "default":
+            # 02 S90a: the default profile; a missing one is said once.
+            default = str(
+                self.config.value("profile", "automation", "default-profile") or ""
+            )
+            if default and os.path.isfile(default):
+                profile_path = default
+            elif default:
+                _note_missing_once(self, default)
+        if not profile_path:
+            # Stop the profile, or Keep running (02 S90).
+            if self._wanted_active and _no_profile_action(self) != "keep":
                 self.activate_gremlin(False)
             return
-        if profile_path:
-            if not util.same_path(self.profile.fpath, profile_path):
-                if self.profile.has_unsaved_changes():
-                    # The open profile isn't this program's: it stops, as
-                    # when the file is missing (GL-150, 04 Q3).
-                    if self._wanted_active and not self.config.value(
-                        "profile", "automation", "remain-active-on-focus-loss"
-                    ):
-                        self.activate_gremlin(False)
-                    # Never switch over unsaved edits; say so once per profile.
-                    if self._autoload_held != profile_path:
-                        self._autoload_held = profile_path
-                        signal.showNotification.emit(
-                            "Auto-load Waited",
-                            f"{Path(profile_path).name} was not loaded because "
-                            "the open profile has unsaved changes. Save or "
-                            "discard them and auto-load switches next time.",
-                        )
-                    return
+        if not util.same_path(self.profile.fpath, profile_path):
+            if self.profile.has_unsaved_changes():
+                # The open profile isn't this program's: it stops, as
+                # when the file is missing (GL-150, 04 Q3).
+                if self._wanted_active and _no_profile_action(self) != "keep":
+                    self.activate_gremlin(False)
+                # Never switch over unsaved edits; say so once per profile.
+                if self._autoload_held != profile_path:
+                    self._autoload_held = profile_path
+                    signal.showNotification.emit(
+                        "Auto-load Waited",
+                        f"{Path(profile_path).name} was not loaded because "
+                        "the open profile has unsaved changes. Save or "
+                        "discard them and auto-load switches next time.",
+                    )
+                return
+            if own:
+                # A missing file's notice stays said while the default
+                # stands in for it.
                 self._autoload_held = None
-                self.activate_gremlin(False)
-                self.loadProfile(profile_path)
-            if not self._wanted_active:
-                self.activate_gremlin(True)
-        else:
-            if not self.config.value(
-                "profile", "automation", "remain-active-on-focus-loss"
-            ):
-                self.activate_gremlin(False)
+            self.activate_gremlin(False)
+            self.loadProfile(profile_path)
+        if not self._wanted_active:
+            self.activate_gremlin(True)
 
     @QtCore.Property(str, notify=propertyChanged)
     def gremlinVersion(self) -> str:

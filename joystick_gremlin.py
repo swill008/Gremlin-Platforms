@@ -960,12 +960,19 @@ def register_config_options() -> None:
         "Load and run a profile when its program comes to the front.", {},
         True,
     )
+    # 02 S90, S90a (D-B5-UPSTREAM).
     cfg.register(
-        "profile", "automation", "remain-active-on-focus-loss", PropertyType.Bool,
-        False,
-        "Keep the profile running when you switch to a program that has no "
-        "profile.",
-        {}, True,
+        "profile", "automation", "no-profile-action", PropertyType.Selection,
+        "stop",
+        "What happens when a program with no profile comes to the front: "
+        "stop the profile, keep it running or load the default profile.",
+        {"valid_options": ["stop", "keep", "default"]}, True,
+    )
+    cfg.register(
+        "profile", "automation", "default-profile", PropertyType.Path, "",
+        "The profile loaded when a program with no profile comes to the "
+        "front, with Load the default profile chosen.",
+        {"is_folder": False}, True,
     )
     cfg.register(
         "profile", "automation", "entries-auto-loading", PropertyType.List, [],
