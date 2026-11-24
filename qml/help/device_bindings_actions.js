@@ -896,11 +896,14 @@ function topics() {
             body: "<p>Reuses an action you already added, on an input of the same type.</p>"
                 + _how([
                     "Pick the action. The list shows only actions you added yourself.",
-                    "Choose to share it or duplicate it (see below)."
+                    "Choose to share it (<b>Share this action</b>) or duplicate it (<b>Duplicate this action</b>); see below."
                 ])
                 + _see([
                     "Share: both inputs use the same action, so a change to one changes both.",
-                    "Duplicate: a separate copy you can change on its own."
+                    "Duplicate: a separate copy you can change on its own.",
+                    "Each entry in the list reads <b>[mode] device - input › action</b>, for example <b>[Default] Joystick - Button 2 › Map to vJoy</b>.",
+                    "The list is in order, with numbers by value: Button 2 comes before Button 10. Each action is listed once.",
+                    "Actions you are editing and haven't saved yet are listed the same way."
                 ])
                 + _good([
                     "A shared action's editor says <b>Shared with …</b> and names the other inputs.",

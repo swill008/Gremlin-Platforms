@@ -269,9 +269,14 @@ function topics() {
                 + "<li>Save or discard your changes. It switches the next time the program comes to the front.</li>"
                 + "<li>Your unsaved changes are not lost meanwhile. See <a href=\"topic:device-bindings-actions-safety-net\">Unfinished actions and recovery copies</a>.</li>"
                 + "</ul></li>"
-                + "<li>When the chosen profile file is missing, a notice says so once, and the running profile stops.</li>"
-                + "<li>When a program with no profile comes to the front, the running profile stops.</li>"
-                + "<li>To keep it running in these cases, turn on <b>Keep running when the program loses focus</b> <a href=\"show:option/Keep running when the program loses focus\">Show me ›</a>.</li>"
+                + "<li><b>When a program with no profile comes to the front:</b> <a href=\"show:option/When a program with no profile comes to the front\">Show me ›</a> picks what happens then:<ul>"
+                + "<li><b>Stop the profile</b>: the running profile stops.</li>"
+                + "<li><b>Keep running</b>: the open profile keeps running.</li>"
+                + "<li><b>Load the default profile</b>: the profile in the <b>Default profile</b> row <a href=\"show:option/Default profile\">Show me ›</a> loads and runs. The row can be used only with this choice.</li>"
+                + "</ul></li>"
+                + "<li>When the chosen profile file is missing, a notice says so once. Then the choice above decides what happens.</li>"
+                + "<li>When the default profile file is missing, a notice says so once.</li>"
+                + "<li>At start the program still opens the last profile, not the default one. Profiles that auto-load loads go to <b>File › Recent</b> as usual.</li>"
                 + "<li>Clicking into this program's own window doesn't count as another program.</li>"
                 + "</ul>",
             related: ["options-profile-profile-settings", "getting-started-profiles"]
