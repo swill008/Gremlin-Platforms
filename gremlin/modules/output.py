@@ -69,9 +69,17 @@ _KEEP_ALIVE_S = 60.0
 _keep_alive: dict[int, tuple[object, run_scope.Timer]] = {}
 
 # clock.monotonic() of the last vJoy or Xbox write by this program (a value
-# written, or a keep-alive reset); None before the first. One float store on
-# the write path, read by Screen Saver Mode's wake trace (12, SSM-TRACE).
+# written, a keep-alive reset, a vJoy acquired or released, an Xbox pad
+# plugged in or removed: 12 S42, D-12-WAKE-VJOY-NUMBER); None before the
+# first. One float store on the write path, read by Screen Saver Mode's
+# wake trace (12, SSM-TRACE).
 _last_write_at: float | None = None
+
+
+def _note_write() -> None:
+    """Stamps _last_write_at now (see above)."""
+    global _last_write_at
+    _last_write_at = clock.monotonic()
 
 
 def last_write_age_s() -> float | None:
@@ -336,7 +344,8 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
     write, so Gremlin carries on by itself once the device is free.
     """
     vid = int(vjoy_id)
-    if _opened_vjoy(vid) is None and vjoy_driver_found() and not vjoy_exists(vid):
+    held = _opened_vjoy(vid) is not None
+    if not held and vjoy_driver_found() and not vjoy_exists(vid):
         # Turned off in the vJoy configuration tool: never asked to open
         # (the driver logs each try); said once per Run (06 S47).
         with _lock:
@@ -388,6 +397,9 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
         was_failing = _vjoy_failed_at.pop(vid, None) is not None
     if was_failing:
         syslog.info(f"vJoy {vid} opened")
+    if not held:
+        # Acquiring a device counts as a write (12 S42).
+        _note_write()
     # The keep-alive needs to know when the device was last written.
     if hasattr(dev, "last_active"):
         _arm_keep_alive(vid)
@@ -464,7 +476,6 @@ def _keep_alive_check(vjoy_id: int, token: object) -> None:
     again _KEEP_ALIVE_S after its last write (a fixed period from the open
     re-sent it only after up to twice that). A released device arms no new
     check."""
-    global _last_write_at
     vid = int(vjoy_id)
     dev = _opened_vjoy(vid)
     if dev is None:
@@ -478,7 +489,7 @@ def _keep_alive_check(vjoy_id: int, token: object) -> None:
         idle = clock.monotonic() - float(dev.last_active)
         if idle >= _KEEP_ALIVE_S:
             dev.reset()
-            _last_write_at = clock.monotonic()
+            _note_write()
             trace.vjoy_keep_alive(vid, idle)
         else:
             # Never less than a little: a clock going back can't spin it.
@@ -616,7 +627,6 @@ def write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> bool:  # n
 
 def _write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> str:  # noqa: ANN401
     """write_vjoy's work; the result as the trace says it."""
-    global _last_write_at
     if not _sending():
         return "blocked (not running)"
     if not _passes(vjoy_id, kind, input_id):
@@ -645,7 +655,7 @@ def _write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> str:  # n
         key = ("vjoy-error", int(vjoy_id), kind, input_id)
         _log_once(key, f"vJoy write failed: {exc}")
         return f"failed: {exc}"
-    _last_write_at = clock.monotonic()
+    _note_write()
     return "written"
 
 
@@ -998,7 +1008,6 @@ def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
     on the pad is available, nothing is claimed (as in GremlinEx). Nothing
     is sent while stopped, so no pad is plugged in outside a Run (06 Q19).
     """
-    global _last_write_at
     if not _sending():
         return False
     if int(pad_id) not in xbox_pads_on():
@@ -1008,14 +1017,18 @@ def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
             f"Not sent: {xbox_pad_label(pad_id)} is off in Xbox Setup",
         )
         return False
+    was_plugged = int(pad_id) in plugged_xbox_pads()
     try:
         from vigem.xbox import XboxProxy
 
         XboxProxy()[int(pad_id)].apply(target, value)
     except Exception as exc:
         _log_once(("xbox-error", int(pad_id)), f"Xbox pad {pad_id} write failed: {exc}")
+        if not was_plugged and int(pad_id) in plugged_xbox_pads():
+            # Plugged in, then the value failed: the plug counts (12 S42).
+            _note_write()
         return False
-    _last_write_at = clock.monotonic()
+    _note_write()
     return True
 
 
@@ -1186,6 +1199,10 @@ def reset_vjoy() -> None:
         _vjoy_proxy().reset()
     except Exception:
         syslog.exception("vJoy reset failed")
+    else:
+        if held:
+            # Releasing a device counts as a write (12 S42).
+            _note_write()
     # Released at rest (06 S17): the rest counts as written for the
     # out-of-step watch (S86-S87), else Stop reads as OUT OF STEP.
     trace.rested(held)
@@ -1194,12 +1211,17 @@ def reset_vjoy() -> None:
 def reset_drivers() -> None:
     """Release every vJoy device and unplug every Xbox pad Gremlin holds."""
     reset_vjoy()
+    plugged = plugged_xbox_pads()
     try:
         from vigem.xbox import XboxProxy
 
         XboxProxy().reset()
     except Exception:
         syslog.exception("Xbox reset failed")
+    else:
+        if plugged:
+            # Removing a pad counts as a write (12 S42).
+            _note_write()
     clear_blocked_log()
 
 

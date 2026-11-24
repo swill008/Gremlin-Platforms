@@ -21,6 +21,7 @@ reader; the real ones refuse to run under pytest.
 from __future__ import annotations
 
 import ctypes
+import dataclasses
 import datetime
 import json
 import logging
@@ -401,10 +402,14 @@ class DeviceDisabler:
         self._wanted = False
         self._error = ""
         self._callbacks: list[Callable[[bool, str], None]] = []
-        self._jobs: queue.Queue[tuple[str, Callable[[], None]]] = queue.Queue()
-        self._queued: set[str] = set()
+        self._jobs: queue.Queue[_Job] = queue.Queue()
+        self._queued_enable: _Job | None = None
+        self._running: _Job | None = None
         self._worker: threading.Thread | None = None
+        # Jobs queued or running (wait_idle).
         self._busy = 0
+        # Counted jobs queued or running (switching()).
+        self._switching = 0
         self._idle = threading.Event()
         self._idle.set()
         # The journal listed a device not "enabled" after the last job.
@@ -594,21 +599,34 @@ class DeviceDisabler:
 
     # Jobs: one program thread, one job at a time -------------------------
 
-    def _enqueue(self, name: str, job: Callable[[], None]) -> None:
+    def _enqueue(
+        self, name: str, run: Callable[[], None], counted: bool = True
+    ) -> None:
+        """counted: switching() is true from now until the job ends;
+        otherwise only once the job calls _count_switch()."""
         with self._lock:
-            if name == "enable" and "enable" in self._queued:
-                return  # one queued enable covers every pending device
-            self._queued.add(name)
+            queued = self._queued_enable if name == "enable" else None
+            if queued is not None:
+                # One queued enable covers every pending device.
+                if counted and not queued.counted:
+                    queued.counted = True
+                    self._switching += 1
+                return
+            job = _Job(name, run, counted)
+            if name == "enable":
+                self._queued_enable = job
+            if counted:
+                self._switching += 1
             self._busy += 1
             self._idle.clear()
-            self._jobs.put((name, job))
+            self._jobs.put(job)
             if self._worker is None or not self._worker.is_alive():
                 self._worker = threads.start("Device disabler", self._work)
 
     def _work(self) -> None:
         while True:
             try:
-                name, job = self._jobs.get(timeout=1.0)
+                job = self._jobs.get(timeout=1.0)
             except queue.Empty:
                 with self._lock:
                     if self._jobs.empty():
@@ -616,19 +634,33 @@ class DeviceDisabler:
                         return
                 continue
             with self._lock:
-                self._queued.discard(name)
+                if self._queued_enable is job:
+                    self._queued_enable = None
+                self._running = job
             try:
-                job()
+                job.run()
             except Exception:
-                _log.exception("Screen Saver Mode: device %s failed", name)
+                _log.exception("Screen Saver Mode: device %s failed", job.name)
             finally:
                 held = self._journal_holds_off()
                 with self._lock:
                     self._held_off = held
+                    self._running = None
+                    if job.counted:
+                        self._switching -= 1
+                        if self._switching == 0:
+                            self._quiet_until = clock.monotonic() + SWITCH_GRACE_S
                     self._busy -= 1
                     if self._busy == 0:
-                        self._quiet_until = clock.monotonic() + SWITCH_GRACE_S
                         self._idle.set()
+
+    def _count_switch(self) -> None:
+        """The running job switches a device after all: it counts from now."""
+        with self._lock:
+            job = self._running
+            if job is not None and not job.counted:
+                job.counted = True
+                self._switching += 1
 
     def _journal_holds_off(self) -> bool:
         # Only devices kept off: one left "to be enabled" (unplugged) or
@@ -643,10 +675,12 @@ class DeviceDisabler:
     def switching(self) -> bool:
         """D-12-SWITCH-OFF-NO-RELOAD: devices are being switched off, are
         held off, or are being switched back on (or were, under
-        SWITCH_GRACE_S ago): a job is queued or running, or the journal
-        held a device off after the last one. Never blocks."""
+        SWITCH_GRACE_S ago): a counted job is queued or running, or the
+        journal held a device off after the last job. An arrival retry
+        counts only once it asks the helper to switch a device on. Never
+        blocks."""
         with self._lock:
-            if self._busy > 0 or self._held_off:
+            if self._switching > 0 or self._held_off:
                 return True
             return clock.monotonic() < self._quiet_until
 
@@ -778,6 +812,7 @@ class DeviceDisabler:
         journal.save()
         if not asked:
             return
+        self._count_switch()
         timeout = PER_DEVICE_TIMEOUT_S * len(asked) + ANSWER_SLACK_S
         answer = self._ask(protocol.make_request("enable", asked), timeout)
         results = _results(answer)
@@ -819,10 +854,11 @@ class DeviceDisabler:
         self.start_helper(done)
 
     def on_device_arrival(self) -> None:
-        """A device was plugged in: retry the ones still "to be enabled"."""
+        """A device was plugged in: retry the ones still "to be enabled".
+        Pauses Device change behavior only if it switches one on."""
         journal = self.journal()
         if any(e.get("state") == TO_BE_ENABLED for e in journal.entries.values()):
-            self.enable_pending()
+            self._enqueue("enable", self._enable, counted=False)
 
     def _read(self, device_id: str) -> str:
         try:
@@ -835,6 +871,14 @@ class DeviceDisabler:
             )
             return "unknown"
         return status
+
+
+@dataclasses.dataclass
+class _Job:
+    name: str
+    run: Callable[[], None]
+    # Counts for switching() (D-12-SWITCH-OFF-NO-RELOAD).
+    counted: bool
 
 
 def _results(answer: dict | None) -> dict[str, str]:

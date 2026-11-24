@@ -113,9 +113,7 @@ def wired(
     signal.connect(other_slot)
 
     def unplug() -> None:
-        devices[:] = [
-            d for d in devices if dill.GUID(d.device_guid).uuid != _STICK
-        ]
+        devices[:] = [d for d in devices if dill.GUID(d.device_guid).uuid != _STICK]
         event_listener._run_device_list_update()
 
     def plug_in() -> None:
@@ -233,3 +231,90 @@ def test_a_device_left_to_be_enabled_does_not_pause_for_good(
     assert not dd.devices_switching()
     wired.unplug()
     assert wired.calls == [False, True]
+
+
+def _left_to_be_enabled(d: dd.DeviceDisabler) -> None:
+    _start_helper(d)
+    journal = d.journal()
+    journal.set(PAD, "Pad", dd.TO_BE_ENABLED, "not present")
+    journal.save()
+
+
+def test_an_arrival_retry_that_finds_the_device_missing_does_not_pause(
+    wired: SimpleNamespace,
+    disabler: tuple[dd.DeviceDisabler, FakeWindows],
+    steps: _Clock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Unplugged before the wake, another stick plugged in later: the retry
+    # runs before Backend's slot and switches nothing, so Reload applies.
+    d, windows = disabler
+    _left_to_be_enabled(d)
+    gate = threading.Event()
+
+    def read(device_id: str) -> str:
+        gate.wait(10)
+        return windows.read(device_id)
+
+    monkeypatch.setattr(d, "_status", read)
+    d.on_device_arrival()  # queued, still reading the device
+    try:
+        wired.unplug()
+    finally:
+        gate.set()
+    assert wired.calls == [False, True]
+    assert d.wait_idle(10)
+    assert d.journal().state(PAD) == dd.TO_BE_ENABLED
+    assert not dd.devices_switching()  # no grace either
+
+
+def test_an_arrival_retry_that_switches_a_device_on_pauses(
+    wired: SimpleNamespace,
+    disabler: tuple[dd.DeviceDisabler, FakeWindows],
+    steps: _Clock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    d, windows = disabler
+    _left_to_be_enabled(d)
+    windows.status[PAD] = dd.DISABLED  # back, still off
+    asking = threading.Event()
+    gate = threading.Event()
+    ask = d._ask
+
+    def held_ask(request: dict, timeout_s: float) -> dict | None:
+        asking.set()
+        gate.wait(10)
+        return ask(request, timeout_s)
+
+    monkeypatch.setattr(d, "_ask", held_ask)
+    d.on_device_arrival()
+    assert asking.wait(10)
+    assert dd.devices_switching()
+    wired.unplug()
+    assert wired.calls == []
+    gate.set()
+    assert d.wait_idle(10)
+    assert d.journal().state(PAD) == dd.ENABLED
+    steps.t += dd.SWITCH_GRACE_S - 1
+    assert dd.devices_switching()
+    steps.t += 2
+    assert not dd.devices_switching()
+
+
+def test_a_counted_enable_takes_over_a_queued_arrival_retry(
+    disabler: tuple[dd.DeviceDisabler, FakeWindows],
+    steps: _Clock,
+) -> None:
+    d, _windows = disabler
+    _left_to_be_enabled(d)
+    gate = threading.Event()
+    d._enqueue("hold", lambda: gate.wait(10), counted=False)
+    d.on_device_arrival()
+    assert not dd.devices_switching()
+    d.enable_pending()  # merged into the queued retry, which now counts
+    assert dd.devices_switching()
+    gate.set()
+    assert d.wait_idle(10)
+    assert dd.devices_switching()  # the grace after a counted job
+    steps.t += dd.SWITCH_GRACE_S + 1
+    assert not dd.devices_switching()

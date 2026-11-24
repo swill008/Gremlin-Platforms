@@ -459,6 +459,20 @@ class WindowsApi:
         except Exception:
             return ""
 
+    def device_output(self, handle: int) -> tuple[str, int]:
+        """(MAKER_VJOY, N) for vJoy device N, (MAKER_VIGEM, 0) for an Xbox
+        pad made by ViGEm, ("", 0) otherwise (S42). Read from Windows'
+        device tree and raw input; the device is never opened. Once per
+        handle, never per event."""
+        try:
+            path = raw_device_path(handle)
+            maker = device_maker(instance_id_from_path(path))
+            if maker == MAKER_VJOY:
+                return maker, hid_report_id(handle)
+            return maker, 0
+        except Exception:
+            return "", 0
+
     def device_physical_id(self, handle: int) -> str:
         """The physical device a raw input handle belongs to ("" when
         unknown). Slow-ish: once per handle, on the listener thread."""
@@ -654,8 +668,9 @@ def instance_id_from_path(path: str) -> str:
 
 
 def device_part_of_path(path: str) -> str:
-    """ "Col01" from a device path with &COL01, "" when it has none."""
-    m = re.search(r"&COL([0-9A-Fa-f]{2})", path)
+    """ "Col01" from a device path with &COL01 or &Col01, "" when it has
+    none."""
+    m = re.search(r"&COL([0-9A-F]{2})", path, re.IGNORECASE)
     return f"Col{m.group(1).upper()}" if m else ""
 
 
@@ -856,6 +871,153 @@ def physical_device(instance_id: str) -> str:
         node = parent
         current = buf.value.upper()
     return current
+
+
+# Who made a game controller (S42): the driver service of the device or one
+# above it. vJoy's collections sit under ROOT\HIDCLASS (service "vjoy",
+# seen on the user's PC 2026-11-24); ViGEm's pads under the ViGEmBus device
+# (service "ViGEmBus", from ViGEm's driver package; not on the user's PC).
+MAKER_VJOY = "vjoy"
+MAKER_VIGEM = "vigem"
+_CM_DRP_SERVICE = 0x05
+_XBOX_360_IDS = "VID_045E&PID_028E"
+
+
+def device_maker(instance_id: str) -> str:
+    """MAKER_VJOY, MAKER_VIGEM (an Xbox 360 pad on ViGEmBus) or "": read
+    from the device tree only (cfgmgr32), never by opening the device."""
+    if not instance_id:
+        return ""
+    cfg = ctypes.WinDLL("cfgmgr32")
+    cfg.CM_Locate_DevNodeW.argtypes = (
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.LPCWSTR,
+        wintypes.ULONG,
+    )
+    cfg.CM_Get_Parent.argtypes = (
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.DWORD,
+        wintypes.ULONG,
+    )
+    cfg.CM_Get_DevNode_Registry_PropertyW.argtypes = (
+        wintypes.DWORD,
+        wintypes.ULONG,
+        ctypes.POINTER(wintypes.ULONG),
+        wintypes.LPVOID,
+        ctypes.POINTER(wintypes.ULONG),
+        wintypes.ULONG,
+    )
+    node = wintypes.DWORD(0)
+    if cfg.CM_Locate_DevNodeW(ctypes.byref(node), instance_id, 0) != 0:
+        return ""
+    services: list[str] = []
+    for _ in range(8):
+        buf = ctypes.create_unicode_buffer(256)
+        size = wintypes.ULONG(ctypes.sizeof(buf))
+        if (
+            cfg.CM_Get_DevNode_Registry_PropertyW(
+                node.value, _CM_DRP_SERVICE, None, buf, ctypes.byref(size), 0
+            )
+            == 0
+        ):
+            services.append(buf.value.strip())
+        parent = wintypes.DWORD(0)
+        if cfg.CM_Get_Parent(ctypes.byref(parent), node.value, 0) != 0:
+            break
+        node = parent
+    return maker_of(instance_id, services)
+
+
+def maker_of(instance_id: str, services: Iterable[str]) -> str:
+    """The maker from a device's instance id and the driver services of it
+    and the devices above it."""
+    found = {s.lower() for s in services}
+    if MAKER_VJOY in found:
+        return MAKER_VJOY
+    if "vigembus" in found and _XBOX_360_IDS in instance_id.upper():
+        return MAKER_VIGEM
+    return ""
+
+
+class _HIDP_CAPS(ctypes.Structure):
+    _fields_ = (
+        ("Usage", wintypes.USHORT),
+        ("UsagePage", wintypes.USHORT),
+        ("InputReportByteLength", wintypes.USHORT),
+        ("OutputReportByteLength", wintypes.USHORT),
+        ("FeatureReportByteLength", wintypes.USHORT),
+        ("Reserved", wintypes.USHORT * 17),
+        ("NumberLinkCollectionNodes", wintypes.USHORT),
+        ("NumberInputButtonCaps", wintypes.USHORT),
+        ("NumberInputValueCaps", wintypes.USHORT),
+        ("NumberInputDataIndices", wintypes.USHORT),
+        ("NumberOutputButtonCaps", wintypes.USHORT),
+        ("NumberOutputValueCaps", wintypes.USHORT),
+        ("NumberOutputDataIndices", wintypes.USHORT),
+        ("NumberFeatureButtonCaps", wintypes.USHORT),
+        ("NumberFeatureValueCaps", wintypes.USHORT),
+        ("NumberFeatureDataIndices", wintypes.USHORT),
+    )
+
+
+_RIDI_PREPARSEDDATA = 0x20000005
+_HIDP_STATUS_SUCCESS = 0x00110000
+_HIDP_INPUT = 0
+# HIDP_BUTTON_CAPS and HIDP_VALUE_CAPS are both 72 bytes, ReportID (UCHAR)
+# at offset 2.
+_HIDP_CAPS_SIZE = 72
+_HIDP_REPORT_ID_AT = 2
+
+
+def hid_report_id(handle: int) -> int:
+    """The one input report id of a raw input HID device, 0 when it has
+    none or several. From raw input's preparsed data: the device is never
+    opened (vJoy gives device N the report id N)."""
+    u = ctypes.WinDLL("user32")
+    hid = ctypes.WinDLL("hid")
+    u.GetRawInputDeviceInfoW.restype = wintypes.UINT
+    u.GetRawInputDeviceInfoW.argtypes = (
+        wintypes.HANDLE,
+        wintypes.UINT,
+        wintypes.LPVOID,
+        ctypes.POINTER(wintypes.UINT),
+    )
+    hid.HidP_GetCaps.restype = ctypes.c_ulong
+    hid.HidP_GetCaps.argtypes = (ctypes.c_void_p, ctypes.POINTER(_HIDP_CAPS))
+    size = wintypes.UINT(0)
+    u.GetRawInputDeviceInfoW(handle, _RIDI_PREPARSEDDATA, None, ctypes.byref(size))
+    if not size.value or size.value > 1 << 20:
+        return 0
+    data = ctypes.create_string_buffer(size.value)
+    got = u.GetRawInputDeviceInfoW(
+        handle, _RIDI_PREPARSEDDATA, data, ctypes.byref(size)
+    )
+    if got in (0, 0xFFFFFFFF):
+        return 0
+    caps = _HIDP_CAPS()
+    if hid.HidP_GetCaps(data, ctypes.byref(caps)) != _HIDP_STATUS_SUCCESS:
+        return 0
+    ids: set[int] = set()
+    for get, count in (
+        (hid.HidP_GetButtonCaps, caps.NumberInputButtonCaps),
+        (hid.HidP_GetValueCaps, caps.NumberInputValueCaps),
+    ):
+        if not count:
+            continue
+        get.restype = ctypes.c_ulong
+        get.argtypes = (
+            ctypes.c_int,
+            ctypes.c_void_p,
+            ctypes.POINTER(wintypes.USHORT),
+            ctypes.c_void_p,
+        )
+        buf = ctypes.create_string_buffer(_HIDP_CAPS_SIZE * count)
+        n = wintypes.USHORT(count)
+        if get(_HIDP_INPUT, buf, ctypes.byref(n), data) != _HIDP_STATUS_SUCCESS:
+            continue
+        raw = buf.raw
+        ids |= {raw[i * _HIDP_CAPS_SIZE + _HIDP_REPORT_ID_AT] for i in range(n.value)}
+    return ids.pop() if len(ids) == 1 and 0 not in ids else 0
 
 
 def _is_part(instance_id: str) -> bool:
@@ -1688,6 +1850,8 @@ class ScreenSaverMode:
         # Device names and HID parts by raw input handle, looked up once each.
         self._names: dict[int, str] = {}
         self._parts: dict[int, str] = {}
+        # (maker, vJoy number) by raw input handle, looked up once each (S42).
+        self._outputs: dict[int, tuple[str, int]] = {}
         # The last input before the latest wake, noted at the wake (trace
         # only): (handle or None, kind, counted, seconds before), or None.
         self._wake_cause: tuple[int | None, str, bool, float] | None = None
@@ -2193,6 +2357,19 @@ class ScreenSaverMode:
         self._parts[handle] = part
         return part
 
+    def _device_output(self, handle: int) -> tuple[str, int]:
+        """(maker, vJoy number) of a device, looked up once per handle."""
+        if handle in self._outputs:
+            return self._outputs[handle]
+        lookup = getattr(self._api, "device_output", None)
+        try:
+            maker, number = lookup(handle) if lookup is not None else ("", 0)
+            found = (str(maker or ""), int(number or 0))
+        except Exception:
+            found = ("", 0)
+        self._outputs[handle] = found
+        return found
+
     def _reset_source(self) -> tuple[str, str]:
         """(device name, kind) of the last counted input."""
         try:
@@ -2553,6 +2730,8 @@ class ScreenSaverMode:
             elif kind == RESET_PROGRAM:
                 source = "input sent by a program"
             else:
+                source = _output_source(*self._device_output(handle)) if handle else ""
+            if not source:
                 part = self._device_part(handle) if handle else ""
                 name = (self._device_name(handle) if handle else "") or "a device"
                 source = f"{name} ({kind}, {part})" if part else f"{name} ({kind})"
@@ -2750,6 +2929,33 @@ def _cause_text(cause: tuple[int | None, str, bool, float] | None) -> str:
         return ""
     handle, kind, counted, before = cause
     return f"{handle or ''}\t{kind}\t{int(counted)}\t{before:.3f}"
+
+
+def _output_ids(name: str) -> list[int]:
+    """held_vjoy_ids / plugged_xbox_pads from the output module, [] when it
+    isn't loaded (it is never loaded from here)."""
+    output = sys.modules.get("gremlin.modules.output")
+    read = getattr(output, name, None) if output else None
+    if read is None:
+        return []
+    try:
+        return [int(i) for i in read() or ()]
+    except Exception:
+        return []
+
+
+def _output_source(maker: str, number: int) -> str:
+    """The wake line's name for a vJoy device or ViGEm Xbox pad (S42), ""
+    when the maker or the vJoy number is unknown."""
+    if maker == MAKER_VJOY and number > 0:
+        if number in _output_ids("held_vjoy_ids"):
+            return f"vJoy {number} (Gremlin's own output)"
+        return f"vJoy {number} (game controller, not held by Gremlin)"
+    if maker == MAKER_VIGEM:
+        if _output_ids("plugged_xbox_pads"):
+            return "Xbox pad (Gremlin's own output)"
+        return "Xbox pad (game controller, not made by Gremlin)"
+    return ""
 
 
 def _output_write_age_s() -> float | None:

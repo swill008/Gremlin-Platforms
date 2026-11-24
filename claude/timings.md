@@ -1588,3 +1588,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-24 | SSM-NORELOAD: pause Device change behavior while switching devices + 4 tests (12 S21) | agent fix | 3-8 min | 6 min incl. hold | 04:48-04:54 |
 | 2026-11-24 | Lead fix (pause only for devices kept off) + test + quick tests (--changed 2459) + build + silent install | test/build | ~10 min | 7 min | 04:54-05:01, lead |
 | 2026-11-24 | Read Test now trace (no restart, 2 wakes) + vJoy raw input path check (HIDCLASS Col01-03) | lead | ~2 min | 4 min | 05:10-05:14, lead |
+| 2026-11-24 | Spec S42 + D-12-WAKE-VJOY-NUMBER, read-only report ID check (Col01-03 = report ids 1-3), Col case bug found | lead | ~3 min | 3 min | 08:53-08:56, lead |
+| 2026-11-24 | OUT-WRITE: acquire/release/plug/unplug count as writes + 9 tests (12 S42) | agent fix | 3-8 min | 3 min | 08:55-08:57 |
+| 2026-11-24 | WAKE-NAME: vJoy number/ViGEm pad in wake line, Col case fix + 16 tests (12 S42) | agent fix | 3-8 min | 6 min | 08:54-09:00 |
+| 2026-11-24 | Lead: quick tests (--changed ran 6 parts, 5 min), order-dependent test fix (arrival retry leak), build + silent install + Run/trace on | test/build | ~10 min | 9 min | 09:00-09:09, lead; --changed picked nearly the whole suite |
+| 2026-11-24 | SSM-RETRY: device-change retry counts as switching only when it switches a device + 3 tests (12 S21 gap) | agent fix | 3-8 min | 4 min | 09:35-09:39 |
+| 2026-11-24 | Lead review + targeted tests (78) + ruff/pyright + build + silent install | test/build | ~10 min | 2 min | 09:39-09:41, lead |
