@@ -77,12 +77,10 @@ def test_a_chain_with_no_sequences_does_nothing() -> None:
 
 
 def test_an_empty_macro_does_nothing() -> None:
-    from gremlin.macro import Macro, MacroManager
+    from gremlin.macro import Macro, _with_default_pauses
 
-    manager = object.__new__(MacroManager)
-    manager.default_delay = 0.01
     macro = Macro()
-    manager._preprocess_macro(macro)
+    assert _with_default_pauses(macro.sequence, 0.01) == []
     assert macro.sequence == []
 
 

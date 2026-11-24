@@ -148,7 +148,7 @@ def test_a_key_a_macro_holds_is_released_at_stop(
     held.press(key_from_name("a"))
     held.add_action(PauseAction(2.0))
     held.release(key_from_name("a"))
-    mm.queue_macro(held)
+    mm.run_macro(held)
     assert _wait_for(lambda: keys == [("a", True)])
     run_scope.stop()  # between press and release
     # It used to stay down: Stop ended the macro and released nothing.
@@ -210,7 +210,7 @@ def test_mouse_buttons_held_at_stop_are_released(
     right.add_action(macro.MouseButtonAction(MouseButton.Right, True))
     right.add_action(PauseAction(2.0))
     right.add_action(macro.MouseButtonAction(MouseButton.Right, False))
-    MacroManager().queue_macro(right)
+    MacroManager().run_macro(right)
     assert _wait_for(lambda: ("right", True) in mouse)
     runner.stop()
     buttons = [m for m in mouse if m[0] in ("left", "right")]
@@ -354,15 +354,15 @@ def test_a_step_stuck_in_a_driver_ends_the_other_macros(
     try:
         stuck = Macro()
         stuck.press(key_from_name("b"))
-        mm.queue_macro(stuck)
+        mm.run_macro(stuck)
         assert entered.wait(2.0)
         other = Macro()
         other.press(key_from_name("c"))
-        mm.queue_macro(other)
-        assert _wait_for(lambda: other.id in mm._scheduled_macro)
+        mm.run_macro(other)
+        assert _wait_for(lambda: other.id in mm._running_macros)
         # It used to wait on the stuck step without end (and every macro
         # after it too).
-        assert _wait_for(lambda: other.id not in mm._scheduled_macro, 2.0)
+        assert _wait_for(lambda: other.id not in mm._running_macros, 2.0)
         let_go.set()
         assert _wait_for(lambda: ("b", True) in keys)
         time.sleep(0.2)
@@ -381,7 +381,7 @@ def test_stop_during_a_step_in_progress_ends_the_macro(
     steps = Macro()
     steps.press(key_from_name("b"))
     steps.press(key_from_name("d"))
-    mm.queue_macro(steps)
+    mm.run_macro(steps)
     assert entered.wait(2.0)
     start = time.monotonic()
     run_scope.stop()  # the press of "b" is still in the driver

@@ -98,7 +98,7 @@ def test_a_layout_change_on_re_read_rebuilds_the_cached_copy(
     assert wrapper.button(16) is not None
 
     queued: list[Any] = []
-    monkeypatch.setattr(macro.MacroManager(), "queue_macro", queued.append)
+    monkeypatch.setattr(macro.MacroManager(), "run_macro", queued.append)
     monkeypatch.setattr(log_once, "log_once", lambda *a: pytest.fail(a[3]))
     RefreshPhysicalInputs.refresh_axes()  # the start step that failed
     sent = sorted(
@@ -151,7 +151,7 @@ def test_an_axis_that_cannot_be_read_does_not_stop_the_start(
 
     monkeypatch.setattr(listener, "axis_value", axis_value)
     queued: list[Any] = []
-    monkeypatch.setattr(macro.MacroManager(), "queue_macro", queued.append)
+    monkeypatch.setattr(macro.MacroManager(), "run_macro", queued.append)
     logged: list[tuple] = []
     monkeypatch.setattr(log_once, "log_once", lambda *a: logged.append(a))
     RefreshPhysicalInputs.refresh_axes()  # was: raised, the start failed

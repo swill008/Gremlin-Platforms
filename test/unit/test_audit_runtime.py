@@ -65,12 +65,12 @@ def test_a_failing_macro_step_blocks_nothing() -> None:
             raise RuntimeError("a step failed")
 
         bad.add_action(fails)
-        manager.queue_macro(bad)
-        assert _wait_for(lambda: not manager._is_executing_exclusive)
+        manager.run_macro(bad)
+        assert _wait_for(lambda: bad.id not in manager._running_macros)
         ran: list[int] = []
         good = Macro()
         good.add_action(lambda: ran.append(1))
-        manager.queue_macro(good)
+        manager.run_macro(good)
         assert _wait_for(lambda: ran == [1])
     finally:
         manager.stop()

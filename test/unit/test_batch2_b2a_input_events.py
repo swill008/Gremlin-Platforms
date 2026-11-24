@@ -525,7 +525,7 @@ def test_an_axis_not_yet_seen_is_read_from_the_driver(
 
     queued: list[Any] = []
     monkeypatch.setattr(
-        macro.MacroManager(), "queue_macro", lambda m: queued.append(m)
+        macro.MacroManager(), "run_macro", lambda m: queued.append(m)
     )
     monkeypatch.setattr(
         device_initialization, "input_devices",

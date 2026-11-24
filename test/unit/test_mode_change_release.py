@@ -287,9 +287,9 @@ def test_a_hold_macro_ends_once_after_a_mode_change(
     _bind(profile, "Default", InputType.JoystickButton, 2, action)
     ended: list[object] = []
     manager = macro.MacroManager()
-    real = manager.terminate_macro
+    real = manager.stop_macro
     monkeypatch.setattr(
-        manager, "terminate_macro", lambda m: (ended.append(m), real(m))
+        manager, "stop_macro", lambda m: (ended.append(m), real(m))
     )
     rig.run.start(profile, "Default")
     _send(rig, _button(2, True))

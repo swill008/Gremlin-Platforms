@@ -213,7 +213,7 @@ def test_a_macro_that_ends_early_lets_go_of_its_keys_at_once(
         held.press(key)
         held.sequence.append(Fails())  # the macro ends before its release
         held.release(key)
-        manager.queue_macro(held)
+        manager.run_macro(held)
         assert _wait_for(lambda: (key.scan_code, False) in key_events)
         # Let go of when the macro ended, while the Run goes on (it used to
         # stay down until Stop).
@@ -227,7 +227,7 @@ def test_a_macro_that_ends_early_lets_go_of_its_keys_at_once(
 def test_a_macro_that_finishes_keeps_what_it_pressed_down(
     key_events: list[tuple[int, bool]],
 ) -> None:
-    # Map to Keyboard: the press macro ends with the key down on purpose.
+    # A press-only macro ends with the key down on purpose.
     key = key_from_name("a")
     run_scope.begin()
     manager = macro.MacroManager()
@@ -235,8 +235,8 @@ def test_a_macro_that_finishes_keeps_what_it_pressed_down(
     try:
         press = macro.Macro()
         press.press(key)
-        manager.queue_macro(press)
-        assert _wait_for(lambda: press.id not in manager._scheduled_macro)
+        manager.run_macro(press)
+        assert _wait_for(lambda: press.id not in manager._running_macros)
         assert _wait_for(lambda: key_events == [(key.scan_code, True)])
         assert run_scope.held() == [("key", (key.scan_code, key.is_extended))]
     finally:

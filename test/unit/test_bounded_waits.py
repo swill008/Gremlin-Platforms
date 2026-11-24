@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 import threading
+import time
 import uuid
 from collections.abc import Callable
 from types import SimpleNamespace
@@ -101,19 +102,74 @@ def test_restart_retires_the_old_listener_thread(
     assert listener._stop_event.timeouts == []
 
 
-def test_macro_scheduler_waits_with_a_timeout() -> None:
+class _RecordingCondition:
+    """Stands in for threading.Condition: records each wait's timeout;
+    after `stop_after` waits it runs `on_stop` so the loop under test ends."""
+
+    def __init__(self, stop_after: int, on_stop: Callable[[], None]) -> None:
+        self.timeouts: list[float | None] = []
+        self._stop_after = stop_after
+        self._on_stop = on_stop
+
+    def __enter__(self) -> "_RecordingCondition":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        pass
+
+    def wait_for(
+        self, predicate: Callable[[], bool], timeout: float | None = None
+    ) -> bool:
+        self.timeouts.append(timeout)
+        if len(self.timeouts) >= self._stop_after:
+            self._on_stop()
+        return predicate()
+
+
+def test_a_preempted_macro_waits_with_a_timeout() -> None:
+    from gremlin import run_scope
+
     manager = object.__new__(macro.MacroManager)
     manager._is_running = True
-    manager._queued_macros = []
-    manager._queued_macros_lock = threading.Lock()
-    manager._executing_macro = {}
-    manager._executing_macro_lock = threading.Lock()
-    manager._schedule_event = _RecordingEvent(
+    preemptive = macro.Macro()
+    preemptive.is_exclusive = True
+    preemptive.is_preempting = True
+    paused = macro.MacroExecution(macro.Macro())
+    paused.run = run_scope.number()
+    manager._running_macros = {
+        preemptive.id: macro.MacroExecution(preemptive),
+        paused.macro.id: paused,
+    }
+    manager._condition = _RecordingCondition(
         3, lambda: setattr(manager, "_is_running", False)
     )
-    manager._run_scheduler()
-    assert manager._schedule_event.timeouts
-    assert all(t is not None and t > 0 for t in manager._schedule_event.timeouts)
+    assert manager._wait_while_preempted(paused) is False  # ended by Stop
+    assert len(manager._condition.timeouts) == 3
+    assert all(t is not None and t > 0 for t in manager._condition.timeouts)
+
+
+def test_a_macro_step_waits_for_the_step_lock_with_a_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gremlin import run_scope
+
+    monkeypatch.setattr(macro, "_STEP_LOCK_TIMEOUT", 0.2)
+    manager = object.__new__(macro.MacroManager)
+    manager._is_running = True
+    manager._running_macros = {}
+    manager._condition = threading.Condition()
+    manager._step_lock = threading.Lock()
+    ran: list[int] = []
+    execution = macro.MacroExecution(macro.Macro())
+    execution.run = run_scope.number()
+    manager._step_lock.acquire()  # another macro's step is stuck
+    try:
+        start = time.monotonic()
+        assert manager._steps(execution, [lambda: ran.append(1)]) is False
+        assert time.monotonic() - start < 2.0
+    finally:
+        manager._step_lock.release()
+    assert ran == []
 
 
 def test_callback_has_no_sleep_on_the_event_thread() -> None:

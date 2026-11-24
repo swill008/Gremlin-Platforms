@@ -188,41 +188,47 @@ def _no_macro_running() -> bool:
 
 
 def _run_one_macro(macros: "MacroManager") -> None:
-    """Queues a one-step macro and waits until it ran (wakes the scheduler)."""
+    """Plays a one-step macro and waits until it ran (dispatches waiting
+    macros again)."""
     from gremlin.macro import Macro
 
     woken: list = []
     other = Macro()
     other.add_action(lambda: woken.append(1))
-    macros.queue_macro(other)
+    macros.run_macro(other)
     assert _wait_for(lambda: bool(woken) and _no_macro_running())
 
 
 def test_a_hold_macro_released_at_once_stops(macros: "MacroManager") -> None:
     runs: list = []
     macro = _hold_macro(runs)
-    macros.queue_macro(macro)
-    macros.terminate_macro(macro)  # released before its thread started
+    macros.run_macro(macro)
+    macros.stop_macro(macro)  # released straight after the press
     # Handled, and it stopped (it used to keep running).
-    assert _wait_for(lambda: macros._queued_macros == [] and _no_macro_running())
+    assert _wait_for(
+        lambda: macros._waiting_macros == []
+        and macro.id not in macros._running_macros
+        and _no_macro_running()
+    )
     count = len(runs)
-    _run_one_macro(macros)  # the scheduler runs again: it doesn't come back
+    _run_one_macro(macros)  # dispatching again doesn't bring it back
     assert len(runs) == count
-    assert macros._queued_macros == []  # the stop request went too
+    assert macros._waiting_macros == []
+    assert macros._running_macros == {}
 
 
 def test_run_starts_with_no_stale_macros(macros: "MacroManager") -> None:
-    from gremlin.macro import MacroEntry
+    from gremlin.macro import MacroExecution
 
     stale_runs: list = []
     stale = _hold_macro(stale_runs)
-    with macros._queued_macros_lock:  # left queued when the profile stopped
-        macros._queued_macros.append(MacroEntry(stale, True))
+    with macros._condition:  # left waiting when the profile stopped
+        macros._waiting_macros.append(MacroExecution(stale))
     macros.stop()
     macros.start()
-    _run_one_macro(macros)  # wakes the scheduler; a stale one would run too
+    _run_one_macro(macros)  # dispatches; a stale one would run too
     assert stale_runs == []  # the stale one didn't run
-    macros.terminate_macro(stale)
+    macros.stop_macro(stale)
 
 
 # ACT19 --------------------------------------------------------------------
