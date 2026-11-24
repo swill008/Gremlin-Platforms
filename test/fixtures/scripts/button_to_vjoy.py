@@ -9,7 +9,7 @@ Run skips it. The callback uses the "vjoy" object the program gives it, so
 the write goes through the vJoy output module (only claimed outputs pass).
 """
 
-from gremlin import event_handler, types, user_script
+from gremlin import types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the button works in", True)
 
@@ -25,7 +25,7 @@ presses: list[bool] = []
 
 
 @button.decorator(mode)
-def on_button(event: event_handler.Event, vjoy: object) -> None:
+def on_button(event: types.Event, vjoy: object) -> None:
     """Pressed or released: vJoy 1 button 1 follows."""
     presses.append(bool(event.is_pressed))
     vjoy[1].button(1).is_pressed = event.is_pressed

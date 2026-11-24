@@ -35,6 +35,7 @@ from gremlin.error import GremlinError, ProfileError
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     HatDirection,
     InputType,
     PropertyType,
@@ -97,7 +98,7 @@ class DirectionalButton:
 
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:
@@ -105,7 +106,7 @@ class DirectionalButton:
         action = "press" if is_pressed else "release"
 
         # Event creation
-        virtual_btn_event = event_handler.Event(
+        virtual_btn_event = Event(
             event_type=InputType.VirtualButton,
             identifier=self.identifier,
             device_guid=dill.UUID_Virtual,
@@ -122,7 +123,7 @@ class DirectionalButton:
 
     def _execute(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:
@@ -142,7 +143,7 @@ class HatButtonsFunctor(AbstractFunctor):
 
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:

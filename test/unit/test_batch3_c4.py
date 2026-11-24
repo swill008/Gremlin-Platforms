@@ -22,7 +22,7 @@ from PySide6 import QtCore
 
 from action_plugins.root import RootData
 from gremlin.profile import InputItem, InputItemBinding, Profile
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _ROOT = Path(__file__).resolve().parents[2]
 _STICK = uuid.UUID("{11111111-2222-3333-4444-555555555555}")
@@ -339,7 +339,7 @@ def test_a_hat_button_event_is_synthetic() -> None:
     listener = event_handler.EventListener()
     listener.virtual_event.connect(got.append)
     try:
-        event = event_handler.Event(
+        event = Event(
             InputType.JoystickHat, 1, _STICK, "Default", value=HatDirection.North
         )
         button(event, Value(HatDirection.North))

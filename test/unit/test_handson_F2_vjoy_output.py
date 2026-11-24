@@ -98,8 +98,7 @@ def _relative_functor(monkeypatch: pytest.MonkeyPatch, steps: int) -> Any:  # no
 
 def _deflect(functor: Any, value: float) -> None:  # noqa: ANN401
     from gremlin.base_classes import Value
-    from gremlin.event_handler import Event
-    from gremlin.types import InputType
+    from gremlin.types import Event, InputType
 
     event = Event(InputType.JoystickAxis, 1, _STICK, "Default", value=value)
     functor(event, Value(value))

@@ -256,10 +256,29 @@ Item {
     }
 
     // The backend's highlight of a pressed input (backend._highlight_input).
+    // A burst of presses is one jump: at most one per _jumpTimer interval,
+    // showing the latest index (a steady flood still jumps every 10 ms).
+    property int _pendingIndex: -1
+    property int jumpCount: 0
+
+    Timer {
+        id: _jumpTimer
+        objectName: "deviceBindingsJumpTimer"
+        interval: 10
+        onTriggered: {
+            _root.jumpCount++
+            _root.showIndex(_root._pendingIndex)
+        }
+    }
+
     Connections {
         target: typeof signal !== "undefined" ? signal : null
         ignoreUnknownSignals: true
-        function onSetInputIndex(index) { _root.showIndex(index) }
+        function onSetInputIndex(index) {
+            _root._pendingIndex = index
+            if (!_jumpTimer.running)
+                _jumpTimer.start()
+        }
     }
 
     // A parent row's click opens the pane on all its actions (S126).

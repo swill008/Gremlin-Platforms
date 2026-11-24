@@ -21,7 +21,6 @@ from PySide6 import QtCore
 import dill
 from action_plugins import common
 from gremlin import (
-    event_handler,
     event_helpers,
     keyboard,
     macro,
@@ -49,6 +48,7 @@ from gremlin.signal import signal
 from gremlin.types import (
     ActionProperty,
     AxisMode,
+    Event,
     HatDirection,
     InputType,
     MouseButton,
@@ -104,7 +104,7 @@ class JoystickActionModel(AbstractActionModel):
             )
 
     @QtCore.Slot(list)
-    def updateJoystick(self, data: List[event_handler.Event]) -> None:
+    def updateJoystick(self, data: List[Event]) -> None:
         """Receives the events corresponding to joystick events.
 
         We only expect to receive a single event and thus only store the
@@ -193,7 +193,7 @@ class KeyActionModel(AbstractActionModel):
         return "" if self._action.key is None else self._action.key.name
 
     @QtCore.Slot(list)
-    def updateKey(self, data: List[event_handler.Event]) -> None:
+    def updateKey(self, data: List[Event]) -> None:
         """Receives the events corresponding to mouse button presses.
 
         We only expect to receive a single button press and thus store the
@@ -487,7 +487,7 @@ class MouseButtonActionModel(AbstractActionModel):
         )
 
     @QtCore.Slot(list)
-    def updateButton(self, data: List[event_handler.Event]) -> None:
+    def updateButton(self, data: List[Event]) -> None:
         """Receives the events corresponding to mouse button presses.
 
         We only expect to receive a single button press and thus store the
@@ -740,7 +740,7 @@ class MacroFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:

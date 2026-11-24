@@ -35,7 +35,6 @@ from action_plugins.condition.comparator import (
 from gremlin import (
     common,
     error,
-    event_handler,
     trace,
     util,
 )
@@ -51,6 +50,7 @@ from gremlin.logical_device import LogicalDevice
 from gremlin.modules import ids, inputs, output
 from gremlin.types import (
     ConditionType,
+    Event,
     HatDirection,
     InputType,
     PropertyType,
@@ -529,7 +529,7 @@ class KeyboardCondition(AbstractCondition):
         return node
 
     @QtCore.Slot(list)
-    def updateFromUserInput(self, data: List[event_handler.Event]) -> None:
+    def updateFromUserInput(self, data: List[Event]) -> None:
         # Esc held: the listener sends no inputs; keep the current condition.
         if not data:
             return
@@ -746,7 +746,7 @@ class JoystickCondition(AbstractCondition):
         return node
 
     @QtCore.Slot(list)
-    def updateFromUserInput(self, data: List[event_handler.Event]) -> None:
+    def updateFromUserInput(self, data: List[Event]) -> None:
         # Esc held: the listener sends no inputs; keep the current condition.
         if not data:
             return

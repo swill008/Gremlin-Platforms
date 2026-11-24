@@ -55,8 +55,8 @@ RAW_AXIS = 26214  # about 0.8 of full scale
 def story(j: Journey) -> None:  # noqa: PLR0915
     from PySide6 import QtCore
 
-    from gremlin import event_handler, mode_manager, util
-    from gremlin.types import InputType
+    from gremlin import mode_manager, util
+    from gremlin.types import Event, InputType
 
     out = j.out
     folder = pathlib.Path(util.scripts_dir())
@@ -153,7 +153,7 @@ def story(j: Journey) -> None:  # noqa: PLR0915
     def pick(variable: Any, kind: InputType, index: int) -> None:  # noqa: ANN401
         """The input listener's answer: this stick input."""
         variable.updateJoystick(
-            [event_handler.Event(kind, index, guid, "Default", is_pressed=True)]
+            [Event(kind, index, guid, "Default", is_pressed=True)]
         )
 
     # vars_all_types: all eleven shown.

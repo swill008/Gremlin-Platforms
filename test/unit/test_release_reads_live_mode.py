@@ -23,9 +23,8 @@ from PySide6 import QtCore
 
 from gremlin import event_handler, event_helpers, mode_manager
 from gremlin.base_classes import Value
-from gremlin.event_handler import Event
 from gremlin.logical_device import LogicalDevice
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _GUID = uuid.UUID("77777777-5555-2222-3333-666666666666")
 _APPS: list[QtCore.QCoreApplication] = []

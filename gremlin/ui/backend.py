@@ -42,6 +42,7 @@ from gremlin.signal import (
     display_error,
     signal,
 )
+from gremlin.types import Event
 from gremlin.ui.device import InputIdentifier
 from gremlin.ui.hardware_profile import persist_log
 from gremlin.ui.script import ScriptListModel
@@ -455,7 +456,7 @@ class Backend(QtCore.QObject):
         health.on_changed(self._healthPoked.emit)
         self.profileChanged.emit()
 
-    def _highlight_input(self, event: event_handler.Event) -> None:
+    def _highlight_input(self, event: Event) -> None:
         threads.assert_main("Backend._highlight_input")
         if (
             not self.config.value("ui", "general", "input-highlighting")

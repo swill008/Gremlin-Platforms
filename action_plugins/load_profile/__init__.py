@@ -17,7 +17,6 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
-    event_handler,
     references,
     run_scope,
     threads,
@@ -34,6 +33,7 @@ from gremlin.profile import Library
 from gremlin.signal import signal
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -56,7 +56,7 @@ class LoadProfileFunctor(AbstractFunctor):
 
     @override
     def __call__(
-        self, event: event_handler.Event, value: Value, properties: list[ActionProperty]
+        self, event: Event, value: Value, properties: list[ActionProperty]
     ) -> None:
         if not self._should_execute(value):
             return

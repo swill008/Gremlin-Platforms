@@ -10,7 +10,6 @@ import uuid
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
 
 from gremlin import (
     common,
@@ -18,10 +17,7 @@ from gremlin import (
     mode_manager,
 )
 from gremlin.modules import output
-from gremlin.types import InputType
-
-if TYPE_CHECKING:
-    from gremlin import event_handler
+from gremlin.types import Event, InputType
 
 
 class ModeMatch(Enum):
@@ -41,7 +37,7 @@ class ReleaseMode(Enum):
 
 @dataclass
 class ButtonReleaseEntry:
-    callback: Callable[[event_handler.Event], None]
+    callback: Callable[[Event], None]
     registration_mode: str
     mode_match: ModeMatch
     release_mode: ReleaseMode
@@ -54,7 +50,7 @@ class RegistryKey:
     input_id: int
 
     @classmethod
-    def from_event(cls, event: event_handler.Event) -> RegistryKey:
+    def from_event(cls, event: Event) -> RegistryKey:
         """Creates a RegistryKey from an event.
 
         Args:
@@ -84,8 +80,8 @@ class ButtonReleaseActions:
 
     def register_callback(
         self,
-        callback: Callable[[event_handler.Event], None],
-        physical_event: event_handler.Event,
+        callback: Callable[[Event], None],
+        physical_event: Event,
         mode_match: ModeMatch = ModeMatch.IgnoreMode,
     ) -> None:
         """Registers a callback with the system.
@@ -109,7 +105,7 @@ class ButtonReleaseActions:
     def register_vjoy_button_release(
         self,
         vjoy_input: tuple[int, int],
-        physical_event: event_handler.Event,
+        physical_event: Event,
         activate_on_press: bool,
     ) -> None:
         """Registers a physical and vjoy button pair for tracking.
@@ -145,7 +141,7 @@ class ButtonReleaseActions:
     def register_logical_button_release(
         self,
         logical_button_id: int,
-        physical_event: event_handler.Event,
+        physical_event: Event,
         activate_on_press: bool,
     ) -> None:
         key = RegistryKey.from_event(physical_event)
@@ -169,7 +165,7 @@ class ButtonReleaseActions:
         """Wipes the registry database."""
         self._registry = {}
 
-    def process_release(self, event: event_handler.Event) -> None:
+    def process_release(self, event: Event) -> None:
         """Runs release callbacks associated with the given event.
 
         Args:

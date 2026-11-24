@@ -21,9 +21,9 @@ import pytest
 from PySide6 import QtCore
 
 from gremlin import clock, code_runner, event_handler, input_thread, mode_manager
-from gremlin.event_handler import Event, EventHandler, EventListener
+from gremlin.event_handler import EventHandler, EventListener
 from gremlin.modules import runtime
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _STICK = uuid.UUID("77777777-5555-2222-3333-444444444002")
 _LIMIT = 3.0

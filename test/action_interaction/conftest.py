@@ -29,6 +29,7 @@ from gremlin import (
 )
 from gremlin.logical_device import LogicalDevice
 from gremlin.types import (
+    Event,
     HatDirection,
     InputType,
 )
@@ -114,7 +115,7 @@ class EventSpec:
         """
         return f"EventSpec({self.event_type}, {self.input_id}, {self.expected_value})"
 
-    def _repr_compare(self, other: event_handler.Event) -> list[str]:
+    def _repr_compare(self, other: Event) -> list[str]:
         """Returns information used when the comparison fails.
 
         Returns:
@@ -126,7 +127,7 @@ class EventSpec:
             f"Expected: {self}",
         ]
 
-    def __eq__(self, event: event_handler.Event) -> bool:
+    def __eq__(self, event: Event) -> bool:
         """Compares the EventSpec instance with an Event instance.
 
         Args:
@@ -148,7 +149,7 @@ class EventSpec:
                 return self.expected_value == event.raw_value
         return False
 
-    def __ne__(self, event: event_handler.Event) -> bool:
+    def __ne__(self, event: Event) -> bool:
         return not (event == self)
 
 
@@ -165,8 +166,8 @@ class EventLogger(QtCore.QObject):
         """
         super().__init__()
         self._qtbot = qtbot
-        self.logged_events: list[event_handler.Event] = []
-        self.emitted_events: list[event_handler.Event] = []
+        self.logged_events: list[Event] = []
+        self.emitted_events: list[Event] = []
 
         event_handler.EventListener().joystick_event.connect(self._process_event)
 
@@ -175,7 +176,7 @@ class EventLogger(QtCore.QObject):
         self.logged_events.clear()
         self.emitted_events.clear()
 
-    def pop(self) -> event_handler.Event:
+    def pop(self) -> Event:
         """Returns the next logged event.
 
         If no event is stored the method waits for the next event. If none is
@@ -196,7 +197,7 @@ class EventLogger(QtCore.QObject):
         sys.exit(1)
         # raise Exception("Timeout waiting for event")
 
-    def _process_event(self, event: event_handler.Event) -> None:
+    def _process_event(self, event: Event) -> None:
         """Record all events we receive unless they were actively emitted.
 
         Args:
@@ -277,7 +278,7 @@ class JoystickGremlinBot:
         """
         self._qtbot.waitUntil(lambda: bool(condition()), timeout=int(timeout * 1000))
 
-    def next_event(self) -> event_handler.Event:
+    def next_event(self) -> Event:
         """Waits for and retrieves the next logged event.
 
         If no event is stored by the event logger, the method waits for the
@@ -481,7 +482,7 @@ class JoystickGremlinBot:
                 evt_value = cast(HatDirection, value)
 
         # Create event to emit.
-        evt = event_handler.Event(
+        evt = Event(
             input_type,
             input_id,
             LogicalDevice.device_guid,

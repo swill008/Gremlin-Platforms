@@ -566,9 +566,9 @@ def run_checks2() -> None:
     from action_plugins.send_osc import SendOscData, SendOscFunctor
     from gremlin import osc_feedback, osc_output, osc_traffic, run_scope
     from gremlin.base_classes import Value
-    from gremlin.event_handler import Event
     from gremlin.mode_manager import Mode, ModeManager
     from gremlin.osc import input_name
+    from gremlin.types import Event
 
     port = free_port()
     srv: dict[str, Any] = {
@@ -1021,8 +1021,8 @@ def run_checks4() -> None:
     from action_plugins.send_osc import SendOscData, SendOscFunctor
     from gremlin import osc_feedback, osc_output, run_scope
     from gremlin.base_classes import Value
-    from gremlin.event_handler import Event
     from gremlin.mode_manager import Mode, ModeManager
+    from gremlin.types import Event
 
     port = free_port()
     odf.write_server({

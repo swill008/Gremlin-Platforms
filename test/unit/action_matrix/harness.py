@@ -617,8 +617,7 @@ class Case:
             return collected()
 
     def _event(self, word: str, value: Any) -> Any:  # noqa: ANN401
-        from gremlin.event_handler import Event
-        from gremlin.types import HatDirection
+        from gremlin.types import Event, HatDirection
 
         guid, kind, input_id, mode = self.key
         if word in ("button", "key"):

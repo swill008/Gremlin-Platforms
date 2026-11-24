@@ -12,7 +12,7 @@ lost or sent faster than a game reads them. Written for this suite.
 
 import threading
 
-from gremlin import event_handler, types, user_script
+from gremlin import types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the encoder works in", True)
 
@@ -32,14 +32,14 @@ _lock = threading.Lock()
 
 
 @clockwise.decorator(mode)
-def on_clockwise(event: event_handler.Event) -> None:
+def on_clockwise(event: types.Event) -> None:
     if event.is_pressed:
         with _lock:
             pending.append(1)
 
 
 @counter.decorator(mode)
-def on_counter(event: event_handler.Event) -> None:
+def on_counter(event: types.Event) -> None:
     if event.is_pressed:
         with _lock:
             pending.append(2)

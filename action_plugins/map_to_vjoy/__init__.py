@@ -20,7 +20,6 @@ from action_plugins.common import RelativeAxisLoop
 from gremlin import (
     device_initialization,
     error,
-    event_handler,
     event_helpers,
     references,
     signal,
@@ -37,6 +36,7 @@ from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
     AxisMode,
+    Event,
     InputType,
     PropertyType,
 )
@@ -64,7 +64,7 @@ class MapToVjoyFunctor(RelativeAxisLoop, AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:

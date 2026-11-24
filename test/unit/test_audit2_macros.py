@@ -114,7 +114,7 @@ def test_a_macro_of_the_last_run_leaves_the_new_run_alone(
 def test_a_pulse_release_waiting_at_stop_is_sent_first() -> None:
     from gremlin import base_classes
     from gremlin.base_classes import AbstractFunctor, Value
-    from gremlin.event_handler import Event
+    from gremlin.types import Event
 
     states: list[bool] = []
 

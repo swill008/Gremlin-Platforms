@@ -26,8 +26,7 @@ import pytest
 
 from gremlin import osc_device_file, osc_output, run_scope, trace, util
 from gremlin.base_classes import Value
-from gremlin.event_handler import Event
-from gremlin.types import ActionActivationMode, InputType
+from gremlin.types import ActionActivationMode, Event, InputType
 
 _EVENT = Event(
     InputType.JoystickButton, 1, uuid.UUID(int=5), "Default", is_pressed=True

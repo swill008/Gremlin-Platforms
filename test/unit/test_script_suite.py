@@ -36,10 +36,10 @@ from PySide6 import QtCore
 import dill
 from gremlin import code_runner, keyboard, mode_manager, run_scope, shared_state
 from gremlin import user_script as us
-from gremlin.event_handler import Event, EventHandler
+from gremlin.event_handler import EventHandler
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice
 from gremlin.profile import Profile
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 SUITE = pathlib.Path(__file__).resolve().parents[1] / "fixtures" / "scripts"
 MANIFEST = json.loads((SUITE / "scripts.json").read_text(encoding="utf-8"))
@@ -454,14 +454,8 @@ def test_script_keeps_working_after_a_mode_change(
     assert move(0.25) == [(1, 0.25), (3, 0.25)]  # the script still works
 
 
-# Decision pending with the user: accept upstream's `types.Event` annotation
-# (upstream example.py loads unchanged) or not. Today it can't load; this
-# records that. strict: once it loads, this fails, so the manifest entry
-# (loads: false) is updated with the decision.
-@pytest.mark.xfail(
-    strict=True,
-    reason="decision pending with the user: gremlin.types has no Event",
-)
+# D-04-EVENT-TYPES: scripts annotate gremlin.types.Event, as upstream's do,
+# so upstream's R14 example loads with its code unchanged.
 def test_upstream_example_loads_unchanged(profile: Profile) -> None:
     script = _add(profile, "upstream_example.py")
     assert script.load_error == ""

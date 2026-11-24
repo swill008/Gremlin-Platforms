@@ -26,11 +26,11 @@ import pytest
 import shiboken6
 import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
-from gremlin.event_handler import Event, EventListener
+from gremlin.event_handler import EventListener
 from gremlin.modules import store
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from gremlin.ui import hardware_profile
 from gremlin.ui.pair_live import PairLiveThrottle
 from test.unit._device_folders import put_module

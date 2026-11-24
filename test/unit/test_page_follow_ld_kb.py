@@ -76,9 +76,9 @@ class _Part:
 
 def _logical(j: Journey) -> None:  # noqa: PLR0915 (one page, several parts)
     from gremlin.config import Configuration
-    from gremlin.event_handler import Event, EventListener
+    from gremlin.event_handler import EventListener
     from gremlin.logical_device import LogicalDevice
-    from gremlin.types import InputType
+    from gremlin.types import Event, InputType
     from gremlin.ui.logical_layout import LogicalLayoutModel
 
     out = j.out
@@ -184,8 +184,8 @@ def _logical(j: Journey) -> None:  # noqa: PLR0915 (one page, several parts)
 
 def _keyboard(j: Journey) -> None:
     from gremlin.config import Configuration
-    from gremlin.event_handler import Event, EventListener
-    from gremlin.types import InputType
+    from gremlin.event_handler import EventListener
+    from gremlin.types import Event, InputType
     from gremlin.ui.keyboard_layout import GUID, KeyboardLayoutModel, key_row
 
     out = j.out

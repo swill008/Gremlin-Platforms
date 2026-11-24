@@ -48,9 +48,8 @@ from gremlin import (
     util,
 )
 from gremlin.base_classes import Value
-from gremlin.event_handler import Event
 from gremlin.profile import Profile
-from gremlin.types import HatDirection, InputType, MouseButton
+from gremlin.types import Event, HatDirection, InputType, MouseButton
 
 _GUID = uuid.UUID("77777777-1111-2222-3333-555555555555")
 _APPS: list[QtCore.QCoreApplication] = []

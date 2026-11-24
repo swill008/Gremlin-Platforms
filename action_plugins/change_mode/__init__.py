@@ -18,7 +18,6 @@ from PySide6 import QtCore
 
 from gremlin import (
     error,
-    event_handler,
     event_helpers,
     mode_manager,
     references,
@@ -34,6 +33,7 @@ from gremlin.base_classes import (
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -83,7 +83,7 @@ class ChangeModeFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:

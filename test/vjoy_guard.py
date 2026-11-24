@@ -237,6 +237,19 @@ def pytest_sessionstart(session: Any) -> None:  # noqa: ANN401
         pytest.exit("vJoy guard: " + " ".join(found), returncode=4)
 
 
+def reset_vjoy_checks() -> None:
+    """Forgets that the vJoy driver checks passed (vjoy.VJoy checks the
+    driver once per process), so each test sees the stand-in's answers."""
+    module = sys.modules.get("vjoy.vjoy")
+    if module is not None and hasattr(module, "VJoy"):
+        module.VJoy._driver_verified = False
+
+
+def pytest_runtest_setup(item: Any) -> None:  # noqa: ANN401
+    del item
+    reset_vjoy_checks()
+
+
 def pytest_runtest_teardown(item: Any, nextitem: Any) -> None:  # noqa: ANN401
     """After the test's own teardown: fails it when it touched the real vJoy,
     and stops the run when the real library got loaded."""

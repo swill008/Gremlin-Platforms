@@ -23,6 +23,8 @@ ColumnLayout {
     property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
     property bool pairActive: backend && backend.gremlinActive
+    // A press shorter than a redraw still lights its chip this long (ms).
+    readonly property int minimumVisibleMs: 100
 
     spacing: Style.dp(4)
 
@@ -281,6 +283,12 @@ ColumnLayout {
 
                             property bool hwOn: hwButton(identifier) > 0.5
                             property bool vjOn: destClaimed && vjButton(vjoyGuid, vjoyInput) > 0.5
+                            // On, or pressed within the last minimumVisibleMs.
+                            readonly property bool hwShown: _hwHold.shown
+                            readonly property bool vjShown: _vjHold.shown
+
+                            HeldLight { id: _hwHold; on: hwOn; minimumMs: _root.minimumVisibleMs }
+                            HeldLight { id: _vjHold; on: vjOn; minimumMs: _root.minimumVisibleMs }
                             // Each half fits its text (a short "1 | 30" chip
                             // keeps its size); a long name is cut with "…".
                             readonly property real hwHalf: Math.max(Style.dp(20),
@@ -293,7 +301,7 @@ ColumnLayout {
                             height: Style.dp(18)
                             radius: Style.dp(3)
                             color: Style.background
-                            border.color: (hwOn || vjOn) ? Style.ok : Style.medColor
+                            border.color: (hwShown || vjShown) ? Style.ok : Style.medColor
                             border.width: Style.dp(1)
                             clip: true
 
@@ -313,7 +321,7 @@ ColumnLayout {
                                 Rectangle {
                                     width: hwHalf
                                     height: parent.height
-                                    color: hwOn ? Style.ok : "transparent"
+                                    color: hwShown ? Style.ok : "transparent"
 
                                     Label {
                                         id: _hwText
@@ -322,7 +330,7 @@ ColumnLayout {
                                         width: Math.min(implicitWidth, parent.width - Style.dp(4))
                                         elide: Text.ElideRight
                                         text: label
-                                        color: hwOn ? Style.okFillDeep : Style.foreground
+                                        color: hwShown ? Style.okFillDeep : Style.foreground
                                         font.pixelSize: Style.dp(11)
                                     }
 
@@ -342,7 +350,7 @@ ColumnLayout {
                                 Rectangle {
                                     width: vjHalf
                                     height: parent.height
-                                    color: vjOn ? Style.live : "transparent"
+                                    color: vjShown ? Style.live : "transparent"
 
                                     Label {
                                         id: _vjText
@@ -351,7 +359,7 @@ ColumnLayout {
                                         width: Math.min(implicitWidth, parent.width - Style.dp(4))
                                         elide: Text.ElideRight
                                         text: destClaimed ? String(vjoyInput) : "—"
-                                        color: vjOn ? Style.onLive : (destClaimed ? Style.foreground : Style.fgDisabled)
+                                        color: vjShown ? Style.onLive : (destClaimed ? Style.foreground : Style.fgDisabled)
                                         font.pixelSize: Style.dp(11)
                                     }
 

@@ -20,10 +20,10 @@ import gremlin.types
 from action_plugins import map_to_logical_device
 from gremlin import (
     base_classes,
-    event_handler,
     logical_device,
     mode_manager,
 )
+from gremlin.types import Event
 
 _InputTypeT = TypeVar("_InputTypeT")
 
@@ -55,7 +55,7 @@ class GremlinAppTester:
     ) -> None:
         functor = map_to_logical_device.MapToLogicalDeviceFunctor(logical_action)
         # Not used today, but let's create a valid one anyway.
-        event = event_handler.Event(
+        event = Event(
             event_type=logical_action.logical_input_type,
             identifier=logical_action.logical_input_id,
             device_guid=dill.UUID_LogicalDevice,

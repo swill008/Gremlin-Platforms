@@ -19,7 +19,6 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
-    event_handler,
     fsm,
     references,
     run_scope,
@@ -40,6 +39,7 @@ from gremlin.event_helpers import ButtonReleaseActions
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -64,7 +64,7 @@ class DoubleTapFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
@@ -100,33 +100,33 @@ class DoubleTapFunctor(AbstractFunctor):
             pass
 
         def single_pulse(
-            _e: event_handler.Event, _v: Value, p: List[ActionProperty]
+            _e: Event, _v: Value, p: List[ActionProperty]
         ) -> None:
             self._pulse_event(
                 self.functors["single"], self.event_press, self.value_press, p
             )
 
         def single_press(
-            _e: event_handler.Event, _v: Value, p: List[ActionProperty]
+            _e: Event, _v: Value, p: List[ActionProperty]
         ) -> None:
             self._process_event(
                 self.functors["single"], self.event_press, self.value_press, p
             )
 
         def single_release(
-            e: event_handler.Event, v: Value, p: List[ActionProperty]
+            e: Event, v: Value, p: List[ActionProperty]
         ) -> None:
             self._process_event(self.functors["single"], e, v, p)
 
         def double_press(
-            _e: event_handler.Event, _v: Value, p: List[ActionProperty]
+            _e: Event, _v: Value, p: List[ActionProperty]
         ) -> None:
             self._process_event(
                 self.functors["double"], self.event_press, self.value_press, p
             )
 
         def double_release(
-            e: event_handler.Event, v: Value, p: List[ActionProperty]
+            e: Event, v: Value, p: List[ActionProperty]
         ) -> None:
             self._process_event(self.functors["double"], e, v, p)
 
@@ -160,7 +160,7 @@ class DoubleTapFunctor(AbstractFunctor):
         return fsm.FiniteStateMachine("neutral", states, actions, transitions)
 
     def _reset_fsm(
-        self, event: event_handler.Event, value: Value, properties: list[ActionProperty]
+        self, event: Event, value: Value, properties: list[ActionProperty]
     ) -> None:
         logging.getLogger("event").warning(
             "DoubleTap: Resetting due to invalid FSM transition."
@@ -173,7 +173,7 @@ class DoubleTapFunctor(AbstractFunctor):
         )
 
     def _release_cb(
-        self, event: event_handler.Event, value: Value, properties: list[ActionProperty]
+        self, event: Event, value: Value, properties: list[ActionProperty]
     ) -> None:
         if (self.fsm.current_state, "press") not in self.fsm.transitions:
             self._reset_fsm(event, value, properties)

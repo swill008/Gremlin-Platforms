@@ -17,9 +17,8 @@ import pytest
 
 from gremlin import util
 from gremlin.base_classes import Value
-from gremlin.event_handler import Event
 from gremlin.logical_device import LogicalDevice
-from gremlin.types import InputType, PropertyType
+from gremlin.types import Event, InputType, PropertyType
 
 B = InputType.JoystickButton
 _GUID = uuid.UUID(int=7)

@@ -35,6 +35,8 @@ Rectangle {
     property string findType: "all"
     property bool findSending: false
     property bool filtering: false
+    // A press stays lit at least this long on the chips and the face.
+    readonly property int minimumVisibleMs: 100
 
     readonly property alias list: _list
 
@@ -142,6 +144,12 @@ Rectangle {
             ? _live.xboxValue(_root.padId, chip.xboxTarget || "") : 0
         readonly property bool hwOn: isAxis ? Math.abs(hwValue) > 0.5 : hwValue > 0.5
         readonly property bool xbOn: isAxis ? Math.abs(xbValue) > 0.5 : xbValue > 0.5
+        // On, or on within the last minimumVisibleMs, so a short press is
+        // still seen (as the vJoy Viewer chips).
+        readonly property bool hwShown: _hwHold.shown
+        readonly property bool xbShown: _xbHold.shown
+        HeldLight { id: _hwHold; on: _chip.hwOn; minimumMs: _root.minimumVisibleMs }
+        HeldLight { id: _xbHold; on: _chip.xbOn; minimumMs: _root.minimumVisibleMs }
         // Each half fits its text (a short "1 | A" chip keeps its size); a
         // long name is cut with "…".
         readonly property real hwHalf: Math.max(Style.dp(32),
@@ -153,7 +161,7 @@ Rectangle {
         height: Style.dp(20)
         radius: Style.dp(3)
         color: Style.background
-        border.color: (hwOn || xbOn) ? Style.ok : Style.medColor
+        border.color: (hwShown || xbShown) ? Style.ok : Style.medColor
         border.width: Style.dp(1)
         clip: true
 
@@ -162,7 +170,7 @@ Rectangle {
             Rectangle {
                 width: _chip.hwHalf
                 height: parent.height
-                color: _chip.hwOn ? Style.ok : "transparent"
+                color: _chip.hwShown ? Style.ok : "transparent"
                 Label {
                     id: _hwText
                     objectName: "chipLeftText"
@@ -170,7 +178,7 @@ Rectangle {
                     width: Math.min(implicitWidth, parent.width - Style.dp(4))
                     elide: Text.ElideRight
                     text: _chip.hwLabel
-                    color: _chip.hwOn ? Style.okFillDeep : Style.foreground
+                    color: _chip.hwShown ? Style.okFillDeep : Style.foreground
                     font.pixelSize: Style.dp(11)
                 }
                 PointerTip { text: "Input " + _chip.hwLabel }
@@ -179,7 +187,7 @@ Rectangle {
             Rectangle {
                 width: _chip.xbHalf
                 height: parent.height
-                color: _chip.xbOn ? Style.ok : "transparent"
+                color: _chip.xbShown ? Style.ok : "transparent"
                 Label {
                     id: _xbText
                     objectName: "chipRightText"
@@ -187,7 +195,7 @@ Rectangle {
                     width: Math.min(implicitWidth, parent.width - Style.dp(4))
                     elide: Text.ElideRight
                     text: _chip.xbLabel
-                    color: _chip.xbOn ? Style.okFillDeep : Style.foreground
+                    color: _chip.xbShown ? Style.okFillDeep : Style.foreground
                     font.pixelSize: Style.dp(11)
                 }
                 PointerTip { text: _chip.chip.xboxLabel || "" }
@@ -313,6 +321,7 @@ Rectangle {
                     padId: _root.padId
                     live: _live
                     stamp: _live.xboxStamp
+                    minimumVisibleMs: _root.minimumVisibleMs
                 }
             }
 

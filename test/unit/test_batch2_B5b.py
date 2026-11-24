@@ -38,8 +38,7 @@ from PySide6 import QtCore
 from gremlin import code_runner, macro, threads, tts
 from gremlin.base_classes import Value
 from gremlin.common import SingletonMetaclass
-from gremlin.event_handler import Event
-from gremlin.types import AxisButtonDirection, InputType
+from gremlin.types import AxisButtonDirection, Event, InputType
 
 _GUID = uuid.UUID("12345678-1234-1234-1234-123456789abc")
 _APPS: list[QtCore.QCoreApplication] = []

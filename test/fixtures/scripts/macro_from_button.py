@@ -10,7 +10,7 @@ action's macro is. It uses only vJoy steps, never keys. Written for this
 suite.
 """
 
-from gremlin import event_handler, macro, types, user_script
+from gremlin import macro, types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the button works in", True)
 
@@ -23,7 +23,7 @@ target = user_script.IntegerVariable(
 
 
 @button.decorator(mode)
-def on_button(event: event_handler.Event) -> None:
+def on_button(event: types.Event) -> None:
     if not event.is_pressed:
         return
     tap = macro.Macro()

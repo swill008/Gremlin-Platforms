@@ -19,8 +19,8 @@ from gremlin.ui.action_model import ActionModel
 
 if TYPE_CHECKING:
     from gremlin.base_classes import Value
-    from gremlin.event_handler import Event
     from gremlin.profile import Library
+    from gremlin.types import Event
 
 
 def unknown_note(type_name: str) -> str:

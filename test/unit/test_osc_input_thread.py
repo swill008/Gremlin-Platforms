@@ -41,12 +41,12 @@ from gremlin import (
     shared_state,
 )
 from gremlin import osc_device_file as odf
-from gremlin.event_handler import Event, EventHandler, EventListener
+from gremlin.event_handler import EventHandler, EventListener
 from gremlin.modules import runtime as module_runtime
 from gremlin.modules import store
 from gremlin.osc import OscDevice, OscRuntime
 from gremlin.profile import InputItem, Library
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 MODE = "Default"
 LIMIT = 3.0

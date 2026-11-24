@@ -34,7 +34,7 @@ from gremlin import (
     util,
     windows_event_hook,
 )
-from gremlin.types import HatDirection, InputType, MouseButton
+from gremlin.types import Event, HatDirection, InputType, MouseButton
 from test import fake_hardware
 
 _APP = QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
@@ -360,9 +360,9 @@ def _listener(kinds: list[InputType], several: bool = False) -> tuple[Any, list]
     return model, done
 
 
-def _esc(pressed: bool) -> event_handler.Event:
+def _esc(pressed: bool) -> Event:
     esc = keyboard.key_from_name("esc")
-    return event_handler.Event(
+    return Event(
         InputType.Keyboard, (esc.scan_code, esc.is_extended), dill.UUID_Keyboard,
         "Default", is_pressed=pressed,
     )
@@ -434,7 +434,7 @@ def test_listen_ending_does_not_cut_off_a_mouse_recording(
     recorder = MacroRecorder(lambda action: None)
     recorder.start([InputType.Mouse], False)
     try:
-        wheel = event_handler.Event(
+        wheel = Event(
             InputType.Mouse, MouseButton.WheelUp, dill.UUID_Keyboard, "Default",  # type: ignore[arg-type]
             is_pressed=True,
         )
@@ -463,8 +463,8 @@ def test_a_listen_closed_early_lets_go_of_the_mouse_hook(
 # --- GL-131: Listen ignores vJoy and Gremlin's own Xbox pads ----------------
 
 
-def _button(device: uuid.UUID) -> event_handler.Event:
-    return event_handler.Event(
+def _button(device: uuid.UUID) -> Event:
+    return Event(
         InputType.JoystickButton, 3, device, "Default", is_pressed=True,
     )
 
@@ -634,7 +634,7 @@ def test_a_vjoy_error_in_an_action_does_not_pause(
     def fail(event: object) -> None:
         raise error.VJoyError("vJoy write failed")
 
-    event = event_handler.Event(InputType.JoystickButton, 9, _STICK, "Default",
+    event = Event(InputType.JoystickButton, 9, _STICK, "Default",
                                 is_pressed=True)
     callbacks = [fail, lambda e: ran.append("next")]
     monkeypatch.setattr(handler, "callbacks", {_STICK: {"Default": {event: callbacks}}})
@@ -651,6 +651,6 @@ def test_the_cached_stick_has_the_shown_name(monkeypatch: pytest.MonkeyPatch) ->
     stick = device_initialization.device_for_uuid(_STICK)
     monkeypatch.setattr(stick, "name", "pJoy Pro (2)")
     assert input_cache.Joystick()[_STICK].name == "pJoy Pro (2)"
-    event = event_handler.Event(InputType.JoystickButton, 1, _STICK, "Default")
-    assert event.display_name().startswith("pJoy Pro (2) - ")
+    event = Event(InputType.JoystickButton, 1, _STICK, "Default")
+    assert event_handler.event_display_name(event).startswith("pJoy Pro (2) - ")
     assert HatDirection.Center  # (types imported for the module's other tests)

@@ -22,7 +22,7 @@ from gremlin import (
 from gremlin import axis_names, shared_state
 from gremlin.shared_state import runtime_active
 from gremlin.signal import signal
-from gremlin.types import InputType, PropertyType
+from gremlin.types import Event, InputType, PropertyType
 from gremlin import keyboard as gremlin_keyboard
 from gremlin.ui.live_debug import trace
 from gremlin.modules.ids import guid_key
@@ -1017,7 +1017,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
         # Pending input events, the latest per device, applied once per
         # event-loop turn (R7): after a freeze the 1 kHz feed is one update.
-        self._joy_pending: dict[str, event_handler.Event] = {}
+        self._joy_pending: dict[str, Event] = {}
         self._joy_timer = QtCore.QTimer(self)
         self._joy_timer.setSingleShot(True)
         self._joy_timer.setInterval(0)
@@ -2261,7 +2261,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         return message
 
     @QtCore.Slot(object)
-    def _on_joy(self, event: event_handler.Event) -> None:
+    def _on_joy(self, event: Event) -> None:
         threads.assert_main("ModuleListModel._on_joy")
         if event is None:
             return
@@ -2279,7 +2279,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         for event in pending.values():
             self._apply_joy(event)
 
-    def _apply_joy(self, event: event_handler.Event) -> None:
+    def _apply_joy(self, event: Event) -> None:
         from gremlin.modules.gate import status_last_from_hid
 
         guid = guid_key(event.device_guid)
@@ -2811,7 +2811,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self.endResetModel()
         self.changed.emit()
 
-    def _on_key(self, event: event_handler.Event) -> None:
+    def _on_key(self, event: Event) -> None:
         if event is None or not self._is_keyboard():
             return
         # Hardware only: a key the program sent (macro) is no press (GL-244).
@@ -2855,7 +2855,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             self.changed.emit()
         self.markPressed("key", hid)
 
-    def _same_device(self, event: event_handler.Event) -> bool:
+    def _same_device(self, event: Event) -> bool:
         if event is None:
             return False
         if guid_key(event.device_guid) == guid_key(self._guid):
@@ -2876,7 +2876,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 return True
         return False
 
-    def _on_joy(self, event: event_handler.Event) -> None:
+    def _on_joy(self, event: Event) -> None:
         try:
             if event is None or not self._rows:
                 return

@@ -28,8 +28,7 @@ import gremlin.config
 from gremlin import audio_player, deferred_write, tts
 from gremlin.base_classes import Value
 from gremlin.common import SingletonMetaclass
-from gremlin.event_handler import Event
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _GUID = uuid.UUID("77777777-5555-2222-3333-4444444444f9")
@@ -72,6 +71,12 @@ def player(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
 
         def play(self) -> None:
             log.append(("play", self.name))
+
+        def close_if_done(self) -> bool:
+            return bool(self.done)
+
+        def close(self, timeout: float = 0.5) -> None:
+            self.cancel()
 
         def cancel(self) -> None:
             log.append(("cancel", self.name))

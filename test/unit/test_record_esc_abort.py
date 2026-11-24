@@ -21,7 +21,7 @@ import pytest
 from PySide6 import QtCore
 
 from gremlin import keyboard
-from gremlin.types import InputType, MouseButton
+from gremlin.types import Event, InputType, MouseButton
 
 _KEEP: list[object] = []
 
@@ -135,9 +135,8 @@ def test_macro_mouse_step_keeps_button_on_esc() -> None:
 
 
 def _event(kind: InputType, identifier: Any, guid: uuid.UUID) -> Any:  # noqa: ANN401
-    from gremlin import event_handler
 
-    return event_handler.Event(kind, identifier, guid, "Default", is_pressed=True)
+    return Event(kind, identifier, guid, "Default", is_pressed=True)
 
 
 def test_joystick_condition_keeps_input_on_esc() -> None:

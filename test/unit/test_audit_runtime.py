@@ -23,7 +23,8 @@ _GUID = uuid.UUID("55555555-6666-7777-8888-999999999999")
 
 
 def test_one_failing_action_does_not_stop_the_others() -> None:
-    from gremlin.event_handler import Event, EventHandler
+    from gremlin.event_handler import EventHandler
+    from gremlin.types import Event
 
     handler = EventHandler()
     event = Event(InputType.JoystickButton, 77, _GUID, "Default", is_pressed=True)
@@ -183,7 +184,7 @@ def test_a_pulse_on_the_main_thread_releases_later(
     from PySide6 import QtTest
 
     from gremlin.base_classes import AbstractFunctor, Value
-    from gremlin.event_handler import Event
+    from gremlin.types import Event
 
     states: list[bool] = []
 

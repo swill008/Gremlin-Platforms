@@ -25,9 +25,8 @@ import pytest
 
 from gremlin import osc_device_file, osc_output, run_scope
 from gremlin.base_classes import Value
-from gremlin.event_handler import Event
 from gremlin.profile import Library
-from gremlin.types import ActionActivationMode, InputType
+from gremlin.types import ActionActivationMode, Event, InputType
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _EVENT = Event(

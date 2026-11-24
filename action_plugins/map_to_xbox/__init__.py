@@ -11,7 +11,7 @@ from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
-from gremlin import event_handler, references, signal, util
+from gremlin import references, signal, util
 from gremlin.base_classes import (
     AbstractActionData,
     AbstractFunctor,
@@ -23,6 +23,7 @@ from gremlin.modules.output import XboxError, XboxTarget
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     HatDirection,
     InputType,
     PropertyType,
@@ -115,7 +116,7 @@ class MapToXboxFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:

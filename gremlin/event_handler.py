@@ -32,6 +32,7 @@ from gremlin import (
     trace,
     trace_timing,
     tree,
+    types,
     util,
     windows_event_hook,
 )
@@ -43,7 +44,6 @@ from gremlin.osc import OSC_DEVICE_UUID
 from gremlin.types import (
     HatDirection,
     InputType,
-    ScanCode,
 )
 from vigem.ids import is_vigem_xbox_summary
 
@@ -60,7 +60,7 @@ def trace_kind(event_type: object) -> str | None:
     return _TRACE_KINDS.get(event_type)  # type: ignore[call-overload]
 
 
-def trace_ticked(event: Event) -> tuple[str, int] | None:
+def trace_ticked(event: types.Event) -> tuple[str, int] | None:
     """(kind, index) of a stick input when tracing is on and it is ticked,
     or of an OSC input while the OSC Inputs area is ticked (its actions'
     outputs are traced under it, D-09-OSC-TRACE)."""
@@ -85,183 +85,25 @@ if TYPE_CHECKING:
 # Windows' auto-repeat (first repeat within 1 s, then several a second).
 REPEAT_GAP_S = 1.2
 
-# The mode of an event the hardware listener sends: the listener (the input
-# layer) doesn't know the modes; EventHandler.process_event stamps the
-# current mode on the main thread (GL-065).
-NO_MODE = ""
-
-
-class Event:
-    """Represents a single event captured by the system.
-
-    An event can originate from the keyboard or joystick which is
-    indicated by the EventType value. The value of the event has to
-    be interpreted based on the type of the event.
-
-    Keyboard and JoystickButton events have a simple True / False
-    value stored in is_pressed indicating whether or not the key has
-    been pressed. For JoystickAxis the value indicates the axis value
-    in the range [-1, 1] stored in the value field. JoystickHat events
-    represent the hat position as a unit tuple (x, y) representing
-    deflection in cartesian coordinates in the value field.
-
-    The extended field is used for Keyboard events only to indicate
-    whether or not the key's scan code is extended one.
-    """
-
-    def __init__(
-        self,
-        event_type: InputType,
-        identifier: int | ScanCode,
-        device_guid: uuid.UUID,
-        mode: str,
-        value: float | HatDirection | None = None,
-        is_pressed: bool | None = None,
-        raw_value: float | bool | HatDirection | None = None,
-        synthetic: bool = False,
-        osc_address: str | None = None,
-        ld_chain: tuple = (),
-    ) -> None:
-        """Creates a new Event object.
-
-        Args:
-            event_type: the type of input causing the event
-            identifier: the identifier of the event source
-            device_guid: uuid identifying the device causing this event
-            mode: name of the mode the system was in when the even was received
-            value: the value of the input
-            is_pressed: boolean flag indicating if a button or key is pressed
-            raw_value: the raw value of the axis being moved
-            synthetic: made by the program (macro step, refresh axes, Hat
-                as Buttons), not by the hardware; screens that show what the
-                hardware does (Listen, highlighting, Module Setup) ignore it
-            osc_address: the address an OSC input received (for a pattern
-                input, which of its addresses sent it); None otherwise
-            ld_chain: the Logical Device controls this event came through
-                (gremlin.logical_loop, 06 S94a); empty for a new input
-        """
-        self.event_type = event_type
-        self.identifier = identifier
-        self.device_guid = device_guid
-        self.mode = mode
-        self.is_pressed = is_pressed
-        self.value = value
-        self.raw_value = raw_value
-        self.synthetic = synthetic
-        self.osc_address = osc_address
-        self.ld_chain = ld_chain
-        # Timing probes (S179): (t0, t1) set by the listener only while
-        # Timing is on.
-        self.t_rx: tuple[int, int] | None = None
-
-    def display_name(self) -> str:
-        """Returns the display representation of this event.
-
-        Returns:
-            Textual representation of the event's input
-        """
-        if self.device_guid == OSC_DEVICE_UUID:
-            return (
-                "OSC - "
-                + common.input_to_ui_string(self.event_type, self.identifier)
-            )
-
-        # The name the program shows for the device (twin name included),
-        # one lookup instead of walking the list a hot-plug may be rebuilding.
-        label = device_initialization.device_name(self.device_guid)
-        if not label:
-            logging.warning(
-                f"Unable to find a device with GUID {str(self.device_guid)}"
-            )
-            label = "Unknown"
-
-        # Retrive input name
-        label += " - "
-        label += common.input_to_ui_string(self.event_type, self.identifier)
-
-        return label
-
-    def clone(self) -> Event:
-        """Returns a clone of the event.
-
-        Returns:
-            Cloned copy of this event.
-        """
-        return Event(
-            self.event_type,
-            self.identifier,
-            self.device_guid,
-            self.mode,
-            self.value,
-            self.is_pressed,
-            self.raw_value,
-            self.synthetic,
-            self.osc_address,
-            self.ld_chain,
+def event_display_name(event: types.Event) -> str:
+    """The name the program shows for an event's input: device name (twin
+    name included, or "OSC") and the input."""
+    if event.device_guid == OSC_DEVICE_UUID:
+        return "OSC - " + common.input_to_ui_string(
+            event.event_type, event.identifier
         )
 
-    def __eq__(self, other: object) -> bool:
-        assert isinstance(other, Event)
-        return self.__hash__() == other.__hash__()
-
-    def __ne__(self, other: object) -> bool:
-        assert isinstance(other, Event)
-        return not (self == other)
-
-    def __str__(self) -> str:
-        return f"{self.device_guid}: {self.event_type} {self.identifier}"
-
-    def __repr__(self) -> str:
-        value = (
-            self.is_pressed
-            if self.event_type in [InputType.JoystickButton, InputType.Keyboard]
-            else self.value
+    # The name the program shows for the device (twin name included),
+    # one lookup instead of walking the list a hot-plug may be rebuilding.
+    label = device_initialization.device_name(event.device_guid)
+    if not label:
+        logging.warning(
+            f"Unable to find a device with GUID {str(event.device_guid)}"
         )
-        return (
-            f"Event({self.event_type}, {self.identifier}, "
-            + f"{self.device_guid}, {self.mode}, {value})"
-        )
-
-    def __hash__(self) -> int:
-        """Computes the hash value of this event.
-
-        The hash is comprised of the events type, identifier of the
-        event source and the id of the event device. Events from the same
-        input, e.g. axis, button, hat, key, with different values / states
-        shall have the same hash.
-
-        Returns:
-            Integer hash value of this event
-        """
-        if self.event_type == InputType.Keyboard:
-            return hash(
-                (
-                    self.device_guid,
-                    self.event_type.value,
-                    self.identifier[0],
-                    int(self.identifier[1]),
-                )
-            )
-        else:
-            return hash((self.device_guid, self.event_type.value, self.identifier, 0))
-
-    @staticmethod
-    def from_key(key: keyboard.Key) -> Event:
-        """Creates an event object corresponding to the provided key.
-
-        Args:
-            key: the Key object from which to create the Event
-
-        Returns:
-            Event object corresponding to the provided key
-        """
-        assert isinstance(key, keyboard.Key)
-        return Event(
-            event_type=InputType.Keyboard,
-            identifier=(key.scan_code, key.is_extended),
-            device_guid=dill.UUID_Keyboard,
-            mode=NO_MODE,
-        )
+        label = "Unknown"
+    return label + " - " + common.input_to_ui_string(
+        event.event_type, event.identifier
+    )
 
 
 @common.SingletonDecorator
@@ -271,13 +113,13 @@ class EventListener(QtCore.QObject):
     """
 
     # Signal emitted when joystick events are received
-    joystick_event = QtCore.Signal(Event)
+    joystick_event = QtCore.Signal(types.Event)
     # Signal emitted when keyboard events are received
-    keyboard_event = QtCore.Signal(Event)
+    keyboard_event = QtCore.Signal(types.Event)
     # Signal emitted when mouse events are received
-    mouse_event = QtCore.Signal(Event)
+    mouse_event = QtCore.Signal(types.Event)
     # Signal emitted when virtual button events are received
-    virtual_event = QtCore.Signal(Event)
+    virtual_event = QtCore.Signal(types.Event)
     # Signal emitted when a joystick is attached or removed
     device_change_event = QtCore.Signal()
 
@@ -406,11 +248,11 @@ class EventListener(QtCore.QObject):
                 calibrated_value
             )
 
-            out = Event(
+            out = types.Event(
                 event_type=InputType.JoystickAxis,
                 device_guid=event.device_guid.uuid,
                 identifier=event.input_index,
-                mode=NO_MODE,
+                mode=types.NO_MODE,
                 value=calibrated_value,
                 raw_value=event.value,
             )
@@ -422,11 +264,11 @@ class EventListener(QtCore.QObject):
                 event.value == 1
             )
 
-            out = Event(
+            out = types.Event(
                 event_type=InputType.JoystickButton,
                 device_guid=event.device_guid.uuid,
                 identifier=event.input_index,
-                mode=NO_MODE,
+                mode=types.NO_MODE,
                 is_pressed=event.value == 1,
             )
             if trace_timing.on:
@@ -438,11 +280,11 @@ class EventListener(QtCore.QObject):
                 direction
             )
 
-            out = Event(
+            out = types.Event(
                 event_type=InputType.JoystickHat,
                 device_guid=event.device_guid.uuid,
                 identifier=event.input_index,
-                mode=NO_MODE,
+                mode=types.NO_MODE,
                 value=direction,
             )
             if trace_timing.on:
@@ -557,9 +399,9 @@ class EventListener(QtCore.QObject):
         if wrapper is None or not hasattr(wrapper, "let_go"):
             return
         buttons, hats = wrapper.let_go()
-        mode = NO_MODE
+        mode = types.NO_MODE
         for index in buttons:
-            out = Event(
+            out = types.Event(
                 event_type=InputType.JoystickButton,
                 device_guid=device_guid,
                 identifier=index,
@@ -568,7 +410,7 @@ class EventListener(QtCore.QObject):
             )
             self.joystick_event.emit(out)
         for index in hats:
-            out = Event(
+            out = types.Event(
                 event_type=InputType.JoystickHat,
                 device_guid=device_guid,
                 identifier=index,
@@ -581,7 +423,7 @@ class EventListener(QtCore.QObject):
                 f"Unplugged {device_guid}: let go of buttons {buttons}, hats {hats}"
             )
 
-    def _keyboard_handler(self, event: Event) -> bool:
+    def _keyboard_handler(self, event: types.Event) -> bool:
         """Callback for keyboard events.
 
         The handler converts the event data into a signal which is then
@@ -611,11 +453,11 @@ class EventListener(QtCore.QObject):
         if not is_repeat:
             self._keyboard.update(key_id, is_pressed)
             self.keyboard_event.emit(
-                Event(
+                types.Event(
                     event_type=InputType.Keyboard,
                     device_guid=dill.UUID_Keyboard,
                     identifier=(key_id.scan_code, key_id.is_extended),
-                    mode=NO_MODE,
+                    mode=types.NO_MODE,
                     is_pressed=is_pressed,
                     # Keys this program sent itself (macros, Map to
                     # Keyboard) never move the Keyboard page (D-05-FOLLOW).
@@ -638,7 +480,7 @@ class EventListener(QtCore.QObject):
         except Exception:
             return False
 
-    def _mouse_handler(self, event: Event) -> bool:
+    def _mouse_handler(self, event: types.Event) -> bool:
         """Callback for mouse events.
 
         The handler converts the event data into a signal which is then
@@ -652,11 +494,11 @@ class EventListener(QtCore.QObject):
         """
         # Same device id as keyboard events (a UUID, not a GUID).
         self.mouse_event.emit(
-            Event(
+            types.Event(
                 event_type=InputType.Mouse,
                 device_guid=dill.UUID_Keyboard,
                 identifier=event.button_id,
-                mode=NO_MODE,
+                mode=types.NO_MODE,
                 is_pressed=event.is_pressed,
             )
         )
@@ -664,7 +506,7 @@ class EventListener(QtCore.QObject):
         # Allow the windows event to propagate further
         return True
 
-    def _apply_calibration(self, event: Event) -> float:
+    def _apply_calibration(self, event: types.Event) -> float:
         """Applies a calibration to raw input values.
 
         The resulting value will be in the range [-1, 1].
@@ -755,8 +597,8 @@ class EventHandler(QtCore.QObject):
         self,
         device_guid: uuid.UUID,
         mode: str,
-        event: Event,
-        callback: CallbackObject | Callable[[Event], None],
+        event: types.Event,
+        callback: CallbackObject | Callable[[types.Event], None],
     ) -> None:
         """Installs the provided callback for the given event.
 
@@ -826,7 +668,7 @@ class EventHandler(QtCore.QObject):
                             if event not in device_cb[child]:
                                 device_cb[child][event] = callbacks
 
-    def is_same_binding(self, event: Event, old_mode: str, new_mode: str) -> bool:
+    def is_same_binding(self, event: types.Event, old_mode: str, new_mode: str) -> bool:
         """Whether both modes route event to the same binding (06 S88).
 
         build_event_lookup gives an inheriting child mode the parent's very
@@ -861,8 +703,8 @@ class EventHandler(QtCore.QObject):
         self.callbacks = {}
         self.known_modes = set()
 
-    @QtCore.Slot(Event)
-    def process_event(self, event: Event) -> None:
+    @QtCore.Slot(types.Event)
+    def process_event(self, event: types.Event) -> None:
         """Processes a single event by passing it to all callbacks
         registered for this event.
 
@@ -896,10 +738,10 @@ class EventHandler(QtCore.QObject):
 
     def _trace_wiring(
         self,
-        event: Event,
+        event: types.Event,
         kind: str,
         index: int,
-        callbacks: list[Callable[[Event], None]],
+        callbacks: list[Callable[[types.Event], None]],
     ) -> None:
         try:
             trace.begin_input(event.device_guid, kind, index)
@@ -919,7 +761,7 @@ class EventHandler(QtCore.QObject):
             pass
 
     def _run_callbacks(
-        self, event: Event, callbacks: list[Callable[[Event], None]]
+        self, event: types.Event, callbacks: list[Callable[[types.Event], None]]
     ) -> None:
         for cb in callbacks:
             # A vJoy error is logged like any other failure; it no longer
@@ -941,7 +783,9 @@ class EventHandler(QtCore.QObject):
                 f"A release action for {event} failed"
             )
 
-    def _matching_callbacks(self, event: Event) -> list[Callable[[Event], None]]:
+    def _matching_callbacks(
+        self, event: types.Event
+    ) -> list[Callable[[types.Event], None]]:
         """Returns the list of callbacks to execute in response to
         the provided event.
 
@@ -967,8 +811,8 @@ class EventHandler(QtCore.QObject):
             return callback_list
 
     def _install_plugins(
-        self, callback: CallbackObject | Callable[[Event], None]
-    ) -> Callable[[Event], None]:
+        self, callback: CallbackObject | Callable[[types.Event], None]
+    ) -> Callable[[types.Event], None]:
         """Installs the current plugins into the given callback.
 
         Args:

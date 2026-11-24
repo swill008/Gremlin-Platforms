@@ -26,15 +26,15 @@ from typing import Any
 import pytest
 from PySide6 import QtCore
 
-from gremlin import event_handler, input_thread, mode_manager, run_scope, threads
+from gremlin import input_thread, mode_manager, run_scope, threads
 from gremlin.base_classes import Value
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _GUID = uuid.UUID("77777777-5555-2222-3333-666666666666")
 
 
-def _event() -> event_handler.Event:
-    return event_handler.Event(
+def _event() -> Event:
+    return Event(
         InputType.JoystickButton, 1, _GUID, "Default", is_pressed=True
     )
 

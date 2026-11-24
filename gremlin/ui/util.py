@@ -39,6 +39,7 @@ from gremlin.macro import (
     PauseAction,
 )
 from gremlin.types import (
+    Event,
     HatDirection,
     InputType,
     MouseButton,
@@ -84,7 +85,7 @@ class InputListenerModel(QtCore.QObject):
         # Whether its signals are connected (listening right now).
         self._listening = False
         # Received inputs while listening.
-        self._inputs: list[event_handler.Event] = []
+        self._inputs: list[Event] = []
         # Flag indicating whether the listener is active or not.
         self._is_enabled = False
         # Its name in the input highlighting holds (03 S114, 09 S33).
@@ -152,7 +153,7 @@ class InputListenerModel(QtCore.QObject):
         self._disconnect_listeners()
         self.listeningTerminated.emit([])
 
-    def _process_button(self, event: event_handler.Event) -> None:
+    def _process_button(self, event: Event) -> None:
         # Only react to events we're interested in.
         if event.event_type not in self._event_types:
             return
@@ -169,7 +170,7 @@ class InputListenerModel(QtCore.QObject):
             self._inputs = [event]
             self._listening_done()
 
-    def _process_single_input_only(self, event: event_handler.Event) -> None:
+    def _process_single_input_only(self, event: Event) -> None:
         """Certain inputs do not make sense to be recorded as multiple inputs,
         these cause immediate termination of listening.
 
@@ -183,7 +184,7 @@ class InputListenerModel(QtCore.QObject):
         self._inputs = [event]
         self._listening_done()
 
-    def _joy_event_cb(self, event: event_handler.Event) -> None:
+    def _joy_event_cb(self, event: Event) -> None:
         """Processes a joystick event.
 
         Args:
@@ -219,7 +220,7 @@ class InputListenerModel(QtCore.QObject):
                 if event.value != HatDirection.Center:
                     self._process_single_input_only(event)
 
-    def _kb_event_cb(self, event: event_handler.Event) -> None:
+    def _kb_event_cb(self, event: Event) -> None:
         """Processes a keyboard event.
 
         Args:
@@ -258,7 +259,7 @@ class InputListenerModel(QtCore.QObject):
         else:
             self._process_button(event)
 
-    def _mouse_event_cb(self, event: event_handler.Event) -> None:
+    def _mouse_event_cb(self, event: Event) -> None:
         """Processes a mouse event.
 
         Args:
@@ -285,7 +286,7 @@ class InputListenerModel(QtCore.QObject):
             self._event_types = types
             self.eventTypesChanged.emit()
 
-    def _get_current_inputs(self) -> list[event_handler.Event]:
+    def _get_current_inputs(self) -> list[Event]:
         return self._inputs
 
     def _get_is_enabled(self) -> bool:
@@ -368,9 +369,9 @@ class MacroRecorder:
         self._valid_event_types: list[InputType] = []
         self._record_timings: bool = False
         self._last_event_time: int = 0
-        self._last_recordings: dict[event_handler.Event, int] = {}
+        self._last_recordings: dict[Event, int] = {}
         self._axis_recordings: dict[
-            event_handler.Event | tuple[str, str],
+            Event | tuple[str, str],
             device_helpers.AxisChangeSignificanceTracker,
         ] = {}
         self._is_recording: bool = False
@@ -454,14 +455,14 @@ class MacroRecorder:
         shared_state.release_input_highlighting(self._highlight_holder)
         self._is_recording = False
 
-    def _queue_event_recording(self, event: event_handler.Event) -> None:
+    def _queue_event_recording(self, event: Event) -> None:
         # Only what the hardware does: not macro steps, refresh axes or
         # Hat as Buttons (GL-244).
         if getattr(event, "synthetic", False):
             return
         QtCore.QTimer.singleShot(0, lambda: self._record_event(event))
 
-    def _record_event(self, event: event_handler.Event) -> None:
+    def _record_event(self, event: Event) -> None:
         if not self._is_recording or event.event_type not in self._valid_event_types:
             return
 

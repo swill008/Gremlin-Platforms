@@ -14,9 +14,8 @@ from unittest import mock
 import pytest
 
 from gremlin.base_classes import Value
-from gremlin.event_handler import Event
 from gremlin.logical_device import LogicalDevice
-from gremlin.types import ActionProperty, AxisMode, InputType
+from gremlin.types import ActionProperty, AxisMode, Event, InputType
 from gremlin.ui import live_follow
 from test.unit.action_matrix.harness import (  # pyright: ignore[reportMissingImports]
     Surface,

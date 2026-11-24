@@ -54,6 +54,12 @@ class _Sample:
     def play(self) -> None:
         pass
 
+    def close_if_done(self) -> bool:
+        return bool(self.done)
+
+    def close(self, timeout: float = 0.5) -> None:
+        self.cancel()
+
     def cancel(self) -> None:
         self.done = True
 
@@ -99,12 +105,18 @@ def test_sounds_are_decoded_on_the_playback_thread(
 def test_finished_sounds_are_let_go(
     player: object, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    player.enqueue("a.wav", 80)
+    # While playing: a sound that ended is closed and goes, with its decoded
+    # audio; one still playing stays (the loop's _close_finished step).
+    ended, playing = _Sample("a.wav", 80), _Sample("b.wav", 80)
+    ended.done = True
+    player._currently_playing = [ended, playing]
+    player._close_finished()
+    assert player._currently_playing == [playing]
+    # When the playback thread ends (Stop), every sound is cancelled and
+    # closed (B1, upstream 911444dd: closed on the playback thread).
     _one_round(player, monkeypatch)
-    assert len(player._currently_playing) == 1  # still playing
-    player._currently_playing[0].done = True
-    _one_round(player, monkeypatch)
-    assert player._currently_playing == []  # with its decoded audio
+    assert player._currently_playing == []
+    assert playing.done
 
 
 def test_a_sound_that_cannot_be_decoded_is_logged_once(

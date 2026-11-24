@@ -10,12 +10,12 @@ from PySide6 import QtCore
 
 from gremlin import trace, trace_timing
 from gremlin.common import SingletonDecorator
-from gremlin.event_handler import Event, EventListener, trace_kind
+from gremlin.event_handler import EventListener, trace_kind
 from gremlin.modules import device_class, registry
 from gremlin.modules.gate import should_forward
 from gremlin.modules.ids import guid_key
 from gremlin.signal import signal
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 
 def _trace_dropped(event: Event) -> None:

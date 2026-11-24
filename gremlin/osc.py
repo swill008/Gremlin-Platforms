@@ -26,7 +26,7 @@ from gremlin import axis_shaping, clock, input_thread, osc_pattern, threads, tra
 from gremlin.common import SingletonDecorator, SingletonMetaclass
 from gremlin.modules import ids
 from gremlin.osc_rows import OscRow, OscRows
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 log = logging.getLogger("system")
 user_log = logging.getLogger("user")
@@ -1277,7 +1277,7 @@ class OscRuntime(QtCore.QObject):
         address: str | None,
         synthetic: bool,
     ) -> None:
-        from gremlin.event_handler import Event, EventListener
+        from gremlin.event_handler import EventListener
 
         _osc_state("set_button", row.uid, pressed)
         if trace.osc_on(INPUTS):
@@ -1339,7 +1339,7 @@ class OscRuntime(QtCore.QObject):
         address: str | None,
         synthetic: bool,
     ) -> None:
-        from gremlin.event_handler import Event, EventListener
+        from gremlin.event_handler import EventListener
 
         _osc_state("set_axis", row.uid, value)
         if trace.osc_on(INPUTS):

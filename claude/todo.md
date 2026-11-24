@@ -647,3 +647,10 @@ User (2026-10-12, "approved"): Add Image on a Keyboard/OSC stub card with no mod
 
 144. OPEN (2026-11-20; user decision: release "Gremlin-Platforms R2 1.1.0") OT-6 (2026-11-20): the R1-named installer copy on the R2 1.1.0 release so R1 1.0.39 updates itself (.github/workflows/release-exe.yml step marked ONE-TIME (tracker OT-6)). Remove only when the user says.
 145. OPEN (2026-11-20) OT-7 (2026-11-20): removal of the R1 Start menu entry left by older installs (installer/gremlin_platforms.iss, marked ONE-TIME (tracker OT-7)). Remove only when the user says.
+
+146. OPEN (2026-11-23, script test suite) Help has no topic on WRITING scripts (only on adding them); upstream's docs site has none either (claude/audits/2026-11-23-script-examples/). Record only.
+147. OPEN (2026-11-23, agent E2E) Dead code: `VirtualInputVariableModel.label` in gremlin/ui/script.py returns the placeholder "Bla 123"; no QML reads it (checked: ScriptConfiguration.qml's vjoy delegate). Tidy-up, record only.
+148. OPEN (2026-11-23, agent DOCS2) Map README totals disagree with the table (S 1485 vs 1484, gaps 529 vs 521 before 2026-11-23): recount in the full map check before the next release.
+149. OPEN (2026-11-23; user: "26 and 27 can be added to the todo") Upstream moved to Python 3.14 and PySide6 6.11.2: study the upgrade after the upstream batches (claude/audits/2026-11-24-upstream-since-fork/). Record only.
+150. OPEN (2026-11-23; same) Upstream's dill2.dll change (a4bf778b, 5958aed8): handle with to-do R16DILL (above); claude/audits/2026-11-24-upstream-since-fork/commits-2.md. Record only.
+151. OPEN (2026-11-23; user: "we wont add a converter for now, put that as a todo") A converter for old Joystick Gremlin R13 scripts (input_devices / control_action / user_plugin imports, decorator names, user_plugin argument order and .value, hat (x, y) pairs to HatDirection; comment on lines it can't convert; never changes the original). Upstream has none (only three documented edits). Plan background: claude/plans/older-scripts-compat.md. Record only.

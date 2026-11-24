@@ -24,9 +24,8 @@ import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 import dill
 from gremlin import shared_state
-from gremlin.event_handler import Event
 from gremlin.profile import InputItem, Profile
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from gremlin.ui.keyboard_layout import KeyboardLayoutModel, key_row, keyboard_store
 from test.unit._device_folders import put_module
 

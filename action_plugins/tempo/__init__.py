@@ -19,7 +19,6 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
-    event_handler,
     fsm,
     references,
     run_scope,
@@ -40,6 +39,7 @@ from gremlin.event_helpers import ButtonReleaseActions
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -58,7 +58,7 @@ class TempoFunctor(AbstractFunctor):
 
         self.timer = None
         self.value_press: Value = Value(None)
-        self.event_press: event_handler.Event | None = None
+        self.event_press: Event | None = None
         # The last press, "short" or "long" ("" before any), for Feedback.
         self.last_press = ""
         self.fsm = self._create_fsm()
@@ -73,7 +73,7 @@ class TempoFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:
@@ -102,7 +102,7 @@ class TempoFunctor(AbstractFunctor):
             self._reset_fsm(event, value, properties)
 
     def _reset_fsm(
-        self, event: event_handler.Event, value: Value, properties: List[ActionProperty]
+        self, event: Event, value: Value, properties: List[ActionProperty]
     ) -> None:
         logging.getLogger("event").warning(
             "Tempo: Resetting due to invalid FSM transition."
@@ -115,7 +115,7 @@ class TempoFunctor(AbstractFunctor):
         )
 
     def _release_cb(
-        self, event: event_handler.Event, value: Value, properties: List[ActionProperty]
+        self, event: Event, value: Value, properties: List[ActionProperty]
     ) -> None:
         if (self.fsm.current_state, "press") not in self.fsm.transitions:
             self._reset_fsm(event, value, properties)
@@ -124,26 +124,26 @@ class TempoFunctor(AbstractFunctor):
         T = fsm.Transition
 
         def short_pulse(
-            _e: event_handler.Event, _v: Value, p: List[ActionProperty]
+            _e: Event, _v: Value, p: List[ActionProperty]
         ) -> None:
             return self._short_pulse(p)
 
         def short_press(
-            _e: event_handler.Event, _v: Value, p: List[ActionProperty]
+            _e: Event, _v: Value, p: List[ActionProperty]
         ) -> None:
             self._process_event(
                 self.functors["short"], self.event_press, self.value_press, p
             )
 
         def short_release(
-            e: event_handler.Event, v: Value, p: List[ActionProperty]
+            e: Event, v: Value, p: List[ActionProperty]
         ) -> None:
             if self.fsm.current_state == "short":
                 self.last_press = "short"
             self._process_event(self.functors["short"], e, v, p)
 
         def long_press(
-            _e: event_handler.Event, _v: Value, p: List[ActionProperty]
+            _e: Event, _v: Value, p: List[ActionProperty]
         ) -> None:
             self.last_press = "long"
             self._process_event(
@@ -151,7 +151,7 @@ class TempoFunctor(AbstractFunctor):
             )
 
         def long_release(
-            e: event_handler.Event, v: Value, p: List[ActionProperty]
+            e: Event, v: Value, p: List[ActionProperty]
         ) -> None:
             self._process_event(self.functors["long"], e, v, [])
 

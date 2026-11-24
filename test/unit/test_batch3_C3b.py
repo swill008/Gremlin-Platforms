@@ -29,7 +29,7 @@ import pytest
 import dill
 from gremlin import clock, event_handler, windows_event_hook
 from gremlin import device_initialization as di
-from gremlin.types import InputType, MouseButton
+from gremlin.types import Event, InputType, MouseButton
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -54,7 +54,7 @@ def test_vjoy_left_out_message_says_restart_the_program(
 
 
 def test_mouse_events_carry_the_keyboard_uuid_and_are_never_dropped() -> None:
-    sent: list[event_handler.Event] = []
+    sent: list[Event] = []
     listener = SimpleNamespace(mouse_event=SimpleNamespace(emit=sent.append))
     evt = windows_event_hook.MouseEvent(MouseButton.Left, True)
     assert event_handler.EventListener.klass._mouse_handler(listener, evt) is True
@@ -196,9 +196,9 @@ def test_a_refused_hidhide_tick_shows_the_driver_error(
 
 
 def test_an_event_can_be_marked_as_made_by_the_program() -> None:
-    real = event_handler.Event(InputType.JoystickButton, 1, uuid.UUID(int=1), "Default")
+    real = Event(InputType.JoystickButton, 1, uuid.UUID(int=1), "Default")
     assert real.synthetic is False
-    made = event_handler.Event(
+    made = Event(
         InputType.JoystickButton, 1, uuid.UUID(int=1), "Default", synthetic=True
     )
     assert made.synthetic is True
@@ -260,8 +260,8 @@ class _Seen:
         return False
 
 
-def _joy(synthetic: bool) -> event_handler.Event:
-    return event_handler.Event(
+def _joy(synthetic: bool) -> Event:
+    return Event(
         InputType.JoystickButton, 1, uuid.UUID(int=0x60), "Default",
         is_pressed=True, synthetic=synthetic,
     )

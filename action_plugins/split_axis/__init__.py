@@ -23,10 +23,10 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.error import GremlinError
-from gremlin.event_handler import Event
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )

@@ -47,7 +47,7 @@
     },
     {
       "file": "mode_switch.py",
-      "purpose": "A stick button changes the mode to the one named in a Mode variable.",
+      "purpose": "A stick button changes the mode to the one named in a Mode variable, through user_script.switch_mode.",
       "variables": {
         "Works in": "ModeVariable",
         "Switch to": "ModeVariable",
@@ -140,11 +140,25 @@
     {
       "file": "upstream_example.py",
       "purpose": "Upstream Joystick Gremlin R14 user_scripts/example.py, code unchanged (GPL-3.0-only, source in its header).",
-      "variables": {},
-      "loads": false,
-      "expected_error_contains": "AttributeError: module 'gremlin.types' has no attribute 'Event'",
-      "decision_pending": "Whether to accept upstream's types.Event annotation (decision pending with the user). Today it can't load; test_script_suite.py has a strict expected-failure test that it loads.",
-      "checks": "Today: stays in the profile with no variables and the reason \"AttributeError: module 'gremlin.types' has no attribute 'Event'\"; Run skips it. If the decision is to accept it, it loads with upstream's 14 variables (one of each type but OSC input, three each of physical and virtual input)."
+      "variables": {
+        "A bool variable": "BoolVariable",
+        "A float variable": "FloatVariable",
+        "An integer variable": "IntegerVariable",
+        "A keyboard variable": "KeyboardVariable",
+        "A logical device variable": "LogicalDeviceVariable",
+        "A mode variable": "ModeVariable",
+        "A string variable": "StringVariable",
+        "A selection variable": "SelectionVariable",
+        "A virtual axis input variable": "VirtualInputVariable",
+        "A virtual button input variable": "VirtualInputVariable",
+        "A virtual hat input variable": "VirtualInputVariable",
+        "A physical axis input variable": "PhysicalInputVariable",
+        "A physical button input variable": "PhysicalInputVariable",
+        "A physical hat input variable": "PhysicalInputVariable"
+      },
+      "loads": true,
+      "configured_when_added": true,
+      "checks": "Loads with upstream's 14 variables (one of each type but OSC input, three each of physical and virtual input; D-04-EVENT-TYPES: its callbacks annotate types.Event). Every variable is optional, so it is configured as soon as it is added."
     },
     {
       "file": "axes_merge.py",

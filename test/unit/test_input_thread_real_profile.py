@@ -43,7 +43,7 @@ from gremlin import (
 from gremlin.logical_device import LogicalDevice
 from gremlin.macro import MacroManager
 from gremlin.modules import output, runtime
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from test import fake_hardware
 
 fake_hardware.install(vjoy_ids=(1,))
@@ -463,7 +463,7 @@ def test_logical_device_reentry_is_synchronous_on_input_thread(rig: Rig) -> None
     seen: list[bool] = []
 
     def one_press() -> None:
-        event = event_handler.Event(
+        event = Event(
             InputType.JoystickButton, B_LOGICAL, _STICK,
             mode_manager.ModeManager().current.name, is_pressed=True,
         )

@@ -67,7 +67,7 @@ from gremlin.base_classes import Value
 from gremlin.common import SingletonMetaclass
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import Profile
-from gremlin.types import HatDirection, InputType, MouseButton
+from gremlin.types import Event, HatDirection, InputType, MouseButton
 
 _ROOT = Path(__file__).resolve().parents[2]
 _STICK = uuid.UUID("55555555-6666-7777-8888-999999999999")
@@ -364,7 +364,7 @@ def test_map_to_vjoy_at_run_with_no_vjoy_device_does_nothing(
     vjoy = _create("Map to vJoy")
     vjoy.vjoy_device_id = 9  # no such device on this PC
     functor = vjoy.functor(vjoy)
-    event = event_handler.Event(
+    event = Event(
         InputType.JoystickButton, 1, _STICK, "Default", is_pressed=True,
         raw_value=True,
     )
@@ -937,7 +937,7 @@ def test_a_held_key_is_one_press_and_one_release(
     )
     seen: list[tuple] = []
 
-    def record(event: event_handler.Event) -> None:
+    def record(event: Event) -> None:
         seen.append((event.identifier, event.is_pressed))
 
     listener.keyboard_event.connect(record)
@@ -973,8 +973,8 @@ def _listener(kinds: list[InputType], several: bool = False) -> tuple[Any, list]
 
 def _button(
     number: int, pressed: bool, device: uuid.UUID = _STICK
-) -> event_handler.Event:
-    return event_handler.Event(
+) -> Event:
+    return Event(
         InputType.JoystickButton, number, device, "Default", is_pressed=pressed,
         raw_value=pressed,
     )
@@ -1004,12 +1004,12 @@ def test_listen_ignores_logical_and_virtual_inputs_and_a_centred_hat(
     model, done = _listener([InputType.JoystickButton, InputType.JoystickHat])
     model._joy_event_cb(_button(1, True, dill.UUID_LogicalDevice))
     model._joy_event_cb(_button(1, True, dill.UUID_Virtual))
-    centre = event_handler.Event(
+    centre = Event(
         InputType.JoystickHat, 1, _STICK, "Default", value=HatDirection.Center
     )
     model._joy_event_cb(centre)
     assert done == []
-    north = event_handler.Event(
+    north = Event(
         InputType.JoystickHat, 1, _STICK, "Default", value=HatDirection.North
     )
     model._joy_event_cb(north)
@@ -1018,7 +1018,7 @@ def test_listen_ignores_logical_and_virtual_inputs_and_a_centred_hat(
 
 def test_listen_takes_the_mouse_wheel_at_once(highlighting_kept: None) -> None:
     model, done = _listener([InputType.Mouse], several=True)
-    wheel = event_handler.Event(
+    wheel = Event(
         InputType.Mouse, cast(Any, MouseButton.WheelUp), dill.UUID_Keyboard, "Default",
         is_pressed=True,
     )
@@ -1029,7 +1029,7 @@ def test_listen_takes_the_mouse_wheel_at_once(highlighting_kept: None) -> None:
 def test_holding_esc_cancels_listen(highlighting_kept: None) -> None:
     model, done = _listener([InputType.JoystickButton])
     esc = keyboard.key_from_name("esc")
-    model._kb_event_cb(event_handler.Event(
+    model._kb_event_cb(Event(
         InputType.Keyboard, (esc.scan_code, esc.is_extended), dill.UUID_Keyboard,
         "Default", is_pressed=True,
     ))
@@ -1397,7 +1397,7 @@ def test_a_new_key_can_get_its_first_action(profile: Profile) -> None:
     keys = KeyboardLayoutModel()
     _KEEP.append(keys)
     key = keyboard.key_from_name("a")
-    event = event_handler.Event(
+    event = Event(
         InputType.Keyboard, (key.scan_code, key.is_extended), dill.UUID_Keyboard,
         "Default", is_pressed=True,
     )
@@ -1430,7 +1430,7 @@ def test_map_to_mouse_from_a_hat_moves_and_stops(
     functor = action.functor(action)
 
     def hat(direction: HatDirection) -> None:
-        event = event_handler.Event(
+        event = Event(
             InputType.JoystickHat, 1, _STICK, "Default", value=direction,
             raw_value=direction,
         )
@@ -1463,7 +1463,7 @@ def test_load_profile_action_end_to_end(
     try:
         action = _create("Load Profile")
         functor = action.functor(action)
-        press = event_handler.Event(
+        press = Event(
             InputType.JoystickButton, 1, _STICK, "Default", is_pressed=True,
             raw_value=True,
         )

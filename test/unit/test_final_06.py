@@ -41,10 +41,9 @@ from PySide6 import QtCore
 from gremlin import code_runner, event_handler, keyboard, shared_state
 from gremlin.base_classes import Value
 from gremlin.common import SingletonMetaclass
-from gremlin.event_handler import Event
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import Profile
-from gremlin.types import InputType, MouseButton
+from gremlin.types import Event, InputType, MouseButton
 
 _GUID = uuid.UUID("06060606-0606-0606-0606-060606060606")
 _STICK = uuid.UUID("06060606-1111-2222-3333-444444444444")

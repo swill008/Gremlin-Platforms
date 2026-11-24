@@ -20,7 +20,6 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
-    event_handler,
     osc_output,
     osc_pattern,
     references,
@@ -38,6 +37,7 @@ from gremlin.profile import Library
 from gremlin.types import (
     ActionActivationMode,
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -119,7 +119,7 @@ class SendOscFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:

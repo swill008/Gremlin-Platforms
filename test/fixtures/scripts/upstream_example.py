@@ -4,8 +4,8 @@
 # Test fixture: upstream's R14 example script, its code unchanged (only
 # these header lines added), copied 2026-11-23 from
 # claude/audits/2026-11-23-script-examples/found/jg_develop_example.py.
-# Today it can't load here: its callbacks are annotated with types.Event,
-# and our gremlin.types has no Event (decision pending with the user).
+# It loads here unchanged: its callbacks annotate types.Event, which is
+# where our Event lives too (D-04-EVENT-TYPES, 2026-11-23).
 
 
 # SPDX-License-Identifier: GPL-3.0-only

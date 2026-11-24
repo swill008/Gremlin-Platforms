@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import pytest
 
 from gremlin import clock, code_runner, device_helpers, event_handler, macro
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 
 class _RecordingEvent:
@@ -121,8 +121,8 @@ def test_callback_has_no_sleep_on_the_event_thread() -> None:
     assert "sleep" not in source
 
 
-def _axis_event(value: float) -> event_handler.Event:
-    return event_handler.Event(
+def _axis_event(value: float) -> Event:
+    return Event(
         InputType.JoystickAxis,
         1,
         uuid.UUID(int=7),

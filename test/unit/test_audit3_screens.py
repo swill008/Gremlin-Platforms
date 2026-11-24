@@ -90,9 +90,8 @@ if __name__ != "__main__":
 
     import dill
     from gremlin import shared_state
-    from gremlin.event_handler import Event
     from gremlin.profile import Profile
-    from gremlin.types import InputType
+    from gremlin.types import Event, InputType
     from gremlin.ui.keyboard_layout import KeyboardLayoutModel, key_row
 
     _APPS: list[QtCore.QCoreApplication] = []
@@ -720,8 +719,7 @@ Window {
 
     from PySide6 import QtQml
 
-    from gremlin.event_handler import Event
-    from gremlin.types import InputType
+    from gremlin.types import Event, InputType
     from gremlin.ui.util import InputListenerModel
 
     context = QtQml.qmlContext(win)

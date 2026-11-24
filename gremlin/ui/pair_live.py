@@ -11,7 +11,7 @@ from gremlin.modules import output
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.signal import signal
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from gremlin.ui import input_pairing as pairing
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -152,7 +152,7 @@ class PairLiveThrottle(QtCore.QObject):
             self._bump_button()
 
     @QtCore.Slot(object)
-    def _on_event(self, event: event_handler.Event) -> None:
+    def _on_event(self, event: Event) -> None:
         threads.assert_main("PairLiveThrottle._on_event")
         # Axes keep the latest value per input and repaint once per 50 ms
         # (_flush), so a burst is one repaint (R7).

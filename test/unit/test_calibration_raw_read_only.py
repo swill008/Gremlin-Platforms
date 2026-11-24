@@ -71,7 +71,7 @@ def _smoke() -> None:  # noqa: C901
     import joystick_gremlin
     from gremlin import clock, event_handler
     from gremlin.modules import store
-    from gremlin.types import InputType
+    from gremlin.types import Event, InputType
 
     def wait_until(cond, limit_ms: int = 10000) -> bool:  # noqa: ANN001
         end = clock.monotonic() + limit_ms / 1000.0
@@ -170,7 +170,7 @@ def _smoke() -> None:  # noqa: C901
         # A stick movement still shows: axis 1 is the first row.
         first_axis = 1
         event_handler.EventListener().joystick_event.emit(
-            event_handler.Event(
+            Event(
                 InputType.JoystickAxis,
                 first_axis,
                 guid,

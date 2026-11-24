@@ -27,9 +27,8 @@ from PySide6 import QtCore
 from action_plugins.root import RootData
 from gremlin import plugin_manager, shared_state
 from gremlin.base_classes import AbstractFunctor, Value
-from gremlin.event_handler import Event
 from gremlin.profile import InputItem, InputItemBinding, Profile
-from gremlin.types import ActionActivationMode, InputType
+from gremlin.types import ActionActivationMode, Event, InputType
 
 _STICK = uuid.UUID("05050505-0505-0505-0505-050505050505")
 _APPS: list[QtCore.QCoreApplication] = []

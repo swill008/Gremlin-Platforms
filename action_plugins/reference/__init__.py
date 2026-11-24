@@ -35,7 +35,7 @@ from gremlin.ui.action_model import (
 from gremlin.ui.profile import LabelValueSelectionModel
 
 if TYPE_CHECKING:
-    from gremlin.event_handler import Event
+    from gremlin.types import Event
     from gremlin.ui.profile import InputItemBindingModel
 
 

@@ -29,7 +29,7 @@ from gremlin import (
     user_script,
 )
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 MODE = "Default"
 
@@ -66,7 +66,7 @@ def test_osc_input_variable_callback_runs_from_an_osc_event(
     seen: list[bool] = []
 
     @var.decorator(_types.SimpleNamespace(value=MODE))
-    def pressed(event: event_handler.Event) -> None:
+    def pressed(event: Event) -> None:
         seen.append(event.is_pressed)
 
     handler = _handler_with_script_callbacks()

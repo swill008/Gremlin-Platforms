@@ -16,8 +16,7 @@ import pytest
 
 from gremlin import action_analysis, clock, input_monitor
 from gremlin.base_classes import UserFeedback
-from gremlin.event_handler import Event
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _FILES = [

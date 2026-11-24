@@ -201,6 +201,32 @@ to_exclude = [
 directory_excludes = [
     "Pythonwin",
     "PySide6\\translations",
+    # QML modules whose Qt libraries are excluded above, so they could not
+    # load anyway. test_spec_excludes_unused.py checks nothing imports them.
+    "PySide6\\qml\\Qt3D",
+    "PySide6\\qml\\QtDataVisualization",
+    "PySide6\\qml\\QtGraphs",
+    "PySide6\\qml\\QtLocation",
+    "PySide6\\qml\\QtPositioning",
+    "PySide6\\qml\\QtQuick3D",
+    "PySide6\\qml\\QtQuick\\Controls\\FluentWinUI3",
+    "PySide6\\qml\\QtQuick\\Controls\\Fusion",
+    "PySide6\\qml\\QtQuick\\Controls\\Imagine",
+    "PySide6\\qml\\QtQuick\\Controls\\Material",
+    "PySide6\\qml\\QtQuick\\Controls\\Windows",
+    "PySide6\\qml\\QtQuick\\LocalStorage",
+    "PySide6\\qml\\QtQuick\\Pdf",
+    "PySide6\\qml\\QtQuick\\Scene2D",
+    "PySide6\\qml\\QtQuick\\Scene3D",
+    "PySide6\\qml\\QtQuick\\Timeline",
+    "PySide6\\qml\\QtQuick\\VectorImage",
+    "PySide6\\qml\\QtRemoteObjects",
+    "PySide6\\qml\\QtScxml",
+    "PySide6\\qml\\QtSensors",
+    "PySide6\\qml\\QtWebChannel",
+    "PySide6\\qml\\QtWebEngine",
+    "PySide6\\qml\\QtWebSockets",
+    "PySide6\\qml\\QtWebView",
 ]
 
 
@@ -210,13 +236,13 @@ def trim(analysis):
     analysis.binaries = [
         (dest, source, kind)
         for (dest, source, kind) in analysis.binaries
-        if not any(dest.startswith(d) for d in directory_excludes)
+        if not any(dest.lower().startswith(d.lower()) for d in directory_excludes)
         and os.path.split(dest)[1] not in to_exclude
     ]
     analysis.datas = [
         (dest, source, kind)
         for (dest, source, kind) in analysis.datas
-        if not any(dest.startswith(d) for d in directory_excludes)
+        if not any(dest.lower().startswith(d.lower()) for d in directory_excludes)
     ]
 
 

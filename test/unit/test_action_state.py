@@ -24,9 +24,9 @@ from PySide6 import QtCore
 
 from gremlin import action_state, code_runner, run_scope, shared_state
 from gremlin.base_classes import AbstractActionData
-from gremlin.event_handler import Event, EventHandler
+from gremlin.event_handler import EventHandler
 from gremlin.profile import Profile
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _GUID = uuid.UUID("77777777-5555-2222-3333-444444444444")
 _APPS: list[QtCore.QCoreApplication] = []

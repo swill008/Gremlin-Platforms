@@ -9,7 +9,7 @@ throttle plus a fine-trim axis). Written for this suite; the idea is a
 common one in published scripts.
 """
 
-from gremlin import event_handler, types, user_script
+from gremlin import types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the axes work in", True)
 
@@ -32,12 +32,12 @@ def _write() -> None:
 
 
 @axis_a.decorator(mode)
-def on_a(event: event_handler.Event) -> None:
+def on_a(event: types.Event) -> None:
     values["a"] = event.value
     _write()
 
 
 @axis_b.decorator(mode)
-def on_b(event: event_handler.Event) -> None:
+def on_b(event: types.Event) -> None:
     values["b"] = event.value
     _write()

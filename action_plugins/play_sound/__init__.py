@@ -16,7 +16,6 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
-    event_handler,
     references,
     util,
 )
@@ -32,6 +31,7 @@ from gremlin.log_once import log_once
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -53,7 +53,7 @@ class PlaySoundFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:

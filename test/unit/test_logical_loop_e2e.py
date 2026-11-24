@@ -34,6 +34,8 @@ from typing import Any
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
+from gremlin.types import Event
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CASE_ENV = "LD_LOOP_E2E_CASE"
 OUT_ENV = "LD_LOOP_E2E_OUT"
@@ -372,7 +374,7 @@ class _Child:
         before = dict(self.events)
         start = time.monotonic()
         event_handler.EventListener().joystick_event.emit(
-            event_handler.Event(
+            Event(
                 event_type=src.type,
                 identifier=src.id,
                 device_guid=self.ld.device_guid,

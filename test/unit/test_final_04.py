@@ -45,7 +45,7 @@ from gremlin.error import GremlinError
 from gremlin.logical_device import LogicalDevice
 from gremlin.osc import OscDevice
 from gremlin.profile import Profile, ScriptManager, VirtualAxisButton
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from gremlin.user_script import Script
 
 _STICK = uuid.UUID("55555555-6666-7777-8888-999999999999")
@@ -474,8 +474,8 @@ def test_s43_a_child_mode_uses_its_parents_actions_through_every_level(
     modes.set_parent("Kappa", "Zeta")
     modes.set_parent("Alpha", "Kappa")
 
-    def event(hw: int) -> event_handler.Event:
-        return event_handler.Event(
+    def event(hw: int) -> Event:
+        return Event(
             event_type=InputType.JoystickButton,
             device_guid=_STICK,
             identifier=hw,

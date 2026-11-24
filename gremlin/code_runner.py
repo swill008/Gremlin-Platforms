@@ -54,6 +54,7 @@ from gremlin.osc import OscRuntime
 from gremlin.types import (
     ActionProperty,
     AxisButtonDirection,
+    Event,
     HatDirection,
     InputType,
 )
@@ -134,7 +135,7 @@ class VirtualButton(metaclass=ABCMeta):
         return fsm.FiniteStateMachine("up", states, actions, transitions)
 
     @abstractmethod
-    def __call__(self, event: event_handler.Event) -> list[bool]:
+    def __call__(self, event: Event) -> list[bool]:
         """Process the input event and updates the value as needed.
 
         Args:
@@ -166,7 +167,7 @@ class VirtualAxisButton(VirtualButton):
         # Inside the range at Run: no press until it leaves and re-enters.
         self._held_from_start = False
 
-    def __call__(self, event: event_handler.Event) -> list[bool]:
+    def __call__(self, event: Event) -> list[bool]:
         value = float(event.value) if isinstance(event.value, (int, float)) else 0.0
         inside_range = self._lower_limit <= value <= self._upper_limit
 
@@ -218,7 +219,7 @@ class VirtualHatButton(VirtualButton):
         super().__init__()
         self._directions = directions
 
-    def __call__(self, event: event_handler.Event) -> list[bool]:
+    def __call__(self, event: Event) -> list[bool]:
         is_pressed = event.value in self._directions
         action = "press" if is_pressed else "release"
         has_changed = self._fsm.perform(action)[0]
@@ -227,13 +228,13 @@ class VirtualHatButton(VirtualButton):
 
 class VirtualButtonFunctor:
     def __init__(
-        self, virtual_button: VirtualButton, event_template: event_handler.Event
+        self, virtual_button: VirtualButton, event_template: Event
     ) -> None:
         self._virtual_button = virtual_button
         self._event_template = event_template
         self._event_listener = event_handler.EventListener()
 
-    def __call__(self, event: event_handler.Event, value: Value) -> None:
+    def __call__(self, event: Event, value: Value) -> None:
         states = self._virtual_button(event)
         for state in states:
             new_event = self._event_template.clone()
@@ -265,7 +266,7 @@ class CallbackObject:
         values = [ActionProperty.AlwaysExecute in a.properties for a in actions]
         return any(values)
 
-    def __call__(self, event: event_handler.Event) -> None:
+    def __call__(self, event: Event) -> None:
         for value in self._generate_values(event):
             self._functor(event, value)
 
@@ -283,7 +284,7 @@ class CallbackObject:
             )
             return
 
-        virtual_event = event_handler.Event(
+        virtual_event = Event(
             event_type=InputType.VirtualButton,
             identifier=self._virtual_identifier,
             device_guid=dill.UUID_Virtual,
@@ -334,7 +335,7 @@ class CallbackObject:
             CallbackObject(virt_binding),
         )
 
-    def _generate_values(self, event: event_handler.Event) -> list[Value]:
+    def _generate_values(self, event: Event) -> list[Value]:
         if event.event_type in [InputType.JoystickAxis, InputType.JoystickHat]:
             value = Value(event.value)
         elif event.event_type in [
@@ -823,7 +824,7 @@ class CodeRunner:
         action_sequences = sum([e.action_sequences for e in item_list], [])
 
         for action in action_sequences:
-            event = event_handler.Event(
+            event = Event(
                 event_type=action.input_item.input_type,
                 device_guid=action.input_item.device_id,
                 identifier=action.input_item.input_id,

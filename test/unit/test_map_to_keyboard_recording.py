@@ -17,8 +17,8 @@ from typing import Any, cast
 import pytest
 from PySide6 import QtCore
 
-from gremlin import event_handler, keyboard, shared_state
-from gremlin.types import InputType
+from gremlin import keyboard, shared_state
+from gremlin.types import Event, InputType
 
 _KB = uuid.UUID("05850585-0585-0585-0585-058505850585")
 _KEEP: list[object] = []
@@ -41,9 +41,9 @@ class _Binding(QtCore.QObject):
     behaviorChanged = QtCore.Signal()
 
 
-def _key(name: str, pressed: bool = True) -> event_handler.Event:
+def _key(name: str, pressed: bool = True) -> Event:
     key = keyboard.key_from_name(name)
-    return event_handler.Event(
+    return Event(
         InputType.Keyboard, (key.scan_code, key.is_extended), _KB, "Default",
         is_pressed=pressed,
     )

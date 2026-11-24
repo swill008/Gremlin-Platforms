@@ -36,6 +36,7 @@ from gremlin.error import GremlinError
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     HatDirection,
     InputType,
     MouseButton,
@@ -83,7 +84,7 @@ class MapToMouseFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
@@ -100,7 +101,7 @@ class MapToMouseFunctor(AbstractFunctor):
         else:
             self._perform_mouse_button(event, value)
 
-    def _perform_mouse_button(self, event: event_handler.Event, value: Value) -> None:
+    def _perform_mouse_button(self, event: Event, value: Value) -> None:
         """Processes mouse button presses.
 
         Args:
@@ -118,12 +119,12 @@ class MapToMouseFunctor(AbstractFunctor):
             else:
                 sendinput.mouse_release(self.data.button)
 
-    def _motion_key(self, event: event_handler.Event) -> sendinput.MotionKey:
+    def _motion_key(self, event: Event) -> sendinput.MotionKey:
         """This action's piece for this input."""
         return (self.data.id, event)
 
     def _start_piece(
-        self, key: sendinput.MotionKey, event: event_handler.Event
+        self, key: sendinput.MotionKey, event: Event
     ) -> None:
         """Watches mode changes for a piece that is moving."""
         mode = event.mode or mode_manager.ModeManager().current.name
@@ -138,7 +139,7 @@ class MapToMouseFunctor(AbstractFunctor):
     def _on_mode_change(
         self,
         key: sendinput.MotionKey,
-        event: event_handler.Event,
+        event: Event,
         started_in: str,
         _old_mode: str,
         new_mode: str,
@@ -151,7 +152,7 @@ class MapToMouseFunctor(AbstractFunctor):
         self._motion.clear(key)
         return True
 
-    def _perform_axis_motion(self, event: event_handler.Event, value: Value) -> None:
+    def _perform_axis_motion(self, event: Event, value: Value) -> None:
         """Processes axis-controlled motion.
 
         Args:
@@ -178,7 +179,7 @@ class MapToMouseFunctor(AbstractFunctor):
         )
         self._start_piece(key, event)
 
-    def _perform_button_motion(self, event: event_handler.Event, value: Value) -> None:
+    def _perform_button_motion(self, event: Event, value: Value) -> None:
         """Processes button-controlled motion.
 
         Args:
@@ -198,7 +199,7 @@ class MapToMouseFunctor(AbstractFunctor):
         else:
             self._stop_piece(key)
 
-    def _perform_hat_motion(self, event: event_handler.Event, value: Value) -> None:
+    def _perform_hat_motion(self, event: Event, value: Value) -> None:
         """Processes hat-controlled motion.
 
         Args:
@@ -293,7 +294,7 @@ class MapToMouseModel(ActionModel):
         return MouseButton.to_string(self._data.button)
 
     @QtCore.Slot(list)
-    def updateInputs(self, data: List[event_handler.Event]) -> None:
+    def updateInputs(self, data: List[Event]) -> None:
         """Receives the events corresponding to mouse button presses.
 
         We only expect to receive a single button press and thus store the

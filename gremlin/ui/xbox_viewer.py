@@ -10,13 +10,13 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import event_handler, input_thread, shared_state, threads
+from gremlin import input_thread, shared_state, threads
 from gremlin.axis_names import short_name
 from gremlin.modules import output, wiring
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.signal import signal
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from gremlin.ui import input_pairing as pairing
 from gremlin.ui.xbox_maps import xbox_maps_for_item
 
@@ -214,7 +214,7 @@ class XboxPadLive(QtCore.QObject):
     # Hardware side.
 
     @QtCore.Slot(object)
-    def _on_event(self, event: event_handler.Event) -> None:
+    def _on_event(self, event: Event) -> None:
         threads.assert_main("XboxViewer._on_event")
         # Axes keep the latest value per input and repaint once per poll
         # interval (_flush_axes), so a burst is one repaint (R7).

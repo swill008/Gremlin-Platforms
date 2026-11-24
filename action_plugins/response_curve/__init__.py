@@ -20,7 +20,6 @@ from PySide6 import (
 )
 
 from gremlin import (
-    event_handler,
     references,
     spline,
     util,
@@ -40,6 +39,7 @@ from gremlin.error import (
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -76,7 +76,7 @@ class ResponseCurveFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:

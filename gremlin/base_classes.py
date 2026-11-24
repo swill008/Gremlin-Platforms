@@ -24,7 +24,6 @@ from xml.etree import ElementTree
 
 from gremlin import (
     clock,
-    event_handler,
     run_scope,
     threads,
     util,
@@ -40,6 +39,7 @@ from gremlin.types import (
     ActionProperty,
     DataCreationMode,
     DataInsertionMode,
+    Event,
     HatDirection,
     InputType,
     PropertyType,
@@ -48,7 +48,6 @@ from gremlin.types import (
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from gremlin.event_handler import Event
     from gremlin.references import Reference
 
 
@@ -668,7 +667,7 @@ class AbstractFunctor(Generic[T], ABC):
     def _process_event(
         self,
         functors: list[AbstractFunctor],
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
@@ -687,7 +686,7 @@ class AbstractFunctor(Generic[T], ABC):
     def _pulse_event(
         self,
         functors: list[AbstractFunctor],
-        event_press: event_handler.Event,
+        event_press: Event,
         value_press: Value,
         properties: list[ActionProperty] = [],
     ) -> None:

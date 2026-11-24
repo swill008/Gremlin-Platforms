@@ -13,7 +13,7 @@ from gremlin import event_handler, input_thread, shared_state, threads
 from gremlin.modules import hardware, output
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -338,7 +338,7 @@ class DeviceLiveState(QtCore.QObject):
             return None
         return self._axis_rows.get(key)
 
-    def _axis_value(self, event: event_handler.Event) -> float | None:
+    def _axis_value(self, event: Event) -> float | None:
         raw = event.value
         if raw is None:
             raw = getattr(event, "raw_value", None)
@@ -354,7 +354,7 @@ class DeviceLiveState(QtCore.QObject):
             value = max(-1.0, min(1.0, value))
         return value
 
-    def _event_is_this_device(self, event: event_handler.Event) -> bool:
+    def _event_is_this_device(self, event: Event) -> bool:
         if self._device_uuid is not None:
             raw = event.device_guid
             if isinstance(raw, uuid.UUID) and raw == self._device_uuid:
@@ -365,7 +365,7 @@ class DeviceLiveState(QtCore.QObject):
         return guid_key(event.device_guid) == guid_key(self._guid)
 
     @QtCore.Slot(object)
-    def _on_event(self, event: event_handler.Event) -> None:
+    def _on_event(self, event: Event) -> None:
         threads.assert_main("LiveInput._on_event")
         # Axes are kept as the latest value per row and shown once per 33 ms
         # (_flush_axes), so a burst is one repaint (R7).

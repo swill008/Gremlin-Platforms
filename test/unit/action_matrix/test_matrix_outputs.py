@@ -111,7 +111,7 @@ def _put(case: Case, name: str, value: Any) -> Any:  # noqa: ANN401
 
 def _event(kind: Any, identifier: Any) -> Any:  # noqa: ANN401
     import dill
-    from gremlin.event_handler import Event
+    from gremlin.types import Event
 
     return Event(kind, identifier, dill.UUID_Keyboard, "Default", is_pressed=True)
 

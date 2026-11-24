@@ -203,6 +203,16 @@ def _on_input_thread(fn: Callable[..., None], *args: object) -> None:
         fn(*args)
 
 
+def on_input_thread(fn: Callable[..., None], *args: object) -> None:
+    """Runs fn on the input thread and never waits: at once when called
+    there, else queued; where it doesn't run (stopped program, tests), on
+    the caller. For callers on any thread, such as user scripts (04 S99)."""
+    if input_thread.is_input_thread():
+        fn(*args)
+    else:
+        _on_input_thread(fn, *args)
+
+
 def _run_copy() -> Profile | None:
     """The Run's own copy of the profile, when a Run is on and it is not the
     open profile itself. Read on the input thread, which sets and clears it."""

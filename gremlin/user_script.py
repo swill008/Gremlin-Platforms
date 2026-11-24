@@ -39,7 +39,6 @@ import gremlin.keyboard
 from gremlin import (
     clock,
     error,
-    event_handler,
     osc_output,
     osc_pattern,
     run_scope,
@@ -55,6 +54,8 @@ from gremlin.modules import inputs, output
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice
 from gremlin.osc_rows import OscRow
 from gremlin.types import (
+    NO_MODE,
+    Event,
     HatDirection,
     InputType,
     PropertyType,
@@ -105,7 +106,7 @@ class CallbackRegistry:
         self._registry = {}
         self._current_id = 0
 
-    def add(self, callback: Callable, event: event_handler.Event, mode: str) -> None:
+    def add(self, callback: Callable, event: Event, mode: str) -> None:
         """Adds a new callback to the registry.
 
         Args:
@@ -1619,7 +1620,7 @@ class SelectionVariable(AbstractVariable):
         if 0 <= index < len(self._option_list):
             self._current_index = index
         else:
-            logging.getLogger("user_script").warning(
+            logging.getLogger("system").warning(
                 f"Ignoring invalid index {index} for selection variable '{self.name}'"
             )
 
@@ -1890,6 +1891,40 @@ def clamp_value(value: float, min_val: float, max_val: float) -> float:
     return min(max_val, max(min_val, value))
 
 
+def switch_mode(name: str) -> None:
+    """Switches to the mode name, as the Change Mode action's Switch does.
+
+    Safe from any callback: the change runs on the input thread and the
+    call doesn't wait. A mode the profile doesn't have is not switched to
+    and is logged (04 S99).
+    """
+    from gremlin import mode_manager
+
+    def switch() -> None:
+        manager = mode_manager.ModeManager()
+        manager.switch_to(mode_manager.Mode(name, manager.current.name))
+
+    mode_manager.on_input_thread(switch)
+
+
+def previous_mode() -> None:
+    """Goes back to the previous mode, as the Change Mode action's Previous
+    does; on the input thread, without waiting (04 S99)."""
+    from gremlin import mode_manager
+
+    mode_manager.on_input_thread(lambda: mode_manager.ModeManager().previous())
+
+
+def cycle_modes(names: list[str]) -> None:
+    """Goes to the mode after the current one in names (the first when the
+    current mode isn't in it), as the Change Mode action's Cycle does; on
+    the input thread, without waiting (04 S99)."""
+    from gremlin import mode_manager
+
+    sequence = mode_manager.ModeSequence(list(names))
+    mode_manager.on_input_thread(lambda: mode_manager.ModeManager().cycle(sequence))
+
+
 def keyboard(key: str | gremlin.keyboard.Key, mode: str) -> Callable:
     """Decorator for keyboard key callbacks.
 
@@ -1909,12 +1944,27 @@ def keyboard(key: str | gremlin.keyboard.Key, mode: str) -> Callable:
             if isinstance(key, gremlin.keyboard.Key)
             else gremlin.keyboard.key_from_name(key)
         )
-        event = event_handler.Event.from_key(resolved_key)
+        event = _event_from_key(resolved_key)
         _register(lambda: callback_registry.add(wrapper_fn, event, mode))
 
         return wrapper_fn
 
     return wrap
+
+
+def _event_from_key(key: gremlin.keyboard.Key) -> Event:
+    """Returns the Event a press of key raises, for the @keyboard decorator.
+
+    The mode is left as NO_MODE: the event handler stamps the live mode on
+    the input thread (GL-065), and the registry keys on the decorator's mode.
+    """
+    assert isinstance(key, gremlin.keyboard.Key)
+    return Event(
+        event_type=InputType.Keyboard,
+        identifier=(key.scan_code, key.is_extended),
+        device_guid=dill.UUID_Keyboard,
+        mode=NO_MODE,
+    )
 
 
 def periodic(interval: float) -> Callable:
@@ -1958,7 +2008,7 @@ def _input_callback(
         def wrapper_fn(*args: Any, **kwargs: dict) -> None:  # noqa: ANN401
             callback(*args, **kwargs)
 
-        event = event_handler.Event(
+        event = Event(
             event_type=input_type,
             identifier=input_id,
             device_guid=device_guid,

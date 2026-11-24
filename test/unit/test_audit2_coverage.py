@@ -39,9 +39,8 @@ import pytest
 from PySide6 import QtCore, QtQml
 
 from gremlin import code_runner, config, history, shared_state
-from gremlin.event_handler import Event
 from gremlin.profile import Profile
-from gremlin.types import AxisButtonDirection, InputType
+from gremlin.types import AxisButtonDirection, Event, InputType
 
 _ROOT = Path(__file__).parents[2]
 _GUID = uuid.UUID("55555555-6666-7777-8888-999999999999")

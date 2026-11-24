@@ -9,7 +9,7 @@ input variable starts with none chosen, so the script is not configured
 until one is picked). The vJoy button is written through remap.
 """
 
-from gremlin import event_handler, types, user_script
+from gremlin import types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the OSC input works in", True)
 
@@ -32,7 +32,7 @@ presses: list[bool] = []
 
 
 @osc_button.decorator(mode)
-def on_osc(event: event_handler.Event) -> None:
+def on_osc(event: types.Event) -> None:
     """The OSC input pressed or released: the vJoy button follows."""
     presses.append(bool(event.is_pressed))
     vjoy_button.remap(event.is_pressed)

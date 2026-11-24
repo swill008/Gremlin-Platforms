@@ -37,8 +37,7 @@ def story(j: Journey) -> None:
     import time
 
     import dill
-    from gremlin import event_handler
-    from gremlin.types import InputType
+    from gremlin.types import Event, InputType
 
     out = j.out
     stick = j.stick()
@@ -53,7 +52,7 @@ def story(j: Journey) -> None:
     root = j.pane_actions(catalog)[0]
     root.appendAction("Macro", "children")
     macro_editor = root.getActions("children")[0]
-    a_key = event_handler.Event(
+    a_key = Event(
         InputType.Keyboard, (_A, False), dill.UUID_Keyboard, "Default", is_pressed=True
     )
     for kind in ("key", "pause", "key"):

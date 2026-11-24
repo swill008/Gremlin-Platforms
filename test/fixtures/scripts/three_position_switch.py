@@ -12,7 +12,7 @@ top-level code runs. That code runs when the script is added or loaded
 start state is sent. Written for this suite.
 """
 
-from gremlin import event_handler, types, user_script
+from gremlin import types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the switch works in", True)
 
@@ -45,10 +45,10 @@ _show(_read(up), _read(down))
 
 
 @up.decorator(mode)
-def on_up(event: event_handler.Event) -> None:
+def on_up(event: types.Event) -> None:
     _show(bool(event.is_pressed), _read(down))
 
 
 @down.decorator(mode)
-def on_down(event: event_handler.Event) -> None:
+def on_down(event: types.Event) -> None:
     _show(_read(up), bool(event.is_pressed))

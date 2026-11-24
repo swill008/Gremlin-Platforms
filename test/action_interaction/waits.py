@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ElementTree
 from collections.abc import Callable
 from pathlib import Path
 
-from gremlin import event_handler
+from gremlin.types import Event
 
 from .conftest import JoystickGremlinBot
 
@@ -29,7 +29,7 @@ def wait_until(jgbot: JoystickGremlinBot, done: Callable[[], bool]) -> None:
     jgbot.qtbot.waitUntil(done, timeout=LIMIT_MS)
 
 
-def next_event(jgbot: JoystickGremlinBot) -> event_handler.Event:
+def next_event(jgbot: JoystickGremlinBot) -> Event:
     """The next event, waiting up to LIMIT_MS for it (next_event() alone
     gives up after half a second)."""
     wait_until(jgbot, lambda: jgbot.event_count() > 0)

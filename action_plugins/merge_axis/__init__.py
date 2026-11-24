@@ -19,7 +19,6 @@ from PySide6 import QtCore
 from action_plugins import axis_pair
 from action_plugins.axis_pair import AxisRef, AxisView, is_set
 from gremlin import (
-    event_handler,
     references,
     util,
 )
@@ -34,6 +33,7 @@ from gremlin.modules import inputs
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -103,7 +103,7 @@ class MergeAxisFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:

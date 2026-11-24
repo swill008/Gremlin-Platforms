@@ -19,6 +19,7 @@ from PySide6 import QtCore
 import dill
 from gremlin import event_handler, trace, trace_timing
 from gremlin.modules import output, runtime
+from gremlin.types import Event
 from test import fake_hardware
 
 _APP = QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
@@ -43,7 +44,7 @@ def path(monkeypatch: pytest.MonkeyPatch) -> Iterator[event_handler.EventListene
     bus = runtime.InputModuleRuntime()
     listener = event_handler.EventListener()
     handler = event_handler.EventHandler()
-    key = event_handler.Event(event_handler.InputType.JoystickButton, 6, _STICK,
+    key = Event(event_handler.InputType.JoystickButton, 6, _STICK,
                               "Default", is_pressed=True)
     monkeypatch.setattr(handler, "callbacks", {
         _STICK: {"Default": {key: [lambda e: output.write_vjoy(1, "button", 1, True)]}}

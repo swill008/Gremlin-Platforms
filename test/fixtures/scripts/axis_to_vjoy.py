@@ -9,7 +9,7 @@ limited to 0.0 to 2.0). The stick axis is required. The output is written
 through VirtualInputVariable.remap, which goes through the output module.
 """
 
-from gremlin import event_handler, types, user_script
+from gremlin import types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the axis works in", True)
 
@@ -38,6 +38,6 @@ scale = user_script.FloatVariable(
 
 
 @stick_axis.decorator(mode)
-def on_axis(event: event_handler.Event) -> None:
+def on_axis(event: types.Event) -> None:
     """Writes the scaled axis value to the vJoy axis."""
     vjoy_axis.remap(event.value * scale.value)

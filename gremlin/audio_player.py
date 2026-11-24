@@ -48,55 +48,79 @@ class AudioSample:
         self.stream = miniaudio.stream_raw_pcm_memory(
             samples, decoded.nchannels, decoded.sample_width
         )
+        # A short buffer: a cancelled sound stops within ~50 ms.
         self.device = miniaudio.PlaybackDevice(
             sample_rate=decoded.sample_rate,
             nchannels=decoded.nchannels,
             output_format=decoded.sample_format,
+            buffersize_msec=50,
         )
-        self._playback_done_event = threading.Event()
-        self._generator: AudioSample.Generator_T | None = None
+        # The generator runs on miniaudio's audio thread: other threads only
+        # set _cancel (closing a running generator from another thread raises
+        # "generator already executing"), and the device is closed on the
+        # player's playback thread, never inside the audio callback.
+        self._cancel = threading.Event()
+        self._stream_done = threading.Event()
+        self._closed = threading.Event()
+        self._close_lock = threading.Lock()
 
     @property
     def done(self) -> bool:
-        """Playback has finished or was cancelled."""
-        return self._playback_done_event.is_set()
+        """Playback has finished or was cancelled, and the device is closed."""
+        return self._closed.is_set()
 
     def block(self, still_wanted: Callable[[], bool]) -> None:
-        """Blocks the calling thread until playback is complete, or until
+        """Blocks the calling thread until the sound has played out, or until
         still_wanted() is False (the player stopped)."""
-        while not self._playback_done_event.wait(0.5):
+        while not self._stream_done.wait(0.5):
             if not still_wanted():
                 return
 
     def cancel(self) -> None:
-        """Stops the playback immediately."""
-        if not self._playback_done_event.is_set() and self._generator:
+        """Stops the playback; safe from any thread. The audio thread ends
+        the sound at its next callback."""
+        self._cancel.set()
+
+    def close_if_done(self) -> bool:
+        """Closes the device once the sound has ended; True when closed."""
+        if self._stream_done.is_set():
+            self._close()
+        return self._closed.is_set()
+
+    def close(self, timeout: float = 0.5) -> None:
+        """Cancels the sound and closes the device, waiting at most timeout
+        seconds for the audio thread to leave the generator."""
+        self._cancel.set()
+        self._stream_done.wait(max(timeout, 0.0))
+        self._close()
+
+    def _close(self) -> None:
+        with self._close_lock:
+            if self._closed.is_set():
+                return
             try:
-                self._generator.close()
-            except ValueError:
-                logging.getLogger("system").debug(
-                    "Audio playback generator already running error raised."
-                )
+                self.device.close()
+            finally:
+                self._closed.set()
 
     def play(self) -> None:
-        """Starts playing the audio file.
-
-        Sets up the generator and notification events to control and manage
-        playback.
-        """
-        self._playback_done_event.clear()
+        """Starts playing the audio file on miniaudio's audio thread."""
 
         def sample_generator() -> AudioSample.Generator_T:
             try:
-                yield from self.stream
+                frames = yield b""
+                while not self._cancel.is_set():
+                    try:
+                        chunk = self.stream.send(frames)
+                    except StopIteration:
+                        return
+                    frames = yield chunk
             finally:
-                self._playback_done_event.set()
-                self.device.close()
+                self._stream_done.set()
 
-        # Create generator and initialize it such that the .send() method works.
-        self._generator = sample_generator()
-        next(self._generator)
-        self.device.start(self._generator)
+        generator = sample_generator()
+        next(generator)  # primed, so the device's send() works
+        self.device.start(generator)
 
 
 class AudioPlayer(metaclass=SingletonMetaclass):
@@ -174,13 +198,13 @@ class AudioPlayer(metaclass=SingletonMetaclass):
         try:
             sample = AudioSample(file_name, volume)
             with self._lock:
+                # Interrupted sounds stay listed until the playback thread
+                # has closed their device.
                 interrupted = (
-                    self._currently_playing
+                    list(self._currently_playing)
                     if self._playback_mode == "Interrupt"
                     else []
                 )
-                if interrupted:
-                    self._currently_playing = []
                 self._currently_playing.append(sample)
             for old in interrupted:
                 old.cancel()
@@ -200,12 +224,31 @@ class AudioPlayer(metaclass=SingletonMetaclass):
             sample = self._next_sample()
             if sample is not None and self._playback_mode == "Sequential":
                 sample.block(lambda: self._is_ready)
-            # Finished sounds go, with their decoded audio.
+            self._close_finished()
+            clock.sleep(0.01)
+        self._close_all()
+
+    def _close_finished(self) -> None:
+        """Closes the devices of sounds that ended; they go, with their
+        decoded audio. Closed here, off the lock and the audio thread."""
+        with self._lock:
+            playing = list(self._currently_playing)
+        closed = [s for s in playing if s.close_if_done()]
+        if closed:
             with self._lock:
                 self._currently_playing = [
-                    s for s in self._currently_playing if not s.done
+                    s for s in self._currently_playing if s not in closed
                 ]
-            clock.sleep(0.01)
+
+    def _close_all(self) -> None:
+        """At the playback thread's end: cancels and closes every sound,
+        waiting at most 0.5 s in all for the audio threads."""
+        with self._lock:
+            playing = list(self._currently_playing)
+            self._currently_playing = []
+        deadline = clock.monotonic() + 0.5
+        for sample in playing:
+            sample.close(deadline - clock.monotonic())
 
 
 Configuration().register(

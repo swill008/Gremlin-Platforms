@@ -9,7 +9,7 @@ button number. Pressing an instance's stick button presses its vJoy button
 on vJoy 1 (and only that one).
 """
 
-from gremlin import event_handler, types, user_script
+from gremlin import types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the button works in", True)
 
@@ -31,6 +31,6 @@ vjoy_button = user_script.IntegerVariable(
 
 
 @button.decorator(mode)
-def on_button(event: event_handler.Event, vjoy: object) -> None:
+def on_button(event: types.Event, vjoy: object) -> None:
     """This instance's vJoy button follows its stick button."""
     vjoy[1].button(vjoy_button.value).is_pressed = event.is_pressed

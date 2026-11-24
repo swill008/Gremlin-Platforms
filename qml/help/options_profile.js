@@ -372,6 +372,11 @@ function topics() {
                 + "<li>there's no target with that name (capitals ignored);</li>"
                 + "<li>the address isn't a plain OSC address.</li>"
                 + "</ul>The last two also write a warning to user.log.</li>"
+                + "<li>A script can change the mode, as the <b>Change Mode</b> action does:<ul>"
+                + "<li><code>user_script.switch_mode(name)</code> switches to a mode by its name;</li>"
+                + "<li><code>user_script.previous_mode()</code> goes back to the previous mode;</li>"
+                + "<li><code>user_script.cycle_modes(names)</code> moves to the next mode in the list.</li>"
+                + "</ul>A mode the profile doesn't have isn't switched to.</li>"
                 + "</ul>",
             related: ["options-profile-scripts-cant-load", "getting-started-profiles", "home-devices-vjoy-output"]
         },

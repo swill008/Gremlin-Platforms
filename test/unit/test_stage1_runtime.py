@@ -55,9 +55,8 @@ from gremlin import (
 )
 from gremlin.base_classes import Value
 from gremlin.common import SingletonMetaclass
-from gremlin.event_handler import Event
 from gremlin.profile import Profile
-from gremlin.types import AxisButtonDirection, HatDirection, InputType
+from gremlin.types import AxisButtonDirection, Event, HatDirection, InputType
 
 _ROOT = Path(__file__).resolve().parents[2]
 _GUID = uuid.UUID("77777777-5555-2222-3333-444444444444")
@@ -761,6 +760,12 @@ def sounds(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
 
         def play(self) -> None:
             log.append(("play", self.name))
+
+        def close_if_done(self) -> bool:
+            return bool(self.done)
+
+        def close(self, timeout: float = 0.5) -> None:
+            self.cancel()
 
         def cancel(self) -> None:
             log.append(("cancel", self.name))

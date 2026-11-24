@@ -28,8 +28,7 @@ from PySide6 import QtCore
 
 from gremlin import event_handler, event_helpers, mode_manager
 from gremlin.base_classes import Value
-from gremlin.event_handler import Event
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _GUID = uuid.UUID("77777777-5555-2222-3333-555555555555")

@@ -16,3 +16,4 @@
 | `help-rewrite-brief.md` | Shared brief for the 2026-11-22 Help page writers |
 | `help-fix-brief.md` | Shared brief for the 2026-11-22 Help fixes from the fresh-reader test |
 | `control-api.md` | Plan 2026-11-23 (not approved to build): API in the program over a private pipe, client library, `gremlin-ctl` CLI (ships) and MCP server (dev only); user answers recorded |
+| `older-scripts-compat.md` | Plan 2026-11-23 (not approved): R13 script names (`gremlin.input_devices`, `gremlin.control_action`, `deadzone`, optional `gremlin.user_plugin`) as thin modules over `user_script`; spec draft S99-S105, Help, tests, split, 5 questions |

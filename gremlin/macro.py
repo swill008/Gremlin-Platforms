@@ -28,6 +28,7 @@ from gremlin import (
     run_scope,
     sendinput,
     threads,
+    types,
     util,
 )
 from gremlin import references as refs
@@ -612,7 +613,7 @@ class JoystickAction(AbstractAction):
         Bindings still run on it; hardware-only screens ignore it."""
         el = event_handler.EventListener()
         if self.input_type == InputType.JoystickAxis:
-            event = event_handler.Event(
+            event = types.Event(
                 event_type=self.input_type,
                 device_guid=self.device_guid,
                 identifier=self.input_id,
@@ -621,7 +622,7 @@ class JoystickAction(AbstractAction):
                 synthetic=True,
             )
         elif self.input_type == InputType.JoystickButton:
-            event = event_handler.Event(
+            event = types.Event(
                 event_type=self.input_type,
                 device_guid=self.device_guid,
                 identifier=self.input_id,
@@ -630,7 +631,7 @@ class JoystickAction(AbstractAction):
                 synthetic=True,
             )
         elif self.input_type == InputType.JoystickHat:
-            event = event_handler.Event(
+            event = types.Event(
                 event_type=self.input_type,
                 device_guid=self.device_guid,
                 identifier=self.input_id,
@@ -905,7 +906,7 @@ class LogicalDeviceAction(AbstractAction):
             (ident.type, ident.id),
             ld.choice_label,
             lambda path: self._event_listener.joystick_event.emit(
-                event_handler.Event(
+                types.Event(
                     event_type=ident.type,
                     identifier=ident.id,
                     device_guid=LogicalDevice.device_guid,

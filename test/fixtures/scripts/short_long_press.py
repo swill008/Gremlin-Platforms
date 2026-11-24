@@ -10,7 +10,7 @@ gremlin.clock on press and release, so no timer thread is needed. Written
 for this suite.
 """
 
-from gremlin import clock, event_handler, types, user_script
+from gremlin import clock, types, user_script
 
 mode = user_script.ModeVariable("Mode", "The mode the button works in", True)
 
@@ -32,7 +32,7 @@ pressed_at: list[float | None] = [None]
 
 
 @button.decorator(mode)
-def on_button(event: event_handler.Event, vjoy: object) -> None:
+def on_button(event: types.Event, vjoy: object) -> None:
     if event.is_pressed:
         pressed_at[0] = clock.monotonic()
         return

@@ -15,7 +15,6 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
-    event_handler,
     keyboard,
     macro,
     references,
@@ -31,6 +30,7 @@ from gremlin.error import GremlinError
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -59,7 +59,7 @@ class MapToKeyboardFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
@@ -102,7 +102,7 @@ class MapToKeyboardModel(ActionModel):
         return " + ".join([key.name for key in self._data.keys])
 
     @QtCore.Slot(list)
-    def updateInputs(self, data: List[event_handler.Event]) -> None:
+    def updateInputs(self, data: List[Event]) -> None:
         """Receives the events corresponding to mouse button presses.
 
         We only expect to receive a single button press and thus store the

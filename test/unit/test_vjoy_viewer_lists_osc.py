@@ -20,11 +20,11 @@ import shiboken6
 from PySide6 import QtCore
 
 from gremlin import run_scope, shared_state
-from gremlin.event_handler import Event, EventListener
+from gremlin.event_handler import EventListener
 from gremlin.modules import ids, output, store
 from gremlin.modules import runtime as module_runtime
 from gremlin.profile import Profile
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from gremlin.ui import module_pairing, pair_live
 from test.unit.test_stage1_modules import (  # noqa: F401  # pyright: ignore[reportMissingImports]
     _app,

@@ -23,7 +23,7 @@ from gremlin import clock
 from gremlin.types import InputType
 
 if TYPE_CHECKING:
-    from gremlin.event_handler import Event
+    from gremlin.types import Event
 
 # Most entries kept; older ones drop off the top.
 MAX_ENTRIES = 5000

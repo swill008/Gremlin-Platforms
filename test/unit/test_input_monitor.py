@@ -14,8 +14,8 @@ from collections.abc import Iterator
 import pytest
 
 from gremlin import input_monitor
-from gremlin.event_handler import Event, EventHandler
-from gremlin.types import InputType
+from gremlin.event_handler import EventHandler
+from gremlin.types import Event, InputType
 
 _DEV = uuid.UUID("11111111-2222-3333-4444-555555555555")
 _MODE = "Default"

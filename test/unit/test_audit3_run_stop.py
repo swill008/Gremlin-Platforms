@@ -35,11 +35,17 @@ from PySide6 import QtCore
 
 from gremlin import code_runner, error, macro, run_scope, sendinput, shared_state
 from gremlin.base_classes import Value
-from gremlin.event_handler import Event
 from gremlin.keyboard import Key, key_from_name
 from gremlin.macro import Macro, MacroManager, PauseAction
 from gremlin.profile import Profile
-from gremlin.types import AxisMode, DataCreationMode, InputType, MouseButton
+from gremlin.types import (
+    NO_MODE,
+    AxisMode,
+    DataCreationMode,
+    Event,
+    InputType,
+    MouseButton,
+)
 
 _GUID = uuid.UUID("77777777-1111-2222-3333-444444444444")
 _APPS: list[QtCore.QCoreApplication] = []
@@ -732,7 +738,7 @@ def test_the_handler_stamps_the_current_mode_on_hardware_events(
     try:
         mm._mode_stack = [mode_manager.Mode("Flight", None)]
         event = Event(
-            InputType.JoystickButton, 1, _GUID, event_handler.NO_MODE, is_pressed=True
+            InputType.JoystickButton, 1, _GUID, NO_MODE, is_pressed=True
         )
         handler = event_handler.EventHandler()
         monkeypatch.setattr(handler, "_matching_callbacks", lambda e: [])

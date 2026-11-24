@@ -82,10 +82,9 @@ def _run(out: pathlib.Path) -> None:
     import gremlin.ui.profile  # noqa: F401
     import gremlin.ui.util  # noqa: F401
     from gremlin import plugin_manager, shared_state
-    from gremlin.event_handler import Event
     from gremlin.profile import Profile
     from gremlin.signal import signal
-    from gremlin.types import InputType
+    from gremlin.types import Event, InputType
     from gremlin.ui.backend import UIState
 
     plugin_manager.PluginManager()  # its QML module (Gremlin.ActionPlugins)

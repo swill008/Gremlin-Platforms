@@ -20,9 +20,8 @@ from unittest import mock
 import pytest
 
 from gremlin import event_handler, run_scope, trace
-from gremlin.event_handler import Event
 from gremlin.modules import ids, output
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _CLAIM = {"buttons": [30], "axes": [], "hats": [], "keys": [], "friendly": {}}
 

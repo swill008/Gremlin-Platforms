@@ -52,9 +52,8 @@ from gremlin import (
     windows_event_hook,
 )
 from gremlin.config import Configuration
-from gremlin.event_handler import Event
 from gremlin.tree import TreeNode
-from gremlin.types import HatDirection, InputType
+from gremlin.types import NO_MODE, Event, HatDirection, InputType
 from test import fake_hardware
 from vjoy import vjoy
 
@@ -553,7 +552,7 @@ def test_s40_an_event_runs_in_the_mode_current_when_it_is_handled(
         event_listener._joystick_event_handler(_input(2, 6, 1))  # arrives
     finally:
         event_listener.joystick_event.disconnect(heard)
-    assert got[0].mode == event_handler.NO_MODE
+    assert got[0].mode == NO_MODE
     # Another event handled first changed the mode.
     monkeypatch.setattr(mm, "_mode_stack", [mode_manager.Mode("Landing", None)])
     handler = event_handler.EventHandler()

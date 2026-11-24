@@ -41,6 +41,7 @@ from gremlin.types import (
     ActionProperty,
     AxisMode,
     DataCreationMode,
+    Event,
     InputType,
     PropertyType,
 )
@@ -76,7 +77,7 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:
@@ -124,7 +125,7 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         mode = mode_manager.ModeManager().current.name
         self._guarded_emit(
             input,
-            lambda path: event_handler.Event(
+            lambda path: Event(
                 event_type=input.type,
                 identifier=input.id,
                 device_guid=self._logical.device_guid,
@@ -142,7 +143,7 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
     def _guarded_emit(
         self,
         input: LogicalDevice.Input,
-        make_event: Callable[[tuple], event_handler.Event],
+        make_event: Callable[[tuple], Event],
         chain: tuple,
     ) -> bool:
         """Sends the event make_event(path) builds for the chain with this
@@ -170,7 +171,7 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         mode = mode_manager.ModeManager().current.name
         return self._guarded_emit(
             input,
-            lambda path: event_handler.Event(
+            lambda path: Event(
                 event_type=input.type,
                 identifier=input.id,
                 device_guid=self._logical.device_guid,

@@ -1447,3 +1447,35 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent SUITE: 19 example scripts + manifest + test_script_suite.py (44 pass, 1 xfail) | agent fix | 3-8 min | 12 min | 17:19-17:31, SUITE: incl. upstream follow-up |
 | 2026-11-23 | Agent FIX-A: guards skip test/fixtures/scripts; SSM Tools order | agent fix | 3-8 min | 1 min | 17:30-17:31, FIX-A |
 | 2026-11-23 | Agent ST-SCRIPT: upstream script interface since the fork, Event move | review | 5-10 min | 3 min | 17:31-17:34, ST-SCRIPT |
+| 2026-11-23 | Commit 3552b222 (windows + script suite) + push | commit | ~3 min | 4 min | 17:31-17:35, lead (lint fix for copied upstream files) |
+| 2026-11-23 | Agent ST-UP2: upstream commits 76-150 study | review | 5-10 min | ~4 min | 17:32-17:35, ST-UP2 (its clock reading looked short to itself) |
+| 2026-11-23 | Agent ST-UP1: upstream commits 1-75 study | review | 5-10 min | 6 min | 17:31-17:37, ST-UP1 |
+| 2026-11-23 | Lead: combined upstream list + 6 comparison briefs | lead planning | ~5 min | 4 min | 17:37-17:41, lead |
+| 2026-11-23 | Agent C-INPUT: F13-F24, write-only props, input labels comparison | review | 5-10 min | 3 min | 17:45-17:48, C-INPUT |
+| 2026-11-23 | Agent C-FEATURES: Reference list, default profile, smaller install comparison | review | 5-10 min | 4 min | 17:45-17:49, C-FEATURES |
+| 2026-11-23 | Agent C-ACTIONS: macro steps, drop into child, Condition branch, unplugged device comparison | review | 5-10 min | 5 min | 17:45-17:50, C-ACTIONS |
+| 2026-11-23 | Agent C-MEASURE: memory measurement plan + 18 macro tests predicted + rename as-is check | review | 5-10 min | 5 min | 17:45-17:50, C-MEASURE |
+| 2026-11-23 | Agent C-RUNTIME: release after mode change, sound stop, vJoy checks comparison | review | 5-10 min | 6 min | 17:45-17:51, C-RUNTIME |
+| 2026-11-23 | Agent C-EVENT: Event move plan | review | 5-10 min | 6 min | 17:44-17:50, C-EVENT |
+| 2026-11-23 | CI for 3552b222 (windows + script suite) | ci | ~25 min | 23 min | 17:35-17:58, green |
+| 2026-11-23 | Lead: B1 split, decision D-04-EVENT-TYPES, 10 briefs | lead planning | ~5 min | 4 min | 18:09-18:13, lead |
+| 2026-11-23 | Agent KEYS: F13-F24 scan codes + 13 tests | agent fix | 3-8 min | 1 min | 18:10-18:11, KEYS |
+| 2026-11-23 | Agent P-OLD: plan for older-script pieces (input_devices, control_action, deadzone, user_plugin) | review | 5-10 min | 4 min | 18:07-18:11, P-OLD |
+| 2026-11-23 | Agent INSTALL: spec excludes 24 qml folders + case-insensitive trim + guard test | agent fix | 3-8 min | 3 min | 18:10-18:13, INSTALL |
+| 2026-11-23 | Agent EV-B: action_plugins Event refs (28 files) | refactor | 5-10 min | 3 min | 18:10-18:13, EV-B |
+| 2026-11-23 | Agent EV-A: Event + NO_MODE moved to types.py, gremlin/ refs | refactor | 5-10 min | 4 min | 18:09-18:13, EV-A |
+| 2026-11-23 | Agent DOCS4: map pages 01-06, 09, README for B1 | agent fix | 3-8 min | 3 min | 18:11-18:14, DOCS4 |
+| 2026-11-23 | Agent EV-T: 59 test files to types.Event + test_event_lives_in_types.py | refactor | 5-10 min | 4 min | 18:10-18:14, EV-T |
+| 2026-11-23 | Agent VIEWER: 100 ms short-press hold + jump throttle + 2 tests | agent fix | 3-8 min | 4 min | 18:10-18:14, VIEWER |
+| 2026-11-23 | Agent SOUND-VJOY: audio cancel via stop flag + vJoy checks once + 5 tests | agent fix | 3-8 min | 4 min | 18:10-18:14, SOUND-VJOY |
+| 2026-11-23 | Lead: 6 sound test stand-ins given close/close_if_done; one test rewritten for close-at-Stop | fix | ~3 min | 4 min | 18:15-18:19, lead |
+| 2026-11-23 | Agent EV-A follow-up: event_handler uses types.Event (old name gone) | refactor | 1-3 min | 2 min | 18:13-18:15, EV-A |
+| 2026-11-23 | Agent EV-C: gremlin/ui + user_script Event, upstream_example loads, validTypes getter + guard, example.py LD var | refactor | 5-10 min | 5 min | 18:10-18:15, EV-C |
+| 2026-11-23 | Agent DOCS4 follow-up: real names for B1 on the map, 2 new open gaps | agent fix | 3-8 min | 1 min | 18:16-18:17, DOCS4 |
+| 2026-11-23 | Agent MEM: memory probe written + 4 scenarios + follow-ups | agent fix + run | 3-8 min + ~8 min | 15 min | 18:10-18:25, MEM: run 5.5 min, follow-ups 4 min |
+| 2026-11-23 | Quick tests --changed for B1 (7,700 tests) | test | ~12 min | 10 min | 18:16-18:26, lead: 1 failed |
+| 2026-11-23 | B1 build + silent install + live check (22 windows open/close via API, log clean) + run start + tracing | build/test | ~3 min | 4 min | 18:26-18:30, lead (qml folder 23.8 -> 12.5 MB) |
+| 2026-11-23 | Agent DOCS5: Help item + map for S99 | agent fix | 3-8 min | 2 min | 18:28-18:30, DOCS5 |
+| 2026-11-23 | Agent XBOXHOLD: HeldLight.qml shared, Xbox pad card + face 100 ms hold, test | agent fix | 3-8 min | 2 min | 18:29-18:31, XBOXHOLD |
+| 2026-11-23 | Agent SCRIPTMODE: switch_mode/previous_mode/cycle_modes + mode_manager.on_input_thread + 6 tests | agent fix | 3-8 min | 4 min | 18:28-18:32, SCRIPTMODE |
+| 2026-11-23 | Targeted tests (173) + rebuild + install + live check of Scripts/vJoy Viewer | build/test | ~5 min | 4 min | 18:32-18:36, lead |

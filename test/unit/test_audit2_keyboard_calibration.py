@@ -31,10 +31,9 @@ from PySide6 import QtCore
 
 import dill
 from gremlin import shared_state
-from gremlin.event_handler import Event
 from gremlin.profile import Profile
 from gremlin.signal import signal
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from gremlin.ui.backend import UIState
 from gremlin.ui.device import AxisCalibration, InputIdentifier
 

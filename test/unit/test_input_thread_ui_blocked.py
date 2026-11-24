@@ -37,7 +37,7 @@ from gremlin import (
     shared_state,
 )
 from gremlin.modules import output, runtime
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from test import fake_hardware
 
 fake_hardware.install(vjoy_ids=(1,))
@@ -94,7 +94,7 @@ class Recorder:
         self.writes: list[tuple[float, bool]] = []  # (time, on input thread)
         self.actions: list[tuple[float, bool]] = []
 
-    def action(self, _event: event_handler.Event) -> None:
+    def action(self, _event: Event) -> None:
         self.actions.append((clock.monotonic(), input_thread.is_input_thread()))
         output.write_vjoy(1, "button", 1, True)
 
@@ -125,7 +125,7 @@ def rig(
     input_thread.call_wait(control.start, prof, mode, timeout=5.0)
 
     def inject() -> None:
-        key = event_handler.Event(
+        key = Event(
             InputType.JoystickButton, _BUTTON, _STICK, mode, is_pressed=True
         )
         handler.callbacks = {_STICK: {mode: {key: [rec.action]}}}
@@ -190,7 +190,7 @@ class _Viewer(QtCore.QObject):
         self.pressed = 0  # the test's own button press
 
     @QtCore.Slot(object)
-    def on_event(self, event: event_handler.Event) -> None:
+    def on_event(self, event: Event) -> None:
         main = QtCore.QCoreApplication.instance().thread()
         self.seen.append(QtCore.QThread.currentThread() == main)
         # The Run start's axis refresh (synthetic, from the macro thread)
@@ -245,7 +245,7 @@ def test_load_profile_action_runs_backend_on_main(
     target.write_text("<profile/>")
     data.profile_filename = str(target)
     functor = LoadProfileFunctor(data)
-    event = event_handler.Event(
+    event = Event(
         InputType.JoystickButton, 1, _STICK, rig.mode, is_pressed=True
     )
 

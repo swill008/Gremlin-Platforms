@@ -27,9 +27,8 @@ from PySide6 import QtCore
 import dill
 from gremlin import code_runner, mode_manager, shared_state
 from gremlin.config import Configuration
-from gremlin.event_handler import Event
 from gremlin.profile import Profile
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 
 _APPS: list[QtCore.QCoreApplication] = []
 

@@ -33,6 +33,7 @@ from gremlin.ui.hardware_profile import persist_log
 from gremlin.modules.calibration import curve_problem, values_for_module, write_axis
 from gremlin.signal import signal
 from gremlin.types import (
+    Event,
     InputType,
     PropertyType,
     ScanCode,
@@ -491,15 +492,22 @@ class LogicalDeviceSelectorModel(QtCore.QAbstractListModel):
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
 
+    def _get_valid_types(self) -> list[str]:
+        # QML drops a value set on a property it can't read (upstream 855eb31c).
+        return [InputType.to_string(entry) for entry in self._valid_types]
+
     def _set_valid_types(self, valid_types: list[str]) -> None:
         type_list = sorted(
             [InputType.to_enum(entry) for entry in valid_types], key=lambda x: x.value
         )
         if type_list != self._valid_types:
             is_initialized = len(self._valid_types) > 0
+            # The rows are the filtered inputs, so a new filter is a new list.
+            self.beginResetModel()
             self._valid_types = type_list
+            self.endResetModel()
             self.inputsChanged.emit()
-            if is_initialized:
+            if is_initialized and self.rowCount() > 0:
                 self._set_current_index(0)
 
     def _get_current_identifier(self) -> InputIdentifier:
@@ -532,7 +540,9 @@ class LogicalDeviceSelectorModel(QtCore.QAbstractListModel):
         self.beginResetModel()
         self.endResetModel()
 
-    validTypes = QtCore.Property(list, fset=_set_valid_types, notify=inputsChanged)
+    validTypes = QtCore.Property(
+        list, fget=_get_valid_types, fset=_set_valid_types, notify=inputsChanged
+    )
 
     currentIdentifier = QtCore.Property(
         InputIdentifier,
@@ -606,8 +616,8 @@ class DeviceAxisSeries(QtCore.QObject):
             self._window_size = value
             self.windowSizeChanged.emit()
 
-    @QtCore.Slot(event_handler.Event)
-    def _event_callback(self, event: event_handler.Event) -> None:
+    @QtCore.Slot(Event)
+    def _event_callback(self, event: Event) -> None:
         # Hardware only: program-made events (refresh axes) are no movement
         # of the stick (GL-244).
         if getattr(event, "synthetic", False):
@@ -1091,9 +1101,6 @@ class AxisCalibration(QtCore.QAbstractListModel):
             self._state[index]["withCenter"],
         )
 
-    def _set_guid(self, guid: str) -> None:
-        return
-
     def _initialize_state(self) -> None:
         # Another device, or the saved values again: no steps to go back to.
         self._forget_steps()
@@ -1147,8 +1154,8 @@ class AxisCalibration(QtCore.QAbstractListModel):
             return None
         return set(read_claim(doc)["axes"])
 
-    @QtCore.Slot(event_handler.Event)
-    def _event_callback(self, event: event_handler.Event) -> None:
+    @QtCore.Slot(Event)
+    def _event_callback(self, event: Event) -> None:
         # Hardware only: program-made events (refresh axes) are no movement
         # of the stick (GL-244).
         if getattr(event, "synthetic", False):
@@ -1264,8 +1271,6 @@ class AxisCalibration(QtCore.QAbstractListModel):
     moduleSlug = QtCore.Property(
         str, fget=_get_module_slug, fset=_set_module_slug, notify=deviceChanged
     )
-
-    guid = QtCore.Property(str, fset=_set_guid, notify=deviceChanged)
 
 
 Configuration().register(

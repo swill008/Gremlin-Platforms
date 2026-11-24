@@ -25,11 +25,11 @@ from PySide6 import QtTest
 
 from gremlin import clock, history_modules, osc, osc_bulk, osc_traffic, shared_state
 from gremlin import osc_device_file as odf
-from gremlin.event_handler import Event, EventListener
+from gremlin.event_handler import EventListener
 from gremlin.modules import store
 from gremlin.osc import OscDevice, OscRuntime
 from gremlin.profile import InputItem, Library, Profile
-from gremlin.types import InputType
+from gremlin.types import Event, InputType
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
 
 AXIS = InputType.JoystickAxis

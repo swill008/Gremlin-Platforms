@@ -18,7 +18,6 @@ from PySide6 import QtCore
 
 from gremlin import (
     error,
-    event_handler,
     references,
     util,
 )
@@ -36,6 +35,7 @@ from gremlin.signal import signal
 from gremlin.types import (
     ActionProperty,
     ConditionType,
+    Event,
     InputType,
     LogicalOperator,
     PropertyType,
@@ -63,7 +63,7 @@ class ConditionFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:

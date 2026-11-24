@@ -16,7 +16,6 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 from gremlin import (
-    event_handler,
     fsm,
     references,
     run_scope,
@@ -33,6 +32,7 @@ from gremlin.event_helpers import ButtonReleaseActions
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
+    Event,
     InputType,
     PropertyType,
 )
@@ -57,7 +57,7 @@ class SmartToggleFunctor(AbstractFunctor):
             pass
 
         def process_event(
-            e: event_handler.Event, v: Value, p: List[ActionProperty]
+            e: Event, v: Value, p: List[ActionProperty]
         ) -> None:
             self._process_event(self.functors["children"], e, v, p)
 
@@ -94,7 +94,7 @@ class SmartToggleFunctor(AbstractFunctor):
     @override
     def __call__(
         self,
-        event: event_handler.Event,
+        event: Event,
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
@@ -111,7 +111,7 @@ class SmartToggleFunctor(AbstractFunctor):
             )
 
     def _release_cb(
-        self, event: event_handler.Event, value: Value, properties: list[ActionProperty]
+        self, event: Event, value: Value, properties: list[ActionProperty]
     ) -> None:
         self.fsm.perform(
             "release", event, value, properties + [ActionProperty.DisableAutoRelease]

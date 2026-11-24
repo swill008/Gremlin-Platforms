@@ -21,6 +21,7 @@ from PySide6 import QtCore
 import dill
 from gremlin import code_runner, event_handler, trace
 from gremlin.modules import runtime
+from gremlin.types import Event
 from test import fake_hardware
 
 _APP = QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
@@ -94,7 +95,7 @@ def test_a_claimed_input_traces_its_wiring_around_the_actions(
     trace.set_device(_STICK, True)
     handler = event_handler.EventHandler()
     seen: list[object] = []
-    key = event_handler.Event(event_handler.InputType.JoystickButton, 6, _STICK,
+    key = Event(event_handler.InputType.JoystickButton, 6, _STICK,
                               "Default", is_pressed=True)
     monkeypatch.setattr(handler, "callbacks", {
         _STICK: {"Default": {key: [lambda e: seen.append(trace.current_input())]}}
@@ -136,7 +137,7 @@ def test_tracing_off_asks_nothing_per_input(
     listener._joystick_event_handler(_input(BUTTON, 3, 1))
     listener._joystick_event_handler(_input(AXIS, 1, 1000))
     handler = event_handler.EventHandler()
-    handler.process_event(event_handler.Event(
+    handler.process_event(Event(
         event_handler.InputType.JoystickButton, 3, _STICK, "Default", is_pressed=True))
     assert asked == [] and trace.lines() == []
 
