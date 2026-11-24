@@ -21,7 +21,6 @@ from PySide6 import QtCore
 import dill
 from action_plugins import common
 from gremlin import (
-    event_helpers,
     keyboard,
     macro,
     references,
@@ -720,6 +719,8 @@ class MacroFunctor(AbstractFunctor):
     def __init__(self, action: MacroData) -> None:
         super().__init__(action)
 
+        # A Hold macro started and not yet released.
+        self._holding = False
         self.macro = macro.Macro()
         for action in self.data.actions:
             if isinstance(action, RawMacroStep):
@@ -744,6 +745,13 @@ class MacroFunctor(AbstractFunctor):
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
+        is_hold = self.data.repeat_mode == MacroRepeatModes.Hold
+        # A release stops a Hold macro, also one from the mode where the
+        # press happened (06 S38).
+        if is_hold and self._holding and not value.current:
+            self._holding = False
+            macro.MacroManager().terminate_macro(self.macro)
+            return
         if self._should_execute(value):
             from gremlin import logical_loop
 
@@ -751,11 +759,17 @@ class MacroFunctor(AbstractFunctor):
             macro.MacroManager().queue_macro(
                 self.macro, logical_loop.chain_of(getattr(event, "ld_chain", ()))
             )
-            if self.data.repeat_mode == MacroRepeatModes.Hold:
-                event_helpers.ButtonReleaseActions().register_callback(
-                    lambda _event: macro.MacroManager().terminate_macro(self.macro),
-                    event,
-                )
+            if is_hold:
+                if value.current:
+                    self._holding = True
+                else:
+                    # Started by a release: the input is already up.
+                    macro.MacroManager().terminate_macro(self.macro)
+
+    @override
+    def waits_for_end(self) -> bool:
+        """True while its Hold macro runs (06 S38)."""
+        return self._holding
 
 
 class ActionListModel(QtCore.QAbstractListModel):

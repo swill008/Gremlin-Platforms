@@ -20,7 +20,6 @@ from action_plugins.common import RelativeAxisLoop
 from gremlin import (
     device_initialization,
     error,
-    event_helpers,
     references,
     signal,
     util,
@@ -37,6 +36,7 @@ from gremlin.types import (
     ActionProperty,
     AxisMode,
     Event,
+    HatDirection,
     InputType,
     PropertyType,
 )
@@ -60,6 +60,30 @@ class MapToVjoyFunctor(RelativeAxisLoop, AbstractFunctor):
 
         self.needs_auto_release = False  # self._check_for_auto_release(action)
         self._init_relative()
+        # The last button write turned the output on, and the ending event
+        # in another mode may let it go (06 S38).
+        self._release_on_end = False
+
+    def _is_button(self) -> bool:
+        return self.data.vjoy_input_type in (
+            InputType.JoystickButton,
+            InputType.Keyboard,
+        )
+
+    @override
+    def waits_for_end(self) -> bool:
+        """True while the output is held: a button on (an inverted one after
+        its release) or a hat off centre (06 S38)."""
+        data = self.data
+        if self._is_button():
+            return self._release_on_end and bool(
+                output.vjoy_value(data.vjoy_device_id, "button", data.vjoy_input_id)
+            )
+        if data.vjoy_input_type == InputType.JoystickHat:
+            return output.vjoy_value(
+                data.vjoy_device_id, "hat", data.vjoy_input_id
+            ) not in (HatDirection.Center, HatDirection.Center.value)
+        return False
 
     @override
     def __call__(
@@ -68,7 +92,10 @@ class MapToVjoyFunctor(RelativeAxisLoop, AbstractFunctor):
         value: Value,
         properties: list[ActionProperty] = [],
     ) -> None:
-        if not self._should_execute(value):
+        # An inverted button ends on a press (06 S38).
+        if not self._should_execute(
+            value, inverted=self._is_button() and self.data.button_inverted
+        ):
             return
 
         vjoy_id = self.data.vjoy_device_id
@@ -90,16 +117,10 @@ class MapToVjoyFunctor(RelativeAxisLoop, AbstractFunctor):
                 if self.data.button_inverted:
                     is_pressed = not is_pressed
                 sent = output.write_vjoy(vjoy_id, "button", input_id, is_pressed)
-
-                if (
-                    sent
-                    and is_pressed
-                    and ActionProperty.DisableAutoRelease not in properties
-                ):
-                    event_helpers.ButtonReleaseActions().register_vjoy_button_release(
-                        (self.data.vjoy_device_id, self.data.vjoy_input_id),
-                        event,
-                        self.data.button_inverted,
+                if sent:
+                    self._release_on_end = (
+                        is_pressed
+                        and ActionProperty.DisableAutoRelease not in properties
                     )
 
             elif self.data.vjoy_input_type == InputType.JoystickHat:

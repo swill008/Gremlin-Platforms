@@ -18,7 +18,6 @@ from PySide6 import QtCore
 
 from gremlin import (
     error,
-    event_helpers,
     mode_manager,
     references,
     shared_state,
@@ -35,6 +34,7 @@ from gremlin.types import (
     ActionProperty,
     Event,
     InputType,
+    ModeType,
     PropertyType,
 )
 from gremlin.ui.action_model import (
@@ -79,6 +79,13 @@ class ChangeModeFunctor(AbstractFunctor):
         self._mode_sequence = None
         if self.data.change_type == ChangeType.Cycle:
             self._mode_sequence = mode_manager.ModeSequence(self.data._target_modes)
+        # A Temporary change pressed and not yet released.
+        self._in_temporary = False
+
+    @override
+    def waits_for_end(self) -> bool:
+        """True while a Temporary change waits for its release (06 S38)."""
+        return self._in_temporary
 
     @override
     def __call__(
@@ -87,10 +94,13 @@ class ChangeModeFunctor(AbstractFunctor):
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:
-        if (
-            not self._should_execute(value)
-            and self.data.change_type != ChangeType.Temporary
+        is_temporary = self.data.change_type == ChangeType.Temporary
+        # From another mode only a Temporary change's release comes (06 S38).
+        if value.mode_type == ModeType.Foreign and not (
+            is_temporary and not value.current
         ):
+            return
+        if not self._should_execute(value) and not is_temporary:
             return
 
         # Switch, Cycle and Temporary with no mode to go to: nothing to do
@@ -117,18 +127,13 @@ class ChangeModeFunctor(AbstractFunctor):
                 mm.switch_to(
                     mode_manager.Mode(self.data.target_modes[0], mm.current.name, True)
                 )
-
-                event_helpers.ButtonReleaseActions().register_callback(
-                    lambda _event: self._release_temporary_mode(), event
-                )
+                self._in_temporary = True
             # Leave the temporary mode when the input is released while in the
-            # correct mode
+            # correct mode; the release from the mode where the press happened
+            # comes here too (06 S38).
             else:
-                if (
-                    mm.current.name == self.data._target_modes[0]
-                    and mm.current.is_temporary
-                ):
-                    mm.unwind()
+                self._in_temporary = False
+                self._release_temporary_mode()
 
         logging.getLogger("system").debug(
             f"Mode Stack : [{', '.join(m.name for m in mm._mode_stack)}], "

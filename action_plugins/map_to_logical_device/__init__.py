@@ -18,7 +18,6 @@ from PySide6 import QtCore
 from action_plugins.common import RelativeAxisLoop
 from gremlin import (
     event_handler,
-    event_helpers,
     mode_manager,
     references,
     util,
@@ -42,6 +41,7 @@ from gremlin.types import (
     AxisMode,
     DataCreationMode,
     Event,
+    HatDirection,
     InputType,
     PropertyType,
 )
@@ -73,6 +73,23 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
             instance.logical_input_type,
             instance.logical_input_id,
         )
+        # The last button update turned the control on, and the ending
+        # event in another mode may let it go (06 S38).
+        self._release_on_end = False
+
+    @override
+    def waits_for_end(self) -> bool:
+        """True while the control is held: a button on (an inverted one
+        after its release) or a hat off centre (06 S38)."""
+        if self._identifier is None or not self._logical.exists(self._identifier):
+            return False
+        input = self._logical[self._identifier]
+        if isinstance(input, LogicalDevice.Button):
+            return self._release_on_end and input.is_pressed
+        if isinstance(input, LogicalDevice.Hat):
+            centre = HatDirection.Center
+            return input.direction not in (centre, centre.value)
+        return False
 
     @override
     def __call__(
@@ -81,11 +98,16 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:
-        if not self._should_execute(value):
-            return
         if self._identifier is None or not self._logical.exists(self._identifier):
             return
         input = self._logical[self._identifier]
+        # An inverted button ends on a press (06 S38).
+        if not self._should_execute(
+            value,
+            inverted=input.type == InputType.JoystickButton
+            and self.data.button_inverted,
+        ):
+            return
         # The guard follows the chain the event came through (06 S94a).
         chain = getattr(event, "ld_chain", ())
 
@@ -110,11 +132,9 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
             if self.data.button_inverted:
                 is_pressed = not is_pressed
             input.update(is_pressed)
-
-            if is_pressed and ActionProperty.DisableAutoRelease not in properties:
-                event_helpers.ButtonReleaseActions().register_logical_button_release(
-                    input.id, event, self.data.button_inverted
-                )
+            self._release_on_end = (
+                is_pressed and ActionProperty.DisableAutoRelease not in properties
+            )
         elif input.type == InputType.JoystickHat:
             input_value = value.current
             input.update(input_value)
