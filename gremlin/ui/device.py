@@ -177,6 +177,7 @@ class DeviceListModel(QtCore.QAbstractListModel):
         signal.profileChanged.connect(self.update_model)
         signal.deviceNamesChanged.connect(self._names_changed)
 
+    @QtCore.Slot()
     def update_model(self) -> None:
         """Updates the model if the connected devices change."""
         self._reload_devices()
@@ -315,6 +316,7 @@ class Device(QtCore.QAbstractListModel):
             self._device_list_changed
         )
 
+    @QtCore.Slot()
     def _device_list_changed(self) -> None:
         # Set while its stick was unplugged: read it now it is back.
         if self._device is None and self._wanted:
@@ -358,6 +360,7 @@ class Device(QtCore.QAbstractListModel):
         self.endResetModel()
         self.deviceChanged.emit()
 
+    @QtCore.Slot()
     def _profile_changed_cb(self) -> None:
         self.beginResetModel()
         self.endResetModel()
@@ -544,6 +547,7 @@ class LogicalDeviceSelectorModel(QtCore.QAbstractListModel):
             self._current_index = index
             self.selectionChanged.emit()
 
+    @QtCore.Slot()
     def _refresh_model(self) -> None:
         # Reset the complete model as the number of entries can have changed.
         self.beginResetModel()
@@ -586,6 +590,7 @@ class DeviceAxisSeries(QtCore.QObject):
         # The device asked for, kept while it isn't connected.
         self._wanted = ""
 
+    @QtCore.Slot()
     def _device_list_changed(self) -> None:
         # Set while its stick was unplugged: read it now it is back.
         if self._device is None and self._wanted:
@@ -1241,6 +1246,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
     def _get_module_slug(self) -> str:
         return self._module_slug
 
+    @QtCore.Slot()
     def _device_list_changed(self) -> None:
         # Asked for while its stick was unplugged: read it now it is back.
         if self._wanted_slug and self._wanted_slug != self._module_slug:
