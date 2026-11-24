@@ -406,13 +406,25 @@ def main() -> None:
         result("url", url)
         ev(f"cardOf('b').photo = {json.dumps(url)}")
         QtTest.QTest.qWait(400)
+
+        def settle(code: str, limit_ms: int = 10000) -> None:
+            # The pictures load asynchronously: a slow PC (CI) needs more
+            # than the 400 ms above; a picture that never loads still fails.
+            waited = 0
+            while not ev(code) and waited < limit_ms:
+                QtTest.QTest.qWait(20)
+                waited += 20
+
+        settle("looks('b').photoReady")
         result("full", {s: ev(f"looks('{s}')") for s in "ab"})
         ev("_fake.compactView = true")
         QtTest.QTest.qWait(400)
+        settle("looks('b').thumbPicture")
         result("compact", {s: ev(f"looks('{s}')") for s in "ab"})
         result("dp40", ev("Style.dp(40)"))
         ev("_fake.compactView = false")
         QtTest.QTest.qWait(400)
+        settle("looks('b').photoReady")
         result("full-again", {s: ev(f"looks('{s}')") for s in "ab"})
     elif mode == "band":
         _band(ev, quick, result, move, out)

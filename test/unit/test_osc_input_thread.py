@@ -121,6 +121,10 @@ def rt(
     runtime = OscRuntime()
     runtime.cancel_listen()
     runtime.stop()
+    # The runtime is the program's one: settings an earlier test saved (an
+    # allow-list without 127.0.0.1) stay in it until told the file changed.
+    # The packet is checked before start()'s queued port work reads them.
+    runtime.sync_bind()
     # (on the input thread, pressed) of each OSC event, where it is emitted.
     events: list[tuple[bool, bool]] = []
 
