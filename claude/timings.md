@@ -1562,3 +1562,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Lead: bisect with frozen builds (5727af13 ok, 3fc09dda PASS, 1f50123b PASS, 433bb71b mid-state, HEAD+off-input-thread send PASS) + restart installed | investigation | ~3 min/step | 9 min | 21:15-21:24, lead |
 | 2026-11-23 | Agent KBD-FIX: key sender thread in keyboard.py, 6 tests (6b4efe87) | agent fix | 5-10 min | 5 min | 21:25-21:30, KBD-FIX |
 | 2026-11-23 | Rebuild + silent install + live mode-release check x2 (PASS, PASS) + run/trace | build/test | ~3 min | 2 min | 21:31-21:33, lead |
+| 2026-11-23 | CI on 140e57c0 (B3+B4+B5 + keyboard sender), run 45320393185 | ci | ~25 min | 27 min | 21:33-22:00, failed: 5 in part 3 + j11 |
+| 2026-11-23 | Agent CI-PART3: ModelFactory staticMetaObject + run_start_marks fixture (50e52169); 3 unexplained | fix | ~15 min | 24 min | 22:02-22:26, CI-PART3 (1135-test slice 9 min) |
+| 2026-11-23 | Agent CI-SETTINGS: settings test re-clears after writing its file, gap race test (ee332889) | agent fix | 8-10 min | 3 min | 22:26-22:29, CI-SETTINGS |
+| 2026-11-23 | Agent CI-WAITS: OSC test fixture sync_bind + home thumb waits for Ready (e8184ddc) | agent fix | 8-10 min | 5 min | 22:26-22:31, CI-WAITS |
+| 2026-11-23 | Agent CI-J11: per-object QMetaObject (no @Slot) reused addresses -> wrong QML property cache; @Slot on 5 page models, 10 tests (d48c98d3) | fix | 5-10 min | 49 min | 22:02-22:51, CI-J11 (bisect + load runs) |
