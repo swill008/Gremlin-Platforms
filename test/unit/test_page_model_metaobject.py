@@ -39,6 +39,12 @@ from gremlin.ui.keyboard_layout import KeyboardLayoutModel
 from gremlin.ui.logical_layout import LogicalLayoutModel
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
 from gremlin.ui.osc_layout import OscLayoutModel
+from test.unit.metaobject_helper import (
+    broken_static_metaobjects,
+    metaobject_addresses,
+    receivers,
+    static_address,
+)
 
 MODELS: dict[str, Callable[[QtCore.QObject], QtCore.QObject]] = {
     "HardwareLayoutModel": HardwareLayoutModel,
@@ -68,31 +74,25 @@ def isolated(
     LogicalDevice().load_dict({"controls": [], "groups": []})
 
 
-def _metaobject(obj: QtCore.QObject) -> int:
-    return shiboken6.getCppPointer(obj.metaObject())[0]
-
-
 def _receivers() -> dict[str, int]:
-    meta = signal.metaObject()
-    out: dict[str, int] = {}
-    for i in range(meta.methodOffset(), meta.methodCount()):
-        method = meta.method(i)
-        if method.methodType() == QtCore.QMetaMethod.MethodType.Signal:
-            sig = bytes(method.methodSignature().data()).decode()
-            out[sig] = signal.receivers(QtCore.SIGNAL(sig))
-    return out
+    return receivers([("signal", signal)])
+
+
+@pytest.fixture(scope="module", autouse=True)
+def static_metaobjects_still_work() -> Iterator[None]:
+    # Nothing here may leave a measured type's staticMetaObject deleted for
+    # the tests that run after this module (see metaobject_helper).
+    yield
+    assert broken_static_metaobjects(MODELS.values()) == []
 
 
 @pytest.mark.parametrize("name", sorted(MODELS))
 def test_one_metaobject_per_type(isolated: None, name: str) -> None:
-    host = QtCore.QObject()
-    try:
-        first, second = MODELS[name](host), MODELS[name](host)
-        assert _metaobject(first) == _metaobject(second), (
-            f"{name}: a signal is connected to a method without @QtCore.Slot"
-        )
-    finally:
-        shiboken6.delete(host)
+    # No parent: see metaobject_helper.
+    addresses = metaobject_addresses(MODELS[name])
+    assert addresses == {static_address(MODELS[name])}, (
+        f"{name}: a signal is connected to a method without @QtCore.Slot"
+    )
 
 
 @pytest.mark.parametrize("name", sorted(MODELS))

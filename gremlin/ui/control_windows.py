@@ -245,8 +245,11 @@ def _click(item: QtQuick.QQuickItem) -> None:
     """A click as the user's: click() on a Controls button, else a mouse
     press and release at the item's centre."""
     try:
-        if item.metaObject().indexOfMethod("click()") >= 0:
-            QtCore.QMetaObject.invokeMethod(item, "click")
+        # Not item.metaObject(): read from Python, that leaves the
+        # QQuickItem class's meta object deleted once the item's window is
+        # (PySide 6.11.2, gap PYSIDE-METAOBJECT). invokeMethod is False when
+        # there is no click() taking no arguments.
+        if hasattr(item, "click") and QtCore.QMetaObject.invokeMethod(item, "click"):
             return
         window = item.window()
         if window is None:
@@ -299,7 +302,7 @@ def _type_into(field: QtQuick.QQuickItem, text: str) -> bool:
         # A validator or input mask turned keys away.
         field.setProperty("text", old)
         return False
-    if field.metaObject().indexOfMethod("editingFinished()") >= 0:
+    if hasattr(field, "editingFinished"):  # not metaObject(): see _click
         QtCore.QMetaObject.invokeMethod(field, "editingFinished")
     box = _spin_box(field)
     if box is not None:

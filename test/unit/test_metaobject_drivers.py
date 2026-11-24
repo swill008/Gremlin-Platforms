@@ -29,6 +29,12 @@ from gremlin.signal import signal
 from gremlin.ui import hidhide as hh
 from gremlin.ui.drivers_model import DriversModel
 from gremlin.ui.hardware_profile import HardwareProfile
+from test.unit.metaobject_helper import (
+    broken_static_metaobjects,
+    metaobject_addresses,
+    receivers,
+    static_address,
+)
 
 
 class _Launcher:
@@ -36,7 +42,7 @@ class _Launcher:
         raise AssertionError("no helper is started here")
 
 
-def _drivers_model(parent: QtCore.QObject, tmp_path: Path) -> DriversModel:
+def _drivers_model(parent: QtCore.QObject | None, tmp_path: Path) -> DriversModel:
     status = drivers.DriverStatus(
         key="vjoy",
         name="vJoy",
@@ -90,34 +96,35 @@ def fakes(
 NAMES = ["DriversModel", "HardwareProfile", "HidHideModel"]
 
 
-def _metaobject(obj: QtCore.QObject) -> int:
-    return shiboken6.getCppPointer(obj.metaObject())[0]
+TYPES = [DriversModel, HardwareProfile, hh.HidHideModel]
 
 
 def _receivers() -> dict[str, int]:
     """Connections on gremlin.signal and the device change event."""
-    out: dict[str, int] = {}
-    for owner in (signal, event_handler.EventListener()):
-        meta = owner.metaObject()
-        for i in range(meta.methodOffset(), meta.methodCount()):
-            method = meta.method(i)
-            if method.methodType() == QtCore.QMetaMethod.MethodType.Signal:
-                sig = bytes(method.methodSignature().data()).decode()
-                key = f"{type(owner).__name__}.{sig}"
-                out[key] = owner.receivers(QtCore.SIGNAL(sig))
-    return out
+    return receivers(
+        [
+            ("signal", signal),
+            ("listener", event_handler.EventListener()),
+        ]
+    )
+
+
+@pytest.fixture(scope="module", autouse=True)
+def static_metaobjects_still_work() -> Iterator[None]:
+    # Nothing here may leave a measured type's staticMetaObject deleted for
+    # the tests that run after this module (see metaobject_helper).
+    yield
+    assert broken_static_metaobjects(TYPES) == []
 
 
 @pytest.mark.parametrize("name", NAMES)
 def test_one_metaobject_per_type(fakes: dict, name: str) -> None:
-    host = QtCore.QObject()
-    try:
-        first, second, third = (fakes[name](host) for _ in range(3))
-        assert _metaobject(first) == _metaobject(second) == _metaobject(third), (
-            f"{name}: a signal is connected to a method without @QtCore.Slot"
-        )
-    finally:
-        shiboken6.delete(host)
+    # No parent: see metaobject_helper.
+    cls = {t.__name__: t for t in TYPES}[name]
+    addresses = metaobject_addresses(fakes[name])
+    assert addresses == {static_address(cls)}, (
+        f"{name}: a signal is connected to a method without @QtCore.Slot"
+    )
 
 
 @pytest.mark.parametrize("name", NAMES)

@@ -126,7 +126,11 @@ class ActionModel(QtCore.QObject):
         """Every edit of this action's properties (any plugin's) also tells
         the program, so summaries of the profile's actions such as the
         Device Mapping Editor's chips check again (07 S73)."""
-        meta = self.metaObject()
+        # The class's meta object, not self.metaObject(): read from Python
+        # on a model its binding model deletes later, that leaves the
+        # class's staticMetaObject deleted (PySide 6.11.2, gap
+        # PYSIDE-METAOBJECT). Properties are the class's either way.
+        meta: QtCore.QMetaObject = type(self).staticMetaObject  # pyright: ignore[reportAttributeAccessIssue]  (PySide stub lacks it)
         notifies: set[str] = set()
         # This class's own properties onwards (not QObject's objectName).
         base = meta

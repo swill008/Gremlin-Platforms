@@ -31,6 +31,12 @@ from gremlin.profile import Profile
 from gremlin.signal import signal
 from gremlin.ui.module_inputs import ModuleClaimedInputModel
 from gremlin.ui.module_model import DriverInputModel, ModuleListModel
+from test.unit.metaobject_helper import (
+    broken_static_metaobjects,
+    metaobject_addresses,
+    receivers,
+    static_address,
+)
 
 MODELS: dict[str, Callable[[QtCore.QObject], QtCore.QObject]] = {
     "DriverInputModel": DriverInputModel,
@@ -52,40 +58,36 @@ def isolated(
     yield
 
 
-def _metaobject(obj: QtCore.QObject) -> int:
-    return shiboken6.getCppPointer(obj.metaObject())[0]
-
-
-def _receivers() -> dict[str, int]:
-    out: dict[str, int] = {}
-    owners = (("signal", signal), ("listener", event_handler.EventListener()))
-    for name, owner in owners:
-        meta = owner.metaObject()
-        for i in range(meta.methodOffset(), meta.methodCount()):
-            method = meta.method(i)
-            if method.methodType() == QtCore.QMetaMethod.MethodType.Signal:
-                sig = bytes(method.methodSignature().data()).decode()
-                out[f"{name}.{sig}"] = owner.receivers(QtCore.SIGNAL(sig))
-    return out
-
-
 def _make_and_delete(name: str) -> None:
     host = QtCore.QObject()
     MODELS[name](host)
     shiboken6.delete(host)
 
 
+def _receivers() -> dict[str, int]:
+    return receivers(
+        [
+            ("signal", signal),
+            ("listener", event_handler.EventListener()),
+        ]
+    )
+
+
+@pytest.fixture(scope="module", autouse=True)
+def static_metaobjects_still_work() -> Iterator[None]:
+    # Nothing here may leave a measured type's staticMetaObject deleted for
+    # the tests that run after this module (see metaobject_helper).
+    yield
+    assert broken_static_metaobjects(MODELS.values()) == []
+
+
 @pytest.mark.parametrize("name", sorted(MODELS))
 def test_one_metaobject_per_type(isolated: None, name: str) -> None:
-    host = QtCore.QObject()
-    try:
-        made = [MODELS[name](host) for _ in range(3)]
-        addresses = {_metaobject(m) for m in made}
-        assert len(addresses) == 1, (
-            f"{name}: a signal is connected to a method without @QtCore.Slot"
-        )
-    finally:
-        shiboken6.delete(host)
+    # No parent: see metaobject_helper.
+    addresses = metaobject_addresses(MODELS[name])
+    assert addresses == {static_address(MODELS[name])}, (
+        f"{name}: a signal is connected to a method without @QtCore.Slot"
+    )
 
 
 @pytest.mark.parametrize("name", sorted(MODELS))

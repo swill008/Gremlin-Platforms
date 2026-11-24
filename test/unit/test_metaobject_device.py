@@ -15,7 +15,6 @@ Spec: none (no behaviour change).
 
 from __future__ import annotations
 
-import gc
 from collections.abc import Callable, Iterator
 
 import pytest
@@ -30,6 +29,12 @@ from gremlin.ui.device import (
     DeviceAxisSeries,
     DeviceListModel,
     LogicalDeviceSelectorModel,
+)
+from test.unit.metaobject_helper import (
+    broken_static_metaobjects,
+    metaobject_addresses,
+    receivers,
+    static_address,
 )
 
 MODELS: dict[str, Callable[[QtCore.QObject | None], QtCore.QObject]] = {
@@ -49,44 +54,34 @@ def host(qapp: object) -> Iterator[QtCore.QObject]:
         shiboken6.delete(obj)
 
 
-def _metaobject(obj: QtCore.QObject) -> int:
-    return shiboken6.getCppPointer(obj.metaObject())[0]
-
-
 def _receivers() -> dict[str, int]:
-    out: dict[str, int] = {}
-    for name, source in (
-        ("signal", signal),
-        ("listener", event_handler.EventListener()),
-    ):
-        meta = source.metaObject()
-        for i in range(meta.methodOffset(), meta.methodCount()):
-            method = meta.method(i)
-            if method.methodType() == QtCore.QMetaMethod.MethodType.Signal:
-                sig = bytes(method.methodSignature().data()).decode()
-                out[f"{name}.{sig}"] = source.receivers(QtCore.SIGNAL(sig))
-    return out
+    return receivers(
+        [
+            ("signal", signal),
+            ("listener", event_handler.EventListener()),
+        ]
+    )
+
+
+@pytest.fixture(scope="module", autouse=True)
+def static_metaobjects_still_work() -> Iterator[None]:
+    # Nothing here may leave a measured type's staticMetaObject deleted for
+    # the tests that run after this module (see metaobject_helper).
+    yield
+    assert broken_static_metaobjects(MODELS.values()) == []
 
 
 @pytest.mark.parametrize("name", sorted(MODELS))
 def test_one_metaobject_per_type(qapp: object, name: str) -> None:
-    # No parent here: metaObject() on a parented object, then deleting the
-    # parent from C++, leaves the class's staticMetaObject wrapper deleted
-    # for the rest of the run (PySide 6.11.2); Python freeing it does not.
-    objects = [MODELS[name](None) for _ in range(3)]
-    addresses = {_metaobject(obj) for obj in objects}
-    del objects
-    gc.collect()
-    assert len(addresses) == 1, (
+    # No parent: see metaobject_helper.
+    addresses = metaobject_addresses(MODELS[name])
+    assert addresses == {static_address(MODELS[name])}, (
         f"{name}: a signal is connected to a method without @QtCore.Slot"
     )
-    assert MODELS[name].staticMetaObject.className() == name
 
 
 @pytest.mark.parametrize("name", sorted(MODELS))
-def test_deleted_model_drops_its_connections(
-    host: QtCore.QObject, name: str
-) -> None:
+def test_deleted_model_drops_its_connections(host: QtCore.QObject, name: str) -> None:
     before = _receivers()
     model = MODELS[name](host)
     assert _receivers() != before

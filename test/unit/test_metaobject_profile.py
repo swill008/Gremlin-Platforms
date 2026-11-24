@@ -32,6 +32,12 @@ from gremlin.ui.profile import (
     StartupModeModel,
     VJoyInputOrOutputModel,
 )
+from test.unit.metaobject_helper import (
+    broken_static_metaobjects,
+    metaobject_addresses,
+    receivers,
+    static_address,
+)
 
 MODELS: dict[str, Callable[[QtCore.QObject], QtCore.QObject]] = {
     "ModeListModel": ModeListModel,
@@ -50,31 +56,25 @@ def isolated(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     yield
 
 
-def _metaobject(obj: QtCore.QObject) -> int:
-    return shiboken6.getCppPointer(obj.metaObject())[0]
-
-
 def _receivers() -> dict[str, int]:
-    meta = signal.metaObject()
-    out: dict[str, int] = {}
-    for i in range(meta.methodOffset(), meta.methodCount()):
-        method = meta.method(i)
-        if method.methodType() == QtCore.QMetaMethod.MethodType.Signal:
-            sig = bytes(method.methodSignature().data()).decode()
-            out[sig] = signal.receivers(QtCore.SIGNAL(sig))
-    return out
+    return receivers([("signal", signal)])
+
+
+@pytest.fixture(scope="module", autouse=True)
+def static_metaobjects_still_work() -> Iterator[None]:
+    # Nothing here may leave a measured type's staticMetaObject deleted for
+    # the tests that run after this module (see metaobject_helper).
+    yield
+    assert broken_static_metaobjects(MODELS.values()) == []
 
 
 @pytest.mark.parametrize("name", sorted(MODELS))
 def test_one_metaobject_per_type(isolated: None, name: str) -> None:
-    host = QtCore.QObject()
-    try:
-        models = [MODELS[name](host) for _ in range(3)]
-        assert len({_metaobject(m) for m in models}) == 1, (
-            f"{name}: a signal is connected to a method without @QtCore.Slot"
-        )
-    finally:
-        shiboken6.delete(host)
+    # No parent: see metaobject_helper.
+    addresses = metaobject_addresses(MODELS[name])
+    assert addresses == {static_address(MODELS[name])}, (
+        f"{name}: a signal is connected to a method without @QtCore.Slot"
+    )
 
 
 @pytest.mark.parametrize("name", sorted(MODELS))
