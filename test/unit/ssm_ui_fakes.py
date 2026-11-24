@@ -70,6 +70,13 @@ class DeviceRate:
     reports_per_s: float
 
 
+@dataclass(frozen=True)
+class PresentDevice:
+    instance_id: str
+    path: str = ""
+    description: str = ""
+
+
 @dataclass
 class ProgramRequest:
     name: str
@@ -296,6 +303,12 @@ class Calls:
             ),
             DeviceRate("VKBSim NXT SEM THQ FSM.GA", "HID\\VID_3&PID_4\\1", 1, 4, 13.0),
         ]
+        # The HID devices connected now: (name, instance id); None = the ones
+        # a Refresh Devices finds. name_reads: the ids whose name was read.
+        self.present: list[tuple[str, str]] | None = None
+        self.present_reads = 0
+        self.name_reads: list[str] = []
+        self.unreadable_names = False
         self.requests = RequestsResult(
             True,
             "",
@@ -349,6 +362,11 @@ class Calls:
         self.input_devices: list[InputDevice] = list(INPUT_DEVICES)
         self.input_reads: list[str] = []
 
+    def connected(self) -> list[tuple[str, str]]:
+        if self.present is not None:
+            return list(self.present)
+        return [(d.name, d.instance_id) for d in self.devices]
+
     def _wait_gate(self) -> None:
         if self.gate is not None:
             self.gate.wait(5.0)
@@ -388,6 +406,19 @@ def install(target: Any = None) -> tuple[FakeManager, Calls]:  # noqa: ANN401
         calls._wait_gate()
         return list(calls.devices)
 
+    def present() -> list[PresentDevice]:
+        calls.present_reads += 1
+        return [PresentDevice(i) for _n, i in calls.connected()]
+
+    def device_name(device: PresentDevice) -> str:
+        calls.name_reads.append(device.instance_id)
+        if calls.unreadable_names:
+            return ""
+        return dict((i, n) for n, i in calls.connected())[device.instance_id]
+
+    scan_mod.PresentDevice = PresentDevice  # type: ignore[attr-defined]
+    scan_mod.present = present  # type: ignore[attr-defined]
+    scan_mod.device_name = device_name  # type: ignore[attr-defined]
     scan_mod.DeviceRate = DeviceRate  # type: ignore[attr-defined]
     scan_mod.scan = scan  # type: ignore[attr-defined]
 

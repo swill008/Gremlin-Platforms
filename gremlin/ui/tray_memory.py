@@ -4,8 +4,8 @@
 """Gives memory back while the main window is hidden to the tray.
 
 While Gremlin runs a profile from the tray nobody sees its pages, so:
-the main window unloads them (Main.qml enterTray: Home, Scripts, Profile
-Settings, and Device Bindings unless it holds unsaved edits), Qt drops the
+the main window unloads them (Main.qml enterTray: Home, the device pages,
+and Device Bindings unless it holds unsaved edits), Qt drops the
 hidden window's graphics, unused compiled QML and garbage (memory_release,
 01 S199), and Windows is
 told it may take back the memory pages nothing is using. Showing the window

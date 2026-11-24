@@ -486,8 +486,11 @@ from _harness import Journey, pump
 NAMES = sys.argv[1].split(',')
 ROUNDS = int(sys.argv[2])
 PAGES = [('logical', 'logical'), ('keyboard', 'keyboard'), ('osc', 'osc')]
-WINDOWS = ['DialogProfileSettings.qml', 'DialogScripts.qml', 'DialogHistory.qml',
-           'DialogSearch.qml', 'DialogHealth.qml', 'DialogInputViewer.qml',
+# The profile's pages of Options (04 S96).
+OPTION_PAGES = {'startup-macros': 'startupModeBox', 'vjoy': None,
+                'scripts': 'scriptManager'}
+WINDOWS = ['DialogHistory.qml', 'DialogSearch.qml', 'DialogHealth.qml',
+           'DialogInputViewer.qml',
            'DialogDeviceInformation.qml']
 
 
@@ -538,6 +541,17 @@ def story(j):
         j.ev('Helpers.windowOf("%s").close()' % qml)
         pump(250)
 
+    def option_pages_round():
+        j.ev('Helpers.createComponent("DialogOptions.qml")')
+        window = j.window('Options')
+        for page, item in OPTION_PAGES.items():
+            assert j.ev('showPage(%s)' % json.dumps(page), window) is True
+            pump(300)
+            if item:
+                j.wait_until(lambda: j.item(window, item), page, 10)
+        j.ev('Helpers.windowOf("DialogOptions.qml").close()')
+        pump(300)
+
     def mapping_editor_round():
         j.ev('openBlankDeviceMappingEditor()')
         pump(500)
@@ -549,6 +563,7 @@ def story(j):
             page_round(slug, tab)
         for qml in WINDOWS:
             window_round(qml)
+        option_pages_round()
         mapping_editor_round()
 
     one_round()  # warm-up: caches and first-use objects
@@ -592,7 +607,7 @@ def stage2_rounds(tmp_path_factory: pytest.TempPathFactory) -> dict:
 def test_stage2_pages_and_windows_opened_again_leave_no_shells(
     stage2_rounds: dict,
 ) -> None:
-    """Logical, Keyboard and OSC pages, Profile Settings, Scripts, History,
+    """Logical, Keyboard and OSC pages, the profile's pages of Options, History,
     Search, Health, Input Viewer, Device Information and the Device Mapping
     Editor, opened and closed 3 times: no shell of a factory-made type, and
     no live one more than after the first round."""

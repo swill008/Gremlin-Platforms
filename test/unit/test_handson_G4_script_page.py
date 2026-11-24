@@ -48,9 +48,10 @@ def story(j: Journey) -> None:
     (folder / "loops.py").write_text(LOOPS, encoding="utf-8")
     (folder / "good.py").write_text(GOOD, encoding="utf-8")
 
-    # The Scripts window (04 S96).
-    j.ev("_root.openScripts()")
-    window = j.window("Scripts")
+    # The Scripts page of Options (04 S96).
+    j.ev('Commands.trigger("tools.options")')
+    window = j.window("Options")
+    assert j.ev('showPage("scripts")', window) is True
     j.settle()
 
     def _scripts_page():  # noqa: ANN202

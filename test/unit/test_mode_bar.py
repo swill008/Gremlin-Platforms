@@ -183,15 +183,32 @@ if out['scale'] == 100 and out['home'] and out['home']['layoutCombo']:
     click('_deviceLibraryButton')
     pump(lambda: run('Helpers.windowOf("WindowDeviceLibrary.qml") !== null'), 5.0)
     out['libraryOpen'] = run('Helpers.windowOf("WindowDeviceLibrary.qml") !== null')
-    # Profile Settings is a window of its own (04 S96): its toolbar button
-    # opens it and the main window's bar keeps Home's controls.
-    click('_profileSettingsButton')
-    pump(lambda: run('Helpers.windowOf("DialogProfileSettings.qml") !== null'), 5.0)
+    # Options (04 S96): the toolbar's last button opens it and the main
+    # window's bar keeps Home's controls.
+    click('_optionsButton')
+    pump(lambda: run('Helpers.windowOf("DialogOptions.qml") !== null'), 5.0)
     pump(lambda: False, 0.5)
-    out['settingsWindow'] = run(
-        'Helpers.windowOf("DialogProfileSettings.qml") !== null')
+    out['settingsWindow'] = run('Helpers.windowOf("DialogOptions.qml") !== null')
     out['settings'] = bar_state()
     out['settingsRoom'] = run('uiState.currentRoom')
+    # Help's show:optionpage links (04 S96): each opens Options on its page.
+    out['optionPages'] = {}
+    for page in ('startup-macros', 'vjoy', 'scripts'):
+        link = json.dumps('show:optionpage/' + page)
+        checked = run('String(Style.helpLinks.check(' + link + '))')
+        run('(function() { var w = Helpers.windowOf("DialogOptions.qml"); '
+            'if (w) w.close(); return true })()')
+        pump(lambda: run('Helpers.windowOf("DialogOptions.qml") === null'), 5.0)
+        shown = run('String(Style.helpLinks.reveal(' + link + '))')
+        pump(lambda: False, 0.3)
+        out['optionPages'][page] = [checked, shown, run(
+            '(function() { var w = Helpers.windowOf("DialogOptions.qml"); '
+            'return w && w.visible ? w.sectionTitle : "not open" })()')]
+    out['optionPagesBad'] = [
+        run('String(Style.helpLinks.check(' + json.dumps(link) + '))')
+        for link in ('show:optionpage/general', 'show:optionpage/',
+                     'show:optionpage/scripts/x', 'open:tools.profileSettings',
+                     'open:tools.scripts')]
     # And back Home: the controls come back.
     click('_homeButton')
     pump(lambda: run('uiState.currentRoom') == 'status', 3.0)
@@ -266,7 +283,7 @@ def test_the_toolbar_device_library_button_opens_the_window(normal: dict) -> Non
     assert normal["libraryOpen"] is True
 
 
-def test_profile_settings_opens_its_window_and_the_bar_keeps_homes_controls(
+def test_options_opens_its_window_and_the_bar_keeps_homes_controls(
     normal: dict,
 ) -> None:
     assert normal["settingsWindow"] is True
@@ -278,6 +295,15 @@ def test_profile_settings_opens_its_window_and_the_bar_keeps_homes_controls(
     assert settings["layoutCombo"]
     back = normal["backHome"]
     assert back["loaderItem"] and back["layoutCombo"]
+
+
+def test_help_option_page_links_open_options_on_their_page(normal: dict) -> None:
+    assert normal["optionPages"] == {
+        "startup-macros": ["", "", "Startup and macros"],
+        "vjoy": ["", "", "vJoy"],
+        "scripts": ["", "", "Scripts"],
+    }
+    assert all(normal["optionPagesBad"]), normal["optionPagesBad"]
 
 
 @pytest.mark.parametrize("which", ["normal", "large"])

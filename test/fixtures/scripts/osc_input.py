@@ -4,7 +4,7 @@
 
 """Test script: an OSC button input presses a vJoy button.
 
-The OSC input is chosen by its address on the Scripts window (a new OSC
+The OSC input is chosen by its address on the Scripts page of Options (a new OSC
 input variable starts with none chosen, so the script is not configured
 until one is picked). The vJoy button is written through remap.
 """

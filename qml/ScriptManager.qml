@@ -12,21 +12,50 @@ import "confirm.js" as Confirm
 import Gremlin.Style
 
 
-// The Scripts window's content (DialogScripts.qml; 04 S84-S89, S96): the
-// profile's scripts in a card like the Options rows with Add Script under
-// it on the left, the picked script's variables in a second card on the
-// right. The window gives the heading; this fills the pane it is put in.
+// Options › Scripts (04 S84-S89, S96): the profile's scripts in a card like
+// the Options rows with Add Script under it on the left, the picked script's
+// variables in a second card on the right. Each side scrolls on its own;
+// while Options searches it is as tall as its matching rows.
 Item {
     id: _root
+    objectName: "scriptManager"
 
     // The script whose variables the second card shows.
     property string shownPath: ""
     property string shownName: ""
 
+    // Options' search: only the rows it matches show.
+    property string filterText: ""
+    readonly property bool searching: filterText.trim() !== ""
+    readonly property string _groupText: "Scripts in this profile"
+    readonly property bool _addFound: matches(
+        _groupText + " Add Script " + _about.text)
+    readonly property int _scriptsFound: {
+        _scripts.revision
+        var n = 0
+        for (var i = 0; i < _scripts.count; i++) {
+            var row = _scripts.itemAt(i)
+            if (row && row.found)
+                n++
+        }
+        return n
+    }
+    readonly property bool _variablesShown: shownName !== ""
+        && (!searching || _config.searchFound > 0)
+    readonly property int searchFound: _scriptsFound + (_addFound ? 1 : 0)
+        + (shownName !== "" ? _config.searchFound : 0)
+
+    function matches(text) {
+        var needle = filterText.trim().toLowerCase()
+        return needle === "" || String(text).toLowerCase().indexOf(needle) >= 0
+    }
+
+    implicitHeight: Math.max(_list.implicitHeight,
+        _variablesShown ? _variables.implicitHeight : 0)
+
     property ScriptListModel scriptListModel : backend ? backend.scriptListModel : null
 
-    // Own copy of the icon names: this sits in a window of its own, away
-    // from Main.qml's bsi.
+    // Own copy of the icon names: Options is away from Main.qml's bsi.
     BootstrapIcons {
         id: bsi
         resource: "qrc:///BootstrapIcons"
@@ -82,11 +111,15 @@ Item {
             clip: true
 
             ColumnLayout {
-                width: _listScroll.availableWidth - Style.dp(30)
-                x: Style.dp(20)
+                id: _list
+
+                width: _listScroll.availableWidth - Style.dp(10)
                 spacing: Style.dp(4)
 
                 Label {
+                    id: _about
+
+                    visible: _root._addFound
                     Layout.fillWidth: true
                     Layout.topMargin: Style.dp(14)
                     wrapMode: Text.WordWrap
@@ -98,13 +131,15 @@ Item {
 
                 Label {
                     Layout.topMargin: Style.dp(14)
-                    text: "Scripts in this profile"
+                    visible: !_root.searching || _root._scriptsFound > 0
+                    text: _root._groupText
                     color: Style.fgMuted
                     font.pixelSize: Style.dp(12)
                 }
 
                 // The scripts: one row each, a divider between rows.
                 Rectangle {
+                    visible: !_root.searching || _root._scriptsFound > 0
                     Layout.fillWidth: true
                     implicitHeight: _rows.implicitHeight
                     radius: Style.dp(6)
@@ -131,6 +166,22 @@ Item {
                         Repeater {
                             id: _scripts
 
+                            // Goes up as rows come or go.
+                            property int revision: 0
+                            onItemAdded: revision++
+                            onItemRemoved: revision++
+
+                            // The first row that shows (no divider above it).
+                            readonly property int firstFound: {
+                                revision
+                                for (var i = 0; i < count; i++) {
+                                    var row = itemAt(i)
+                                    if (row && row.found)
+                                        return i
+                                }
+                                return -1
+                            }
+
                             model: _root.scriptListModel
                             delegate: ScriptUI {
                                 Layout.fillWidth: true
@@ -141,6 +192,7 @@ Item {
 
                 Button {
                     objectName: "scriptAddButton"
+                    visible: _root._addFound
                     Layout.alignment: Qt.AlignLeft
                     Layout.topMargin: Style.dp(10)
                     Layout.bottomMargin: Style.dp(20)
@@ -156,21 +208,26 @@ Item {
             id: _varScroll
 
             objectName: "scriptVariablesPane"
-            Layout.fillWidth: true
+            // Half the page, or more when its controls need it (the vJoy
+            // picker with a warning); the list keeps at least dp(220).
+            Layout.preferredWidth: Math.max(_root.width / 2,
+                Math.min(_root.width - Style.dp(220),
+                    Math.max(Style.dp(410), _config.implicitWidth + Style.dp(20))))
             Layout.fillHeight: true
-            Layout.preferredWidth: 1
             contentWidth: availableWidth
             clip: true
 
             ColumnLayout {
-                width: _varScroll.availableWidth - Style.dp(30)
+                id: _variables
+
+                width: _varScroll.availableWidth - Style.dp(10)
                 x: Style.dp(10)
                 spacing: Style.dp(4)
 
                 // The picked script's variables (its configure button).
                 Label {
                     Layout.topMargin: Style.dp(14)
-                    visible: _root.shownName !== ""
+                    visible: _root._variablesShown
                     text: "Variables of " + _root.shownName
                     color: Style.fgMuted
                     font.pixelSize: Style.dp(12)
@@ -179,7 +236,7 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.bottomMargin: Style.dp(20)
-                    visible: _root.shownName !== ""
+                    visible: _root._variablesShown
                     implicitHeight: _config.implicitHeight
                     radius: Style.dp(6)
                     color: Style.bgCard
@@ -190,6 +247,9 @@ Item {
                         id: _config
 
                         objectName: "scriptVariables"
+                        filterText: _root.filterText
+                        groupText: _root._groupText + " Variables of "
+                            + _root.shownName + " " + _root.shownPath
                         width: parent.width
                     }
                 }
@@ -211,25 +271,34 @@ Item {
         // Its code is still starting (load and add don't wait for it).
         required property bool starting
 
+        readonly property bool found: _root.matches(
+            _root._groupText + " " + name + " " + path)
+
         objectName: "scriptRow:" + name
+        visible: found
         implicitHeight: _layout.implicitHeight + Style.dp(20)
 
         Rectangle {
-            visible: _item.index > 0
+            visible: _item.index > _scripts.firstFound
             width: parent.width
             height: Style.dp(1)
             color: Style.line
         }
 
-        RowLayout {
+        GridLayout {
             id: _layout
+
+            // Narrow: the buttons go under the name.
+            readonly property bool narrow: _item.width < Style.dp(330)
+            columns: narrow ? 2 : 3
 
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             anchors.leftMargin: Style.dp(14)
             anchors.rightMargin: Style.dp(14)
-            spacing: Style.dp(12)
+            columnSpacing: Style.dp(12)
+            rowSpacing: Style.dp(4)
 
             Label {
                 Layout.alignment: Qt.AlignTop
@@ -311,56 +380,62 @@ Item {
                 }
             }
 
-            IconButton {
-                objectName: "scriptRename"
-                text: bsi.icons.edit
+            RowLayout {
+                Layout.columnSpan: _layout.narrow ? 2 : 1
+                Layout.alignment: Qt.AlignRight
+                spacing: Style.dp(12)
 
-                onClicked: {
-                    _renameScriptDialog.text = _item.name
-                    _renameScriptDialog.callback = (value) => {
-                        if (_root.shownPath === _item.path && _root.shownName === _item.name)
-                            _root.shownName = value
-                        scriptListModel.renameScript(_item.path, _item.name, value)
-                    }
-                    _renameScriptDialog.visible = true
-                }
-            }
+                IconButton {
+                    objectName: "scriptRename"
+                    text: bsi.icons.edit
 
-            IconButton {
-                objectName: "scriptConfigure"
-                text: bsi.icons.configure
-                enabled: _item.loadError === "" && !_item.starting
-
-                onClicked: {
-                    _config.model = _item.variables
-                    _root.shownPath = _item.path
-                    _root.shownName = _item.name
-                }
-            }
-
-            IconButton {
-                objectName: "scriptRemove"
-                text: bsi.icons.trash
-
-                onClicked: () => {
-                    var p = _item.path
-                    var n = _item.name
-                    // 04 S85, 01 S140: the shared question.
-                    Confirm.ask(_root, {
-                        title: "Remove script " + n + "?",
-                        text: "It leaves this profile with its settings here."
-                            + " The script file itself is not deleted.",
-                        undoable: false,
-                        action: "Remove Script",
-                        onAccept: function() {
-                            if (_root.shownPath === p && _root.shownName === n) {
-                                _config.model = []
-                                _root.shownPath = ""
-                                _root.shownName = ""
-                            }
-                            scriptListModel.removeScript(p, n)
+                    onClicked: {
+                        _renameScriptDialog.text = _item.name
+                        _renameScriptDialog.callback = (value) => {
+                            if (_root.shownPath === _item.path && _root.shownName === _item.name)
+                                _root.shownName = value
+                            scriptListModel.renameScript(_item.path, _item.name, value)
                         }
-                    })
+                        _renameScriptDialog.visible = true
+                    }
+                }
+
+                IconButton {
+                    objectName: "scriptConfigure"
+                    text: bsi.icons.configure
+                    enabled: _item.loadError === "" && !_item.starting
+
+                    onClicked: {
+                        _config.model = _item.variables
+                        _root.shownPath = _item.path
+                        _root.shownName = _item.name
+                    }
+                }
+
+                IconButton {
+                    objectName: "scriptRemove"
+                    text: bsi.icons.trash
+
+                    onClicked: () => {
+                        var p = _item.path
+                        var n = _item.name
+                        // 04 S85, 01 S140: the shared question.
+                        Confirm.ask(_root, {
+                            title: "Remove script " + n + "?",
+                            text: "It leaves this profile with its settings here."
+                                + " The script file itself is not deleted.",
+                            undoable: false,
+                            action: "Remove Script",
+                            onAccept: function() {
+                                if (_root.shownPath === p && _root.shownName === n) {
+                                    _config.model = []
+                                    _root.shownPath = ""
+                                    _root.shownName = ""
+                                }
+                                scriptListModel.removeScript(p, n)
+                            }
+                        })
+                    }
                 }
             }
         }

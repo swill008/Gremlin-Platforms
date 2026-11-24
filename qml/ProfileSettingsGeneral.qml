@@ -10,28 +10,37 @@ import Gremlin.Profile
 import Gremlin.Style
 import Gremlin.UI
 
-// Profile Settings › General (04 S62-S64, S96, S98): Startup Mode and the
-// Macro Default Delay, in Options' cards and rows.
-ScrollView {
+// Options › Startup and macros (04 S62-S64, S96, S98): Startup Mode and the
+// Macro Default Delay, in Options' cards and rows. Options scrolls it.
+ColumnLayout {
     id: _root
 
     readonly property ProfileSettingsModel settingsModel:
         ModelFactory.create("ProfileSettingsModel", _root)
 
-    contentWidth: availableWidth
-    ScrollBar.vertical.interactive: true
-    Component.onCompleted: {
-        contentItem.boundsMovement = Flickable.StopAtBounds
+    // Options' search: only the rows it matches show.
+    property string filterText: ""
+    readonly property int searchFound: (_startupRow.found ? 1 : 0)
+        + (_delayRow.found ? 1 : 0) + (_fromOptionsRow.found ? 1 : 0)
+
+    function matches(text) {
+        var needle = filterText.trim().toLowerCase()
+        return needle === "" || String(text).toLowerCase().indexOf(needle) >= 0
     }
 
+    spacing: 0
+
     ColumnLayout {
-        width: _root.availableWidth - Style.dp(40)
-        x: Style.dp(20)
+        Layout.fillWidth: true
         spacing: Style.dp(4)
 
-        GroupLabel { text: "Startup" }
+        GroupLabel { text: "Startup"; visible: _startupRow.found }
         Card {
+            visible: _startupRow.found
             OptionEntryCard {
+                id: _startupRow
+                readonly property bool found: _root.matches(
+                    "Startup " + title + " " + explanation)
                 Layout.fillWidth: true
                 title: "Startup Mode"
                 explanation: "The mode the profile opens in when it is loaded. "
@@ -60,9 +69,14 @@ ScrollView {
             }
         }
 
-        GroupLabel { text: "Macros" }
+        GroupLabel { text: "Macros"; visible: _delayRow.found || _fromOptionsRow.found }
         Card {
+            visible: _delayRow.found || _fromOptionsRow.found
             OptionEntryCard {
+                id: _delayRow
+                readonly property bool found: _root.matches(
+                    "Macros " + title + " " + explanation)
+                visible: found
                 Layout.fillWidth: true
                 title: "Macro Default Delay"
                 explanation: "Delay between macro actions that have no Pause."
@@ -95,8 +109,11 @@ ScrollView {
                 }
             }
             OptionEntryCard {
+                id: _fromOptionsRow
+                readonly property bool found: _root.matches("Macros " + title)
+                visible: found
                 Layout.fillWidth: true
-                divider: true
+                divider: _delayRow.found
                 title: "Use the Options default (Options › Actions › Macro)"
 
                 CheckBox {
@@ -111,8 +128,6 @@ ScrollView {
                 }
             }
         }
-
-        Item { Layout.preferredHeight: Style.dp(16) }
     }
 
     // A small heading over a card, as ConfigGroup's.

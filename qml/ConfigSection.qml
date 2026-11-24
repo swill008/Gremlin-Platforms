@@ -22,6 +22,11 @@ ScrollView {
     property ConfigSectionModel sectionModel
     property int currentIndex: 0
     property string filterText: ""
+    // More pages under the sections, in the same scrolling (Options'
+    // "This profile" pages; the owner shows and hides them).
+    default property alias pages: _pages.data
+    // A page under the sections fills the view: no space under it.
+    property bool fillsView: false
     readonly property bool searching: filterText.trim().length > 0
 
     // While searching: the indexes of the sections with a match, or null
@@ -33,7 +38,7 @@ ScrollView {
     contentWidth: availableWidth
     clip: true
 
-    ColumnLayout {
+    contentData: ColumnLayout {
         width: _page.availableWidth - Style.dp(40)
         x: Style.dp(20)
         spacing: 0
@@ -108,6 +113,15 @@ ScrollView {
         // No "No setting matches" line here: the shared search box says
         // "Nothing matches" under itself (01 S141).
 
-        Item { implicitHeight: Style.dp(20) }
+        ColumnLayout {
+            id: _pages
+            Layout.fillWidth: true
+            spacing: 0
+        }
+
+        Item {
+            visible: !_page.fillsView
+            implicitHeight: Style.dp(20)
+        }
     }
 }

@@ -17,10 +17,16 @@ var _allowedOpen = [
     "tools.devicePack",
     "tools.logical", "tools.deviceMappingEditor", "tools.autoMappingTool", "tools.manageModes",
     "tools.history", "tools.screenSaverMode", "tools.options",
-    "tools.profileSettings", "tools.scripts",
     "debug.liveLog",
     "help.about"
 ]
+
+// Options' This profile pages a "show:optionpage/<id>" link may show (04 S96).
+var _optionPages = ["startup-macros", "vjoy", "scripts"]
+
+function isOptionPage(id) {
+    return _optionPages.indexOf(String(id)) >= 0
+}
 
 function allowedOpen() {
     return _allowedOpen.slice()

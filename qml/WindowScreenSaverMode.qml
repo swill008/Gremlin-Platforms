@@ -17,9 +17,10 @@ import Gremlin.UI
 // The status is read once a second while the window is open; three
 // sections (Devices, Programs, System; S12, S13, S17) list what keeps the
 // PC awake, each with its own Refresh button.
-// Two tabs (S28): Settings (all of the above) and Wake PC, the keyboards
-// and mice allowed to reset the idle time; a key or button pressed while
-// Wake PC is open ticks its device (S30).
+// The switch, Test now and the description stay at the top; below them three
+// tabs (S28): Settings, Devices (the devices that never go quiet, S27) and
+// Wake PC, the keyboards and mice allowed to reset the idle time; a key or
+// button pressed while Wake PC is open ticks its device (S30).
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
@@ -53,7 +54,7 @@ ApplicationWindow {
     onClosing: _ssm.setOpen(false)
 
     // S30: presses are detected only while the Wake PC tab is shown.
-    readonly property bool wakeShown: visible && _tabs.currentIndex === 1
+    readonly property bool wakeShown: visible && _tabs.currentIndex === 2
     onWakeShownChanged: _ssm.wakeTabOpen(wakeShown)
 
     // One timer (S4, S5): its switch, its wait box (minutes; empty shows
@@ -179,6 +180,7 @@ ApplicationWindow {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
+                visible: text.length > 0
                 color: Style.fgMuted
                 font.pixelSize: Style.dp(12)
                 text: _section.description
@@ -228,9 +230,9 @@ ApplicationWindow {
                         spacing: Style.dp(4)
                         Label {
                             objectName: "ssmProgramName"
-                            Layout.fillWidth: !_kindWord.visible
-                            Layout.maximumWidth: parent.width
-                                                 - (_kindWord.visible ? _kindWord.implicitWidth + Style.dp(4) : 0)
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.maximumWidth: _kindWord.visible ? Math.ceil(implicitWidth) : Infinity
                             elide: Text.ElideMiddle
                             text: _rowItem.modelData.name
                             color: Style.fg
@@ -243,7 +245,7 @@ ApplicationWindow {
                             color: Style.fgMuted
                             font.pixelSize: Style.dp(12)
                         }
-                        Item { Layout.fillWidth: _kindWord.visible }
+                        Item { Layout.fillWidth: true; visible: _kindWord.visible }
                     }
                     Label {
                         objectName: "ssmAlsoAwake"
@@ -293,16 +295,118 @@ ApplicationWindow {
         }
     }
 
+    // A device row's Automatic or Manual cell (S35): its radio button in the
+    // middle. A virtual device is never switched off: locked on Manual.
+    component ChoiceCell: Item {
+        id: _cell
+        property string choiceName
+        property string choice
+        property string word
+        property var device
+        property ButtonGroup group
+        signal picked()
+        implicitHeight: _radio.implicitHeight
+        RadioButton {
+            id: _radio
+            objectName: _cell.choiceName
+            anchors.centerIn: parent
+            ButtonGroup.group: _cell.group
+            enabled: !_cell.device.virtual
+            readonly property bool shown:
+                (!_cell.device.virtual && _cell.device.choice === "automatic")
+                === (_cell.choice === "automatic")
+            onShownChanged: checked = shown
+            Component.onCompleted: checked = shown
+            onToggled: if (checked) _cell.picked()
+            Accessible.name: _cell.device.name + ": " + _cell.word
+        }
+    }
+
+    // S28: a tab, a third of the bar; the open one is filled in and larger.
+    component FullTab: TabButton {
+        id: _tab
+        contentItem: Text {
+            text: _tab.text
+            font.pixelSize: _tab.checked ? Style.dp(17) : Style.dp(14)
+            font.bold: _tab.checked
+            color: _tab.checked ? Style.fgStrong : Style.fg
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+        background: Rectangle {
+            implicitHeight: Style.dp(42)
+            color: _tab.checked ? Style.bgSelected
+                 : _tab.hovered ? Style.bgHover : Style.backgroundShade
+            border.width: _tab.visualFocus ? 2 : 1
+            border.color: _tab.visualFocus ? Style.accent : Style.line
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Style.dp(3)
+                visible: _tab.checked
+                color: Style.accent
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
+
+        // S2: the on/off switch; Test now on the right.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: Style.dp(10)
+            Layout.leftMargin: Style.dp(16)
+            Layout.rightMargin: Style.dp(16)
+            Switch {
+                id: _enabled
+                objectName: "ssmEnabled"
+                text: "Screen Saver Mode"
+                font.bold: true
+                property bool shown: _ssm.enabled
+                onShownChanged: if (!pressed) checked = shown
+                Component.onCompleted: checked = shown
+                onToggled: _ssm.setEnabled(checked)
+            }
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "ssmTestNow"
+                highlighted: true
+                // Greyed unless Screen Saver Mode is on (canTest);
+                // a running countdown can always be cancelled.
+                enabled: countdown > 0 || _ssm.canTest !== false
+                ToolTip.visible: hovered && !enabled
+                ToolTip.text: "Turn Screen Saver Mode on first"
+                readonly property int countdown: _ssm.testCountdown || 0
+                text: countdown > 0 ? "Cancel test (" + countdown + ")" : "Test now"
+                onClicked: countdown > 0 ? _ssm.cancelTest() : _ssm.testNow()
+            }
+        }
+        Label {
+            objectName: "ssmDescription"
+            Layout.fillWidth: true
+            Layout.bottomMargin: Style.dp(10)
+            Layout.leftMargin: Style.dp(16)
+            Layout.rightMargin: Style.dp(16)
+            wrapMode: Text.Wrap
+            color: Style.fgMuted
+            text: "Keeps its own idle time from your keyboard and mouse only, so sticks "
+                  + "and other devices that never go quiet can't keep your screens on. "
+                  + "Works only while Gremlin-Platforms is open. "
+                  + "Test now runs the whole sequence after 5 s."
+        }
 
         TabBar {
             id: _tabs
             objectName: "ssmTabs"
             Layout.fillWidth: true
-            TabButton { objectName: "ssmTabSettings"; text: "Settings"; width: implicitWidth }
-            TabButton { objectName: "ssmTabWake"; text: "Wake PC"; width: implicitWidth }
+            spacing: 0
+            FullTab { objectName: "ssmTabSettings"; text: "Settings"; width: _tabs.width / 3 }
+            FullTab { objectName: "ssmTabDevices"; text: "Devices"; width: _tabs.width / 3 }
+            FullTab { objectName: "ssmTabWake"; text: "Wake PC"; width: _tabs.width / 3 }
         }
 
         StackLayout {
@@ -321,47 +425,6 @@ ApplicationWindow {
                     spacing: Style.dp(10)
 
                     Item { Layout.preferredHeight: Style.dp(6) }
-
-                    // S2: the on/off switch; Test now on the right.
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Style.dp(16)
-                        Layout.rightMargin: Style.dp(16)
-                        Switch {
-                            id: _enabled
-                            objectName: "ssmEnabled"
-                            text: "Screen Saver Mode"
-                            font.bold: true
-                            property bool shown: _ssm.enabled
-                            onShownChanged: if (!pressed) checked = shown
-                            Component.onCompleted: checked = shown
-                            onToggled: _ssm.setEnabled(checked)
-                        }
-                        Item { Layout.fillWidth: true }
-                        Button {
-                            objectName: "ssmTestNow"
-                            highlighted: true
-                            // Greyed unless Screen Saver Mode is on (canTest);
-                            // a running countdown can always be cancelled.
-                            enabled: countdown > 0 || _ssm.canTest !== false
-                            ToolTip.visible: hovered && !enabled
-                            ToolTip.text: "Turn Screen Saver Mode on first"
-                            readonly property int countdown: _ssm.testCountdown || 0
-                            text: countdown > 0 ? "Cancel test (" + countdown + ")" : "Test now"
-                            onClicked: countdown > 0 ? _ssm.cancelTest() : _ssm.testNow()
-                        }
-                    }
-                    Label {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Style.dp(16)
-                        Layout.rightMargin: Style.dp(16)
-                        wrapMode: Text.Wrap
-                        color: Style.fgMuted
-                        text: "Keeps its own idle time from your keyboard and mouse only, so sticks "
-                              + "and other devices that never go quiet can't keep your screens on. "
-                              + "Works only while Gremlin-Platforms is open. "
-                              + "Test now runs the whole sequence after 5 s."
-                    }
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -477,7 +540,7 @@ ApplicationWindow {
                             }
                         }
 
-                        // S9, S15: the status table (label | value Â· detail).
+                        // S9, S15: the status table (label | value · detail).
                         SectionHeading { Layout.fillWidth: true; text: "Status" }
                         GridLayout {
                             objectName: "ssmStatusGrid"
@@ -548,105 +611,16 @@ ApplicationWindow {
                         AwakeSection {
                             objectName: "ssmSectionDevices"
                             title: "Devices"
-                            description: "Devices that never go quiet and keep Windows' idle time at 0. "
-                                         + "Screen Saver Mode ignores them, and switches off the ones "
-                                         + "marked Switch off while the displays are off."
-                            buttonName: "ssmRefreshDevices"
-                            buttonText: _ssm.scanningDevices ? "Checking… (4 s)" : "Refresh Devices"
-                            buttonEnabled: !_ssm.scanningDevices
-                            onRefresh: _ssm.refreshDevices()
+                            buttonName: "ssmOpenDevices"
+                            buttonText: "Open Devices"
+                            onRefresh: _tabs.currentIndex = 1
 
-                            // The devices list (S12): empty until the first press.
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.topMargin: Style.dp(4)
-                                visible: _ssm.devices.length > 0
-                                Label { text: "Device"; color: Style.fgMuted; Layout.fillWidth: true }
-                                Label { text: "Reports / s"; color: Style.fgMuted }
-                                Label { objectName: "ssmDevicesSwitchOffHeader"; text: "Switch off"; color: Style.fgMuted }
-                            }
-                            ListView {
-                                objectName: "ssmDeviceList"
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: contentHeight
-                                interactive: false
-                                model: _ssm.devices
-                                delegate: RowLayout {
-                                    id: _devRow
-                                    required property var modelData
-                                    width: ListView.view.width
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 0
-                                        Label {
-                                            objectName: "ssmDeviceName"
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                            text: _devRow.modelData.name
-                                            color: Style.fg
-                                        }
-                                        Label {
-                                            objectName: "ssmDeviceVirtual"
-                                            Layout.fillWidth: true
-                                            visible: !!_devRow.modelData.virtual
-                                            wrapMode: Text.Wrap
-                                            text: "(virtual: never switched off)"
-                                            color: Style.fgMuted
-                                            font.pixelSize: Style.dp(12)
-                                        }
-                                    }
-                                    Label {
-                                        text: Math.round(_devRow.modelData.rate)
-                                        color: Style.fg
-                                    }
-                                    Switch {
-                                        id: _switchOff
-                                        objectName: "ssmSwitchOffSwitch"
-                                        enabled: !_devRow.modelData.virtual
-                                        // The saved choice, read again from the
-                                        // model so a toggle keeps the binding.
-                                        function reread() {
-                                            checked = !_devRow.modelData.virtual
-                                                      && _devRow.modelData.switchOff !== false
-                                        }
-                                        Component.onCompleted: reread()
-                                        onToggled: _ssm.setSwitchOff(_devRow.modelData.instanceId, checked)
-                                        Connections {
-                                            target: _devRow
-                                            function onModelDataChanged() { _switchOff.reread() }
-                                        }
-                                        Connections {
-                                            target: _ssm
-                                            function onDevicesChanged() { _switchOff.reread() }
-                                        }
-                                        Accessible.name: "Switch off " + _devRow.modelData.name
-                                    }
-                                }
-                            }
                             Label {
+                                objectName: "ssmDevicesSummary"
                                 Layout.fillWidth: true
-                                wrapMode: Text.Wrap
-                                visible: text.length > 0
-                                color: Style.fgMuted
-                                font.pixelSize: Style.dp(12)
-                                text: _ssm.devicesMessage
-                            }
-                            // S26: the helper should run and doesn't.
-                            RowLayout {
-                                Layout.fillWidth: true
-                                visible: _ssm.helperMessage.length > 0
-                                Label {
-                                    objectName: "ssmHelperMessage"
-                                    Layout.fillWidth: true
-                                    wrapMode: Text.Wrap
-                                    text: _ssm.helperMessage
-                                    color: Style.dangerText
-                                }
-                                Button {
-                                    objectName: "ssmHelperTryAgain"
-                                    text: "Try again"
-                                    onClicked: _ssm.tryAgain()
-                                }
+                                elide: Text.ElideRight
+                                text: _ssm.devicesSummary
+                                color: Style.fg
                             }
                         }
 
@@ -692,6 +666,223 @@ ApplicationWindow {
 
                         Item { Layout.preferredHeight: Style.dp(10) }
                     }
+                }
+            }
+
+            // Devices (S27, S35): the remembered devices that never go quiet,
+            // one choice each; Refresh Devices never removes a row.
+            ScrollView {
+                id: _devScroll
+                objectName: "ssmDevicesPage"
+                contentWidth: availableWidth
+                clip: true
+
+                ColumnLayout {
+                    id: _devPage
+                    width: _devScroll.availableWidth
+                    spacing: Style.dp(8)
+
+                    // The columns after the name, shared by the header and the rows.
+                    readonly property real rateWidth: Style.dp(84)
+                    readonly property real autoWidth: Math.max(Style.dp(76), Math.ceil(_autoHead.implicitWidth))
+                    readonly property real manualWidth: Math.max(Style.dp(64), Math.ceil(_manualHead.implicitWidth))
+                    readonly property real removeWidth: Style.dp(84)
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Style.dp(14)
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        spacing: Style.dp(12)
+                        SectionHeading {
+                            objectName: "ssmDevicesHeading"
+                            Layout.fillWidth: true
+                            text: "Devices that never go quiet"
+                        }
+                        Button {
+                            objectName: "ssmRefreshDevices"
+                            text: _ssm.scanningDevices ? "Checking… (4 s)" : "Refresh Devices"
+                            enabled: !_ssm.scanningDevices
+                            onClicked: _ssm.refreshDevices()
+                        }
+                    }
+                    Label {
+                        objectName: "ssmDevicesDescription"
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        wrapMode: Text.Wrap
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                        text: "Automatic devices are switched off while the displays are off. "
+                              + "Manual devices stay on the list and are left alone."
+                    }
+                    RowLayout {
+                        objectName: "ssmDeviceHeader"
+                        Layout.fillWidth: true
+                        Layout.topMargin: Style.dp(4)
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        spacing: Style.dp(8)
+                        visible: _ssm.devices.length > 0
+                        Label {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: "Device"
+                            color: Style.fgMuted
+                            font.pixelSize: Style.dp(12)
+                        }
+                        Label {
+                            // Two lines, so the name has the room.
+                            wrapMode: Text.Wrap
+                            Layout.preferredWidth: _devPage.rateWidth
+                            horizontalAlignment: Text.AlignHCenter
+                            text: "Reports per second"
+                            color: Style.fgMuted
+                            font.pixelSize: Style.dp(12)
+                        }
+                        Label {
+                            id: _autoHead
+                            Layout.preferredWidth: _devPage.autoWidth
+                            horizontalAlignment: Text.AlignHCenter
+                            text: "Automatic"
+                            color: Style.fgMuted
+                            font.pixelSize: Style.dp(12)
+                        }
+                        Label {
+                            id: _manualHead
+                            Layout.preferredWidth: _devPage.manualWidth
+                            horizontalAlignment: Text.AlignHCenter
+                            text: "Manual"
+                            color: Style.fgMuted
+                            font.pixelSize: Style.dp(12)
+                        }
+                        Label {
+                            Layout.preferredWidth: _devPage.removeWidth
+                            horizontalAlignment: Text.AlignHCenter
+                            text: "Remove"
+                            color: Style.fgMuted
+                            font.pixelSize: Style.dp(12)
+                        }
+                    }
+                    ListView {
+                        objectName: "ssmDeviceList"
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        Layout.preferredHeight: contentHeight
+                        interactive: false
+                        spacing: Style.dp(4)
+                        model: _ssm.devices
+                        delegate: RowLayout {
+                            id: _devRow
+                            objectName: "ssmDeviceRow"
+                            required property var modelData
+                            readonly property bool locked: !!modelData.virtual
+                            width: ListView.view.width
+                            spacing: Style.dp(8)
+                            ButtonGroup { id: _choice }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                spacing: 0
+                                Label {
+                                    objectName: "ssmDeviceName"
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                    text: _devRow.modelData.name
+                                    color: Style.fg
+                                    HoverHandler { id: _nameHover }
+                                    ToolTip.visible: _nameHover.hovered && truncated
+                                    ToolTip.text: text
+                                }
+                                Label {
+                                    objectName: "ssmDeviceFound"
+                                    Layout.fillWidth: true
+                                    visible: text.length > 0
+                                    wrapMode: Text.Wrap
+                                    text: _devRow.modelData.foundText || ""
+                                    color: Style.warn
+                                    font.pixelSize: Style.dp(12)
+                                }
+                                Label {
+                                    objectName: "ssmDeviceVirtual"
+                                    Layout.fillWidth: true
+                                    visible: _devRow.locked
+                                    wrapMode: Text.Wrap
+                                    text: "(virtual: never switched off)"
+                                    color: Style.fgMuted
+                                    font.pixelSize: Style.dp(12)
+                                }
+                            }
+                            Label {
+                                objectName: "ssmDeviceRate"
+                                Layout.preferredWidth: _devPage.rateWidth
+                                horizontalAlignment: Text.AlignHCenter
+                                // Not found: no rate (S27).
+                                text: _devRow.modelData.found ? Math.round(_devRow.modelData.rate) : ""
+                                color: Style.fg
+                            }
+                            ChoiceCell {
+                                Layout.preferredWidth: _devPage.autoWidth
+                                choiceName: "ssmDeviceAutomatic"
+                                choice: "automatic"
+                                word: "Automatic"
+                                device: _devRow.modelData
+                                group: _choice
+                                onPicked: _ssm.setDeviceChoice(_devRow.modelData.key, choice)
+                            }
+                            ChoiceCell {
+                                Layout.preferredWidth: _devPage.manualWidth
+                                choiceName: "ssmDeviceManual"
+                                choice: "manual"
+                                word: "Manual"
+                                device: _devRow.modelData
+                                group: _choice
+                                onPicked: _ssm.setDeviceChoice(_devRow.modelData.key, choice)
+                            }
+                            Button {
+                                objectName: "ssmDeviceRemove"
+                                Layout.preferredWidth: _devPage.removeWidth
+                                text: "Remove"
+                                Accessible.name: "Remove " + _devRow.modelData.name
+                                onClicked: _ssm.removeDevice(_devRow.modelData.key)
+                            }
+                        }
+                    }
+                    Label {
+                        objectName: "ssmDevicesMessage"
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        wrapMode: Text.Wrap
+                        visible: text.length > 0
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                        text: _ssm.devicesMessage
+                    }
+                    // S26: the helper should run and doesn't.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        visible: _ssm.helperMessage.length > 0
+                        Label {
+                            objectName: "ssmHelperMessage"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: _ssm.helperMessage
+                            color: Style.dangerText
+                        }
+                        Button {
+                            objectName: "ssmHelperTryAgain"
+                            text: "Try again"
+                            onClicked: _ssm.tryAgain()
+                        }
+                    }
+
+                    Item { Layout.preferredHeight: Style.dp(10) }
                 }
             }
 
@@ -770,7 +961,9 @@ ApplicationWindow {
                                         spacing: Style.dp(6)
                                         Label {
                                             objectName: "ssmWakeName"
-                                            Layout.maximumWidth: parent.width - _wakeKinds.implicitWidth - Style.dp(6)
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 0
+                                            Layout.maximumWidth: Math.ceil(implicitWidth)
                                             elide: Text.ElideMiddle
                                             text: _wakeRow.modelData.name
                                             color: _wakeRow.modelData.connected ? Style.fg : Style.fgMuted

@@ -16,9 +16,8 @@ def test_the_tab_row_and_its_pins_are_removed() -> None:
                 "qml/JGTabButton.qml", "gremlin/ui/vjoy_status.py"):
         assert not (ROOT / rel).exists(), rel
     main = (ROOT / "qml/Main.qml").read_text(encoding="utf-8")
-    # (_profileSettingsButton is now the toolbar's Profile Settings button,
-    # 01 S58, so it is no longer checked here.)
     for name in ("DeviceList {", "_deviceList", "nextTab", "_scriptButton",
+                 "_scriptsButton", "_profileSettingsButton",
                  "DeviceTabBar"):
         assert name not in main, name
     start = (ROOT / "joystick_gremlin.py").read_text(encoding="utf-8")

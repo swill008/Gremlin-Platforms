@@ -32,7 +32,7 @@ import ssm_ui_fakes  # noqa: E402
 
 manager, calls = ssm_ui_fakes.install()
 
-from PySide6 import QtCore, QtGui, QtQml, QtQuick  # noqa: E402
+from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 
 import gremlin.ui.device_names  # noqa: E402, F401  (Gremlin.Device)
 import gremlin.ui.screen_saver_mode_model as ssm_model  # noqa: E402
@@ -40,7 +40,18 @@ import gremlin.ui.window_placement  # noqa: E402, F401  (Gremlin.UI)
 from gremlin.config import Configuration  # noqa: E402
 
 app = QtGui.QGuiApplication([sys.argv[0]])
+
+
+class Backend(QtCore.QObject):
+    """Style's sizes come from here; without it they are all 0."""
+
+    uiScaleChanged = QtCore.Signal()
+    uiScale = QtCore.Property(int, fget=lambda self: 100, notify=uiScaleChanged)
+
+
 engine = QtQml.QQmlEngine()
+backend = Backend()
+engine.rootContext().setContextProperty("backend", backend)
 engine.addImportPath(str(ROOT / "theme"))
 QtQml.qmlRegisterSingletonType(
     QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "Style.qml")),
@@ -55,6 +66,12 @@ win = component.create()
 if win is None:
     print(json.dumps({"errors": [e.toString() for e in component.errors()]}))
     smoke_exit(1)
+warnings: list[str] = []
+QtCore.qInstallMessageHandler(
+    lambda kind, _ctx, text: (
+        None if kind == QtCore.QtMsgType.QtDebugMsg else warnings.append(text)
+    )
+)
 win.show()
 context = QtQml.QQmlEngine.contextForObject(win)
 
@@ -384,7 +401,14 @@ if ev("ssm.testCountdown !== undefined"):
         "cfg": cfg("devices-wait-s"),
     }
 
-# Refresh Devices (S12): busy text while it reads, then the list.
+tabs = child("ssmTabs")
+out["summaryEmpty"] = str(prop("ssmDevicesSummary", "text"))
+emit("ssmOpenDevices", "clicked")  # S12: Open Devices opens the Devices tab
+settle()
+out["openDevices"] = int(tabs.property("currentIndex"))
+out["detectionOnDevices"] = list(manager.detection)
+
+# Refresh Devices (S27): busy text while it reads, then the list.
 out["devicesBefore"] = int(prop("ssmDeviceList", "count"))
 calls.gate = threading.Event()
 emit("ssmRefreshDevices", "clicked")
@@ -403,15 +427,20 @@ out["devices"] = {
         str(d["name"]) + " · " + str(round(d["rate"])) for d in ev("_ssm.devices")
     ],
     "text": str(prop("ssmRefreshDevices", "text")),
+    "summary": str(prop("ssmDevicesSummary", "text")),
+    "message": str(prop("ssmDevicesMessage", "text")),
+    "modelMessage": str(ev("_ssm.devicesMessage")),
 }
 calls.gate = None
+tabs.setProperty("currentIndex", 0)
+settle()
 
 
 # The three sections (S12, S13, S17), stacked, each with its own button.
 def section_of(obj: QtQuick.QQuickItem) -> str:
     item = obj
     while item is not None:
-        if item.objectName().startswith("ssmSection"):
+        if item.objectName().startswith(("ssmSection", "ssmDevicesPage")):
             return item.objectName()
         item = item.parentItem()
     return ""
@@ -444,6 +473,8 @@ out["sections"] = {
     "homes": {
         n: section_of(win.findChild(QtQuick.QQuickItem, n))
         for n in (
+            "ssmOpenDevices",
+            "ssmDevicesSummary",
             "ssmRefreshDevices",
             "ssmRefreshPrograms",
             "ssmRefreshSystem",
@@ -568,11 +599,12 @@ disabler.answer = (False, "The confirmation was declined.")
 ev("_ssm.setEnabled(true); _ssm.setOffOn(true); true")
 starts = disabler.starts
 ev("_ssm.tryAgain(); true")
+tabs.setProperty("currentIndex", 1)
 settle()
 helper_label = win.findChild(QtQuick.QQuickItem, "ssmHelperMessage")
 helper_button = win.findChild(QtQuick.QQuickItem, "ssmHelperTryAgain")
 out["helper"] = {
-    "saved": [d.get("instance_id") for d in (cfg("devices") or [])],
+    "saved": [d.get("instance_ids") for d in (cfg("devices") or [])],
     "text": str(prop("ssmHelperMessage", "text")),
     "visible": bool(helper_label.isVisible()),
     "buttonText": str(prop("ssmHelperTryAgain", "text")),
@@ -587,15 +619,41 @@ out["helperAfter"] = {
     "visible": bool(helper_label.isVisible()),
     "starts": disabler.starts - starts,
 }
+tabs.setProperty("currentIndex", 0)
+settle()
 
-# Wake PC (S28-S31): two tabs; the list renders on its own tab, read when
+# Wake PC (S28-S31): three tabs; the list renders on its own tab, read when
 # it opens; a key press ticks a device; a tick by hand; leaving the tab
 # stops the detection.
-tabs = child("ssmTabs")
+TABS = ("ssmTabSettings", "ssmTabDevices", "ssmTabWake")
+HEADER = ("ssmEnabled", "ssmTestNow", "ssmDescription")
 
 
 def tab_texts() -> list[str]:
-    return [str(prop(n, "text")) for n in ("ssmTabSettings", "ssmTabWake")]
+    return [str(prop(n, "text")) for n in TABS]
+
+
+def layout() -> dict:
+    """S28: the header and the tab bar as laid out now."""
+    root = win.contentItem()
+
+    def box(name: str) -> list[int]:
+        item = win.findChild(QtQuick.QQuickItem, name)
+        at = item.mapToItem(root, QtCore.QPointF(0, 0))
+        return [round(v) for v in (at.x(), at.y(), item.width(), item.height())]
+
+    return {
+        "width": round(root.width()),
+        "header": {n: [item_shown(n), *box(n)] for n in HEADER},
+        "bar": box("ssmTabs"),
+        "tabs": [box(n) for n in TABS],
+        "fills": [
+            child(n).property("background").property("color").name() for n in TABS
+        ],
+        "sizes": [
+            child(n).property("contentItem").property("font").pixelSize() for n in TABS
+        ],
+    }
 
 
 def item_shown(name: str) -> bool:
@@ -633,7 +691,7 @@ def wake_ticks() -> list[QtQuick.QQuickItem]:
 wake: dict[str, object] = {
     "tabs": tab_texts(),
     "startIndex": int(tabs.property("currentIndex")),
-    "settingsShown": item_shown("ssmEnabled"),
+    "settingsShown": item_shown("ssmStatusGrid"),
     "wakeShown": item_shown("ssmWakeList"),
     "settingsHome": [
         n
@@ -641,12 +699,23 @@ wake: dict[str, object] = {
         if win.findChild(QtQuick.QQuickItem, n) is not None
     ],
 }
+layouts = []
+for index in range(3):
+    tabs.setProperty("currentIndex", index)
+    settle()
+    layouts.append(layout())
+    if index == 1:
+        wake["detectionOnDevices"] = list(manager.detection)
+out["layouts"] = layouts
+tabs.setProperty("currentIndex", 0)
+settle()
+manager.detection.clear()
 reads = len(calls.input_reads)
-tabs.setProperty("currentIndex", 1)
+tabs.setProperty("currentIndex", 2)
 until(lambda: int(prop("ssmWakeList", "count")) == 2)
 settle()
 wake["openDetection"] = list(manager.detection)
-wake["wakeVisible"] = item_shown("ssmWakeList") and not item_shown("ssmEnabled")
+wake["wakeVisible"] = item_shown("ssmWakeList") and not item_shown("ssmStatusGrid")
 wake["reads"] = len(calls.input_reads) - reads
 wake["heading"] = str(prop("ssmWakeHeading", "text"))
 wake["programsNote"] = str(prop("ssmWakeProgramsNote", "text"))
@@ -674,72 +743,140 @@ tabs.setProperty("currentIndex", 0)
 settle()
 wake["back"] = {
     "detection": list(manager.detection),
-    "settingsShown": item_shown("ssmEnabled"),
+    "settingsShown": item_shown("ssmStatusGrid"),
 }
 out["wake"] = wake
 
-# Switch off per device (S12, S34): a switch per row, on at first; a virtual
-# row's is off and disabled with its note; toggling asks the model.
-calls.devices.append(
-    ssm_ui_fakes.DeviceRate("vJoy Device", "ROOT/HIDCLASS/0001", 1, 4, 20.0)
-)
+# The Devices tab (S27, S35): one choice a row; a virtual row is locked on
+# Manual with its note; a device not found keeps its row, with no rate; a long
+# name elides; Remove forgets the row.
+LONG = "A very long device name that goes on " * 6
+VJOY = "vJoy Device"
+PD = "PD200X Microphone (buttons)"
+VKB = "VKBSim NXT SEM THQ FSM.GA"
+calls.devices.append(ssm_ui_fakes.DeviceRate(VJOY, "ROOT\\HIDCLASS\\0001", 1, 4, 20.0))
+calls.devices.append(ssm_ui_fakes.DeviceRate(LONG, "HID\\VID_5&PID_6\\1", 1, 4, 5.0))
+tabs.setProperty("currentIndex", 1)
+win.setProperty("width", win.property("minimumWidth"))
+win.setProperty("height", win.property("minimumHeight"))
 emit("ssmRefreshDevices", "clicked")
-until(lambda: int(prop("ssmDeviceList", "count")) == 3)
+until(lambda: int(prop("ssmDeviceList", "count")) == 4)
 settle()
 
 
-def device_view() -> dict:
+def device_rows() -> dict[str, dict]:
+    """The rows as shown, by name."""
     view = win.findChild(QtQuick.QQuickItem, "ssmDeviceList")
-    content = view.property("contentItem")
 
-    def ordered(name: str) -> list:
-        return sorted(
-            _items_named(content, name),
-            key=lambda o: float(o.mapToItem(view, QtCore.QPointF(0, 0)).y()),
-        )
+    def view_of(row: QtQuick.QQuickItem) -> dict:
+        def one(name: str) -> QtQuick.QQuickItem:
+            return _items_named(row, name)[0]
 
-    return {
-        "switches": [
-            {
-                "checked": bool(o.property("checked")),
-                "enabled": bool(o.property("enabled")),
-                "name": str(o.property("Accessible.name") or ""),
-            }
-            for o in ordered("ssmSwitchOffSwitch")
-        ],
-        "notes": [
-            (str(o.property("text")), bool(o.property("visible")))
-            for o in ordered("ssmDeviceVirtual")
-        ],
-        "objs": ordered("ssmSwitchOffSwitch"),
-    }
+        found = one("ssmDeviceFound")
+        remove = one("ssmDeviceRemove")
+        return {
+            "name": str(one("ssmDeviceName").property("text")),
+            "truncated": bool(one("ssmDeviceName").property("truncated")),
+            "rate": str(one("ssmDeviceRate").property("text")),
+            "automatic": bool(one("ssmDeviceAutomatic").property("checked")),
+            "manual": bool(one("ssmDeviceManual").property("checked")),
+            "enabled": [
+                bool(one(n).property("enabled"))
+                for n in ("ssmDeviceAutomatic", "ssmDeviceManual")
+            ],
+            "found": str(found.property("text")),
+            "foundVisible": found.isVisible(),
+            "foundColor": found.property("color").name(),
+            "virtualNote": one("ssmDeviceVirtual").isVisible(),
+            "virtualText": str(one("ssmDeviceVirtual").property("text")),
+            "right": round(
+                remove.mapToItem(
+                    win.contentItem(), QtCore.QPointF(remove.width(), 0)
+                ).x()
+            ),
+        }
+
+    rows = [view_of(r) for r in _items_named(view, "ssmDeviceRow")]
+    return {r["name"]: r for r in rows}
 
 
-first = device_view()
-header = child("ssmDevicesSwitchOffHeader")
-out["switchOff"] = {
-    "header": str(header.property("text")),
-    "headerVisible": bool(header.property("visible")),
-    "before": {k: v for k, v in first.items() if k != "objs"},
-    "rows": [
-        (str(d["name"]), bool(d["switchOff"]), bool(d["virtual"]))
-        for d in ev("_ssm.devices")
-    ],
+def part(device: str, name: str) -> QtQuick.QQuickItem:
+    view = win.findChild(QtQuick.QQuickItem, "ssmDeviceList")
+    for row in _items_named(view, "ssmDeviceRow"):
+        if _items_named(row, "ssmDeviceName")[0].property("text") == device:
+            return _items_named(row, name)[0]
+    raise AssertionError(device)
+
+
+def click(item: QtQuick.QQuickItem) -> None:
+    """A real mouse click in the middle of the item."""
+    at = item.mapToScene(QtCore.QPointF(item.width() / 2, item.height() / 2))
+    QtTest.QTest.mouseClick(
+        win,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+        at.toPoint(),
+    )
+    settle()
+
+
+def stored() -> dict[str, str]:
+    return {d["name"]: d["choice"] for d in (cfg("devices") or [])}
+
+
+def scroll_to(item: QtQuick.QQuickItem) -> None:
+    """Scrolls the Devices page so the item is in the window's middle."""
+    flick = item
+    while flick is not None and flick.property("contentY") is None:
+        flick = flick.parentItem()
+    # The list's own flickable doesn't scroll: the page's does.
+    page = flick.parentItem()
+    while page is not None and page.property("contentY") is None:
+        page = page.parentItem()
+    top = max(0.0, page.property("contentHeight") - page.height())
+    y = item.mapToItem(page.property("contentItem"), QtCore.QPointF(0, 0)).y()
+    page.setProperty("contentY", min(top, max(0.0, y - page.height() / 2)))
+    settle(50)
+
+
+def press(device: str, name: str) -> None:
+    scroll_to(part(device, name))
+    click(part(device, name))
+
+
+dev: dict[str, object] = {
+    "width": round(win.contentItem().width()),
+    "warnColor": ev("Style.warn").name(),
+    "heading": str(prop("ssmDevicesHeading", "text")),
+    "description": str(prop("ssmDevicesDescription", "text")),
+    "header": section_texts("ssmDeviceHeader"),
+    "start": device_rows(),
 }
-pick = [bool(d["virtual"]) for d in ev("_ssm.devices")].index(False)
-out["switchOff"]["picked"] = pick
-sw0 = first["objs"][pick]
-sw0.setProperty("checked", False)
-QtCore.QMetaObject.invokeMethod(sw0, "toggled")
+press(PD, "ssmDeviceManual")
+dev["manual"] = {"rows": device_rows(), "stored": stored()}
+dev["manualSummary"] = str(prop("ssmDevicesSummary", "text"))
+press(PD, "ssmDeviceAutomatic")
+dev["automatic"] = {"rows": device_rows(), "stored": stored()}
+press(PD, "ssmDeviceManual")
+press(VJOY, "ssmDeviceAutomatic")
+dev["locked"] = {"rows": device_rows(), "stored": stored()}
+
+# Not found by the next Refresh Devices: the row and its choice stay.
+calls.devices[:] = [d for d in calls.devices if d.name != PD]
+emit("ssmRefreshDevices", "clicked")
+until(lambda: "Not found" in str(device_rows()[PD]["found"]))
 settle()
-after = device_view()
-out["switchOff"]["after"] = {k: v for k, v in after.items() if k != "objs"}
-out["switchOff"]["afterRows"] = [
-    (str(d["name"]), bool(d["switchOff"])) for d in ev("_ssm.devices")
-]
+dev["gone"] = {"rows": device_rows(), "stored": stored()}
+dev["goneSummary"] = str(prop("ssmDevicesSummary", "text"))
+dev["goneMessage"] = str(prop("ssmDevicesMessage", "text"))
+
+press(PD, "ssmDeviceRemove")
+dev["removed"] = {"rows": device_rows(), "stored": stored()}
+out["devicesTab"] = dev
 
 win.close()
 settle()
+out["warnings"] = warnings
 out["closed"] = not bool(win.property("visible"))
 print(json.dumps(out), flush=True)
 smoke_exit(0)

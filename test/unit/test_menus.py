@@ -70,6 +70,15 @@ def test_every_main_command_is_in_the_menu_bar() -> None:
     assert ids and [i for i in ids if i not in in_menus] == []
 
 
+def test_profile_settings_and_scripts_have_no_commands() -> None:
+    # 01 S65, 04 S96: they are pages of Options now.
+    for rel in ("qml/main_commands.js", "qml/help_links.js", "qml/Main.qml"):
+        text = (_ROOT / rel).read_text(encoding="utf-8")
+        for name in ("tools.profileSettings", "tools.scripts",
+                     "openProfileSettings", "openScripts"):
+            assert name not in text, (rel, name)
+
+
 def test_dropdown_rows_use_the_menu_look() -> None:
     # A ComboBox with its own rows draws them with the shared row look.
     opener = re.compile(r"(?<![\w.])\w*ComboBox\s*\{")

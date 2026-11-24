@@ -4,8 +4,8 @@
 
 """The program really uses scripts: every example script in
 test/fixtures/scripts (its manifest scripts.json) is added through the
-Scripts window (04 S96) the way Add Script adds it (S84), shows its row or
-why it can't load (S29), is configured through the window's variables pane
+Scripts page of Options (04 S96) the way Add Script adds it (S84), shows its row or
+why it can't load (S29), is configured through the page's variables pane
 (S85), is saved with the profile and comes back on reload (S86), and runs:
 a stick button and axis reach the stand-in vJoy through the output module
 (S87, S89), a script changes the mode, a periodic callback ticks only while
@@ -66,14 +66,25 @@ def story(j: Journey) -> None:  # noqa: PLR0915
     # A second mode for mode_switch's "Switch to".
     j.profile.modes.add_mode("Second")
 
-    # 04 S96: Tools › Scripts… opens the Scripts window.
-    j.ev('Commands.trigger("tools.scripts")')
-    window = j.window("Scripts")
-    out["window-object"] = window.objectName()
-    manager = j.wait_until(lambda: j.item(window, "scriptManager"), "scriptManager")
+    # 04 S96: the Scripts page of Options.
+    j.ev('Commands.trigger("tools.options")')
+    window = j.window("Options")
+    j.click(
+        j.wait_until(lambda: j.item(window, "optionsSection:scripts"), "Scripts row")
+    )
+    out["strip-name"] = j.wait_until(
+        lambda: (
+            (it := j.item(window, "optionsProfileName"))
+            and it.isVisible()
+            and it.property("text")
+        ),
+        "the profile strip",
+    )
+    out["window-title"] = j.backend.windowTitle
+    manager = j.wait_until(lambda: j.item(window, "scriptManager"), "the Scripts page")
     model = j.ev("scriptListModel", manager)
 
-    # S84: every manifest script through the window's own model (Add Script's
+    # S84: every manifest script through the page's own model (Add Script's
     # path), two_instances twice.
     for entry in ENTRIES:
         url = QtCore.QUrl.fromLocalFile(str(folder / entry["file"])).toString()
@@ -236,6 +247,11 @@ def story(j: Journey) -> None:  # noqa: PLR0915
         30,
     )
     out["values-after-reload"] = values()
+    out["strip-after-reload"] = j.await_value(
+        lambda: j.item(window, "optionsProfileName").property("text"),
+        j.backend.windowTitle,
+    )
+    out["window-title-after-reload"] = j.backend.windowTitle
     j.wait_until(lambda: len(rows()) == len(ENTRIES) + 1, "rows after reload", 15)
     j.settle()
     out["rows-after-reload"] = {
@@ -347,11 +363,11 @@ def _entries(loads: bool) -> list[dict]:
 
 
 def test_every_script_is_added_and_shows_its_row(run: dict) -> None:
-    assert step(run, "window-object") == "scriptsWindow"
+    assert step(run, "strip-name") == step(run, "window-title")
     rows = step(run, "rows")
     assert step(run, "empty-shown") is False
     for entry in ENTRIES:
-        assert rows[entry["file"]], f"{entry['file']}: no row in the Scripts window"
+        assert rows[entry["file"]], f"{entry['file']}: no row on the Scripts page"
         assert rows[entry["file"]]["starting"] is False, entry["file"]
     # S84: one file twice, Instance 1 and Instance 2.
     assert step(run, "two-names") == ["Instance 1", "Instance 2"]
@@ -416,7 +432,9 @@ def test_s86_scripts_and_values_come_back_after_save_and_reload(run: dict) -> No
         assert after[key]["values"] == was["values"], key
         assert after[key]["configured"] == was["configured"], key
         assert bool(after[key]["error"]) == bool(was["error"]), key
-    # The window follows the reloaded profile: every row again, same errors.
+    # The page follows the reloaded profile: its name in the strip and
+    # every row again, same errors.
+    assert step(run, "strip-after-reload") == step(run, "window-title-after-reload")
     rows = step(run, "rows-after-reload")
     for entry in ENTRIES:
         assert rows[entry["file"]], f"{entry['file']}: no row after reload"

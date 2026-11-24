@@ -373,7 +373,7 @@ function topics() {
                 + "<li>An action that sends to an output that isn't ticked sends nothing. It is kept and marked <b>(not claimed)</b>; tick the output to make it work.</li>"
                 + "<li>A module saved while the profile runs applies at once.</li>"
                 + "<li>A profile with Map to vJoy actions opens on a PC without vJoy, and keeps those actions.</li>"
-                + "<li>A vJoy device set to <b>Input</b> under <b>vJoy Behavior</b> in <b>Profile Settings</b> (its <b>vJoy</b> section) is listed with your sticks. <a href=\"open:tools.profileSettings\">Open ›</a></li>"
+                + "<li>A vJoy device set to <b>Input</b> under <b>vJoy Behavior</b> on the <b>vJoy</b> page of Options is listed with your sticks. <a href=\"show:optionpage/vjoy\">Show me ›</a></li>"
                 + "<li>Such a device is not offered under <b>vJoy Initial Values</b>.</li>"
                 + "</ul>",
             related: ["home-devices-input-modules", "home-devices-xbox-output", "home-devices-vjoy-left-out", "getting-started-nothing-reaches-vjoy"]

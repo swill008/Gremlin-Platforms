@@ -122,16 +122,8 @@ function commandList() {
         { id: "tools.history", text: "History", group: "Tools", window: true,
           keywords: "undo restore versions changes saved",
           run: function() { openToolWith("DialogHistory.qml", { filter: "" }) } },
-        { id: "tools.options", text: "Options", group: "Tools", window: true, keywords: "settings preferences",
+        { id: "tools.options", text: "Options", group: "Tools", window: true, keywords: "settings preferences profile macro startup mode vjoy scripts",
           run: function() { openTool("DialogOptions.qml") } },
-        // The profile's own settings and its scripts (04 S96): the Profile
-        // Settings window (at General) and the Scripts window.
-        { id: "tools.profileSettings", text: "Profile Settings…", group: "Tools", window: true,
-          keywords: "profile startup mode macro delay vjoy initial values behavior",
-          run: function() { openProfileSettings("general") } },
-        { id: "tools.scripts", text: "Scripts…", group: "Tools", window: true,
-          keywords: "profile scripts python plugins variables",
-          run: function() { openScripts() } },
 
         // Debug
         { id: "debug.liveLog", text: "Live Log Reader", group: "Debug", window: true,

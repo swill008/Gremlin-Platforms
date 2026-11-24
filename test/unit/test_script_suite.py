@@ -4,9 +4,9 @@
 
 """The dummy script suite (test/fixtures/scripts, listed in scripts.json).
 
-Each script is added to a profile the way the Scripts window adds it, and
+Each script is added to a profile the way the Scripts page of Options adds it, and
 checked against its manifest entry: it loads (or fails with the reason the
-Scripts window shows), its variables have the listed types, and whether it
+Scripts page of Options shows), its variables have the listed types, and whether it
 counts as configured. The behaviour scripts then run in a real CodeRunner
 (04 S87: only configured scripts, reloaded fresh at Run), with drivers,
 devices, sound and network as stand-ins: vJoy writes are recorded at
@@ -118,7 +118,7 @@ def _wait_for(check: Callable[[], bool], seconds: float = 5.0) -> bool:
 
 
 def _add(profile: Profile, file: str) -> us.Script:
-    """Adds the file as the Scripts window does; the instance just added."""
+    """Adds the file as the Scripts page of Options does; the instance just added."""
     before = set(map(id, profile.scripts.scripts))
     profile.scripts.add_script(SUITE / file)
     return next(s for s in profile.scripts.scripts if id(s) not in before)
@@ -161,7 +161,7 @@ def test_script_loads_as_the_manifest_says(profile: Profile, file: str) -> None:
         assert shown == entry["variables"]
         assert script.is_configured is entry["configured_when_added"]
     else:
-        # S29: the reason shown on the Scripts window, and no variables.
+        # S29: the reason shown on the Scripts page of Options, and no variables.
         assert entry["expected_error_contains"] in script.load_error
         assert script.variables == {}
         assert script.retry() is False  # still broken: Run skips it

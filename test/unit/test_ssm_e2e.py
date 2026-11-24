@@ -109,6 +109,8 @@ W: dict[str, Any] = {
 }
 _VKB = r"HID\VID_231D&PID_0200"
 _PD = r"HID\VID_352F&PID_0100"
+_VKB_NAME = "VKBSim NXT SEM THQ FSM.GA"
+_PD_NAME = "PD200X Microphone (buttons)"
 _HELPER_TEXT = "Devices can't be disabled: the helper isn't running"
 NOW = [5000.0]
 
@@ -246,6 +248,12 @@ def _install_scan_fakes() -> None:
                 62.0,
             ),
         ]
+
+    # S21, S43: the devices connected at the power-off, never Windows' own.
+    scan_mod.present = lambda api=None: [
+        scan_mod.PresentDevice(i, "", "") for i in (_VKB, _PD)
+    ]
+    scan_mod.device_name = lambda device, api=None: ""
 
     def list_requests(runner: Any = None) -> Any:  # noqa: ANN401
         W["request_lists"] += 1
@@ -490,8 +498,25 @@ def _wake_tab(j: Journey, w: Any, open_: bool) -> None:  # noqa: ANN401
     """The user picks the Wake PC tab (open_) or the Settings tab."""
     tabs = j.item(w, "ssmTabs")
     assert tabs is not None, "no ssmTabs"
-    tabs.setProperty("currentIndex", 1 if open_ else 0)
+    tabs.setProperty("currentIndex", 2 if open_ else 0)
     j.settle()
+
+
+def _devices_tab(j: Journey, w: Any, open_: bool) -> None:  # noqa: ANN401
+    """The user picks the Devices tab (open_) or the Settings tab."""
+    j.item(w, "ssmTabs").setProperty("currentIndex", 1 if open_ else 0)
+    j.settle()
+
+
+def _device_part(j: Journey, w: Any, device: str, name: str) -> Any:  # noqa: ANN401
+    """A part of a device's row on the Devices tab."""
+    for row in _walk_list(j, j.item(w, "ssmDeviceList")):
+        if row.objectName() != "ssmDeviceRow":
+            continue
+        parts = {i.objectName(): i for i in j.walk(row)}
+        if str(parts["ssmDeviceName"].property("text")) == device:
+            return parts[name]
+    return None
 
 
 def _wake_texts(j: Journey, w: Any) -> str:  # noqa: ANN401
@@ -564,6 +589,8 @@ def story_first(j: Journey) -> None:
             "ssmStatusGrid",
             "ssmTestNow",
             "ssmDevicesWait",
+            "ssmOpenDevices",
+            "ssmDevicesSummary",
             "ssmRefreshDevices",
             "ssmRefreshPrograms",
             "ssmDeviceList",
@@ -638,7 +665,7 @@ def story_first(j: Journey) -> None:
     def s28_s30() -> None:
         tabs = [
             n
-            for n in ("ssmTabs", "ssmTabSettings", "ssmTabWake")
+            for n in ("ssmTabs", "ssmTabSettings", "ssmTabDevices", "ssmTabWake")
             if j.item(w, n) is None
         ]
         out["s28MissingTabs"] = tabs
@@ -1133,6 +1160,10 @@ def story_first(j: Journey) -> None:
     def s12() -> None:
         devices = j.item(w, "ssmDeviceList")
         out["s12EmptyAtFirst"] = [int(devices.property("count") or 0), W["scans"]]
+        out["s12SummaryEmpty"] = _text(j, w, "ssmDevicesSummary")
+        j.click(j.item(w, "ssmOpenDevices"))
+        out["s12Tab"] = int(j.item(w, "ssmTabs").property("currentIndex"))
+        j.settle()
         j.click(j.item(w, "ssmRefreshDevices"))
         out["s12Count"] = j.await_value(
             lambda: int(devices.property("count") or 0), 2, timeout=10
@@ -1146,9 +1177,11 @@ def story_first(j: Journey) -> None:
         ]
         out["s12Scans"] = W["scans"]
         out["s12Description"] = any(
-            "Devices that never go quiet and keep Windows' idle time at 0" in t
+            "Automatic devices are switched off while the displays are off." in t
             for t in _texts(j, w)
         )
+        _devices_tab(j, w, False)
+        out["s12Summary"] = _text(j, w, "ssmDevicesSummary")
 
     _section(j, "s12", s12)
 
@@ -1339,6 +1372,7 @@ def story_first(j: Journey) -> None:
         _idle()
         out["s23Enabled"] = list(W["enable_requests"])
         out["s23Journal"] = {i: e.get("state") for i, e in dd.journal().entries.items()}
+        _devices_tab(j, w, True)
         # S26: refused: said, not asked again until Try again.
         dd.stop_helper()
         W["helper_answer"] = [False, ""]
@@ -1387,6 +1421,44 @@ def story_first(j: Journey) -> None:
         W["screen_saver_path"] = "C:\\Windows\\System32\\Mystify.scr"
 
     _section(j, "s21", s21_s26)
+
+    def s35() -> None:
+        # Manual: on the list, left alone at the power-off (S35, S21).
+        W["screen_saver_path"] = ""
+        _flip(j, _device_part(j, w, _PD_NAME, "ssmDeviceManual"), True)
+        out["s35Stored"] = j.await_value(
+            lambda: {d["name"]: d["choice"] for d in _cfg("devices")},
+            {_VKB_NAME: "automatic", _PD_NAME: "manual"},
+        )
+        W["disabled"] = []
+        _at(202000.0)
+        _input(j)
+        _mgr().tick()
+        _at(202300.0)
+        _mgr().tick()
+        _idle()
+        _at(202301.0)
+        _mgr().tick()
+        out["s35Disabled"] = list(W["disabled"])
+        _at(202310.0)
+        _input(j)
+        _mgr().tick()
+        _idle()
+        # S27: Remove forgets the row; found again, it is new (Automatic).
+        j.click(_device_part(j, w, _PD_NAME, "ssmDeviceRemove"))
+        out["s27Removed"] = j.await_value(
+            lambda: [d["name"] for d in _cfg("devices")], [_VKB_NAME]
+        )
+        j.click(j.item(w, "ssmRefreshDevices"))
+        out["s27FoundAgain"] = j.await_value(
+            lambda: {d["name"]: d["choice"] for d in _cfg("devices")},
+            {_VKB_NAME: "automatic", _PD_NAME: "automatic"},
+            timeout=10,
+        )
+        _devices_tab(j, w, False)
+        W["screen_saver_path"] = "C:\\Windows\\System32\\Mystify.scr"
+
+    _section(j, "s35", s35)
 
     def s10() -> None:
         _flush()
@@ -1959,6 +2031,10 @@ def test_s12_refresh_devices_lists_the_devices_that_never_go_quiet(
     assert _v(first, "s12", "s12Rows") == [True, True, True]
     assert _v(first, "s12", "s12Scans") == 1
     assert _v(first, "s12", "s12Description") is True
+    # Settings has the counts and Open Devices; the list is on its own tab.
+    assert _v(first, "s12", "s12SummaryEmpty") == "No devices yet"
+    assert _v(first, "s12", "s12Tab") == 1
+    assert _v(first, "s12", "s12Summary") == "2 automatic"
 
 
 _SAVED = [
@@ -1970,7 +2046,8 @@ _SAVED = [
 def test_s27_refresh_devices_result_is_saved(runs: list[dict]) -> None:
     first = runs[0]
     saved = _v(first, "s21", "s27Saved")
-    assert [[d["name"], d["instance_id"]] for d in saved] == _SAVED
+    assert [[d["name"], *d["instance_ids"]] for d in saved] == _SAVED
+    assert [d["choice"] for d in saved] == ["automatic", "automatic"]
     # Before the first Refresh Devices nothing is disabled.
     assert _v(first, "s20", "s20Disabled") == []
 
@@ -1997,6 +2074,22 @@ def test_s21_s23_power_off_disables_the_saved_list_and_input_enables(
     assert _v(first, "s21", "s23Enabled") == [[_VKB, _PD]]
     assert _v(first, "s21", "s23Journal") == {_VKB: "enabled", _PD: "enabled"}
     assert _v(first, "s21", "s23Arrivals") == 1
+
+
+def test_s35_a_manual_device_is_left_alone_and_s27_remove_forgets(
+    runs: list[dict],
+) -> None:
+    first = runs[0]
+    assert _v(first, "s35", "s35Stored") == {
+        _VKB_NAME: "automatic",
+        _PD_NAME: "manual",
+    }
+    assert _v(first, "s35", "s35Disabled") == [[_VKB]]
+    assert _v(first, "s35", "s27Removed") == [_VKB_NAME]
+    assert _v(first, "s35", "s27FoundAgain") == {
+        _VKB_NAME: "automatic",
+        _PD_NAME: "automatic",
+    }
 
 
 def test_s26_refused_is_said_not_asked_again_until_try_again(

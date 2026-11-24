@@ -277,11 +277,13 @@ def test_every_command_that_opens_a_window_says_so() -> None:
 def test_known_window_commands_are_flagged_and_pages_are_not() -> None:
     specs = _command_specs()
     for command_id in ("tools.options", "tools.search", "tools.deviceLibrary",
-                       "tools.configureInput", "help.about", "debug.liveLog",
-                       "tools.profileSettings", "tools.scripts"):  # 04 S96
+                       "tools.configureInput", "help.about", "debug.liveLog"):
         assert "window: true" in specs[command_id], command_id
-    # The old main-window pages are gone, with no old ids kept.
-    assert "view.settings" not in specs and "view.scripts" not in specs
+    # Profile Settings and Scripts are pages of Options (04 S96): neither the
+    # old main-window pages nor the old windows have an id.
+    for command_id in ("view.settings", "view.scripts",
+                       "tools.profileSettings", "tools.scripts"):
+        assert command_id not in specs, command_id
     for command_id in ("view.home",
                        "tools.logical", "tools.oscMonitor", "tools.inputTester",
                        "file.load", "view.palette"):

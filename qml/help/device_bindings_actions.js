@@ -567,7 +567,7 @@ function topics() {
                     "The delay ends at once when you release a Hold macro or switch a Toggle macro off. A Count macro has no delay after its last time.",
                     "Release and press again during the delay, and the macro starts again.",
                     "Map to Keyboard keys go out at once, even while an Exclusive macro is playing.",
-                    "Between steps without a <b>Pause</b>, the macro waits for <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a> <a href=\"show:toolbar/Profile Settings\">Show me ›</a>.",
+                    "Between steps without a <b>Pause</b>, the macro waits for <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a> <a href=\"show:optionpage/startup-macros\">Show me ›</a>.",
                     "If the profile doesn't set one, it uses <b>Default delay</b> in Options <a href=\"show:option/Default delay\">Show me ›</a>.",
                     "A Joystick step acts like the stick itself. It only works for controls ticked in the stick's Module Setup.",
                     "New Joystick, Keyboard, Logical Device, Mouse Button and vJoy button steps start on <b>Press</b>. A step you change to a button input or to another kind of step also starts on <b>Press</b>.",

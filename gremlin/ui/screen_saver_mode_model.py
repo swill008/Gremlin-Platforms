@@ -15,12 +15,13 @@ Button presses and every message shown go to the Screen Saver Mode trace
 the count of times Windows turned the displays back on (S6, S20) come from
 the status.
 
-S21-S27: the last Refresh Devices result is saved (S27) and loaded into the
-Devices list; the helper is started when the mode and Power off displays
-are on and that list isn't empty (S25), not again after a refusal until
-Try again (S26); the core's device hooks disable the saved devices before
-the power-off and re-enable them at the first input (S21, S23), and a
-device plugged in again retries (device_disable.DeviceDisabler).
+S21-S27: every device Refresh Devices ever found stays in the saved Devices
+list until Remove (S27), each Automatic or Manual (S35) and recognised by
+device_key (S43); the helper is started when the mode and Power off displays
+are on and a row is Automatic (S25), not again after a refusal until
+Try again (S26); the core's device hooks disable the Automatic devices
+connected at the power-off and re-enable them at the first input (S21, S23),
+and a device plugged in again retries (device_disable.DeviceDisabler).
 
 S28-S32 (Wake PC): the saved Wake PC list (WAKE_PC) holds the touched
 keyboards and mice; only the ticked ones' input counts (handed to the core
@@ -35,12 +36,15 @@ import logging
 import re
 import time
 import types
+from collections.abc import Iterable
+from datetime import datetime
 from typing import Any, Callable
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import clock, config
+from gremlin.device_key import device_key, device_numbers, has_numbers
 from gremlin.signal import signal
 from gremlin.types import PropertyType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
@@ -61,8 +65,11 @@ DEVICES_WAIT = "devices-wait-s"
 DEVICES_WAIT_DEFAULT = 10
 DEVICES_WAIT_MIN = 1
 DEVICES_WAIT_MAX = 60
-# S27: the last Refresh Devices result, kept across restarts.
+# S27: the remembered Devices list, kept across restarts.
 DEVICES = "devices"
+# S35: a row's choice.
+AUTOMATIC = "automatic"
+MANUAL = "manual"
 # S28: the Wake PC list: {"id", "name", "kinds", "ticked", "how"} per device.
 WAKE_PC = "wake-pc"
 NAMES = (
@@ -191,8 +198,8 @@ def register_options() -> None:
             DEVICES,
             PropertyType.List,
             [],
-            "Screen Saver Mode: the devices the last Refresh Devices found; "
-            "they are disabled while the displays are off.",
+            "Screen Saver Mode: the devices Refresh Devices found; the Automatic "
+            "ones are disabled while the displays are off.",
             {},
         ),
         (
@@ -352,9 +359,9 @@ def _hold_now_line() -> str:
 
 
 def snapshot_lines() -> list[str]:
-    """Every setting, the hold in effect now, the Switch off list by name,
-    the ticked Wake PC devices and the Ignore lists, one line each, for the
-    trace's state snapshot and Save Diagnostics."""
+    """Every setting, the hold in effect now, the Devices list by name with
+    each one's choice, the ticked Wake PC devices and the Ignore lists, one
+    line each, for the trace's state snapshot and Save Diagnostics."""
     lines: list[str] = []
     try:
         lines.append(f"Screen Saver Mode: {_on_off(bool(_value(ENABLED)))}")
@@ -373,9 +380,7 @@ def snapshot_lines() -> list[str]:
         lines.append(f"Wait for devices to switch off: {saved_devices_wait_s()} s")
         for row in saved_devices():
             virtual = " (virtual)" if row["virtual"] else ""
-            lines.append(
-                f"Switch off: {row['name']}{virtual}, {_on_off(bool(row['switchOff']))}"
-            )
+            lines.append(f"Devices: {row['name']}{virtual}, {row['choice']}")
         ticked = [r["name"] or r["id"] for r in saved_wake_rows() if r["ticked"]]
         lines.append("Wake PC ticked: " + (", ".join(ticked) if ticked else "none"))
         for key, label in (("programs", "Programs"), ("system", "System")):
@@ -401,7 +406,7 @@ def register_snapshot() -> None:
 
 def snapshot_changed() -> None:
     """Asks the trace to rewrite this section's lines (after a setting,
-    a Switch off, a Wake PC tick or an Ignore changed)."""
+    a device's choice, a Wake PC tick or an Ignore changed)."""
     try:
         from gremlin import trace
 
@@ -433,78 +438,191 @@ def is_virtual_device(name: str, instance_id: str) -> bool:
     )
 
 
+def _float(value: object) -> float:
+    try:
+        return float(value or 0.0)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _device_row(row: object) -> dict | None:
-    """A saved row as the Devices list shows it, None when it isn't one."""
-    if not isinstance(row, dict):
+    """A saved row, cleaned; None when it isn't one (no key)."""
+    if not isinstance(row, dict) or not row.get("key"):
         return None
     name = str(row.get("name", "") or "")
-    instance_id = str(row.get("instance_id", row.get("instanceId", "")) or "")
-    if not instance_id:
-        return None
-    try:
-        rate = float(row.get("rate", 0.0) or 0.0)
-    except (TypeError, ValueError):
-        rate = 0.0
-    virtual = bool(row.get("virtual", False)) or is_virtual_device(name, instance_id)
-    switch_off = bool(row.get("switch_off", row.get("switchOff", True)))
+    raw = row.get("instance_ids")
+    ids = [str(i) for i in raw if i] if isinstance(raw, list) else []
+    virtual = bool(row.get("virtual", False)) or any(
+        is_virtual_device(name, i) for i in ids or [""]
+    )
+    manual = virtual or row.get("choice") == MANUAL
     return {
+        "key": str(row["key"]),
         "name": name,
-        "instanceId": instance_id,
-        "rate": rate,
-        "switchOff": switch_off and not virtual,
+        "instance_ids": ids,
+        "rate": _float(row.get("rate")),
+        "choice": MANUAL if manual else AUTOMATIC,
         "virtual": virtual,
+        "last_seen": str(row.get("last_seen", "") or ""),
     }
 
 
 def saved_devices() -> list[dict]:
-    """The last Refresh Devices result, as the Devices list shows it
-    ({"name", "instanceId", "rate", "switchOff", "virtual"}); [] before the
-    first press."""
+    """The remembered devices (S27) as stored: {"key", "name",
+    "instance_ids", "rate" (0 = the last Refresh Devices didn't find it),
+    "choice", "virtual", "last_seen"}; [] before the first press."""
     raw = _value(DEVICES)
-    rows = [_device_row(r) for r in (raw if isinstance(raw, list) else [])]
-    return [r for r in rows if r is not None]
-
-
-def with_switch(rows: list[dict]) -> list[dict]:
-    """Rows from a scan with switchOff/virtual filled in: the saved choice by
-    instance id, on for a new device, always off for a virtual one."""
-    saved = {r["instanceId"]: r["switchOff"] for r in saved_devices()}
-    out = []
-    for r in rows:
-        iid = str(r.get("instanceId", ""))
-        virtual = is_virtual_device(str(r.get("name", "")), iid)
-        on = bool(r.get("switchOff", saved.get(iid, True))) and not virtual
-        out.append({**r, "switchOff": on, "virtual": virtual})
-    return out
+    out: dict[str, dict] = {}
+    for r in (_device_row(r) for r in (raw if isinstance(raw, list) else [])):
+        if r is not None:
+            out.setdefault(r["key"], r)
+    return list(out.values())
 
 
 def save_devices(rows: list[dict]) -> None:
-    """Saves a Refresh Devices result (S27): {"name", "instance_id"} per
-    device, with its rate so the list shows as it was, and its Switch off
-    choice (S12; kept by instance id across a Refresh)."""
-    stored = [
-        {
-            "name": str(r["name"]),
-            "instance_id": str(r["instanceId"]),
-            "rate": float(r.get("rate", 0.0) or 0.0),
-            "switch_off": bool(r["switchOff"]),
-            "virtual": bool(r["virtual"]),
-        }
-        for r in with_switch([r for r in rows if r.get("instanceId")])
-    ]
+    """Saves the remembered devices (S27)."""
+    stored = [r for r in (_device_row(r) for r in rows) if r is not None]
     if stored != _value(DEVICES):
         _set(DEVICES, stored)
 
 
-def _saved_pairs() -> list[tuple[str, str]]:
-    """The saved devices to switch off, as DeviceDisabler.disable takes
-    them: (name, id); the ones switched off in the list and virtual ones
-    are left out (S12, S21)."""
-    return [
-        (r["name"], r["instanceId"])
-        for r in saved_devices()
-        if r["switchOff"] and not r["virtual"]
+def merge_devices(
+    saved: list[dict],
+    found: Iterable[tuple[str, str, float]],
+    now: datetime | None = None,
+) -> list[dict]:
+    """S27, S43: the remembered rows after a Refresh Devices that found
+    (name, instance id, rate). New devices are Automatic; a row not found
+    stays with its choice and last seen, without a rate. Found rows first,
+    highest rate first."""
+    seen = (now or datetime.now()).isoformat(timespec="seconds")
+    rows = {r["key"]: {**r, "rate": 0.0} for r in saved}
+    fresh: set[str] = set()
+    for name, instance_id, rate in found:
+        if not instance_id:
+            continue
+        key = device_key(name, instance_id)
+        row = rows.setdefault(
+            key,
+            {"key": key, "choice": AUTOMATIC, "virtual": False, "rate": 0.0},
+        )
+        if key not in fresh:
+            fresh.add(key)
+            row.update(name=name, instance_ids=[], last_seen=seen)
+        if instance_id not in row["instance_ids"]:
+            row["instance_ids"].append(instance_id)
+        row["rate"] = max(row["rate"], rate)
+    cleaned = [r for r in map(_device_row, rows.values()) if r is not None]
+    return sorted(cleaned, key=lambda r: -r["rate"])
+
+
+def found_text(row: dict, now: datetime | None = None) -> str:
+    """S27: "" for a found device, else "Not found · last seen …"."""
+    if row["rate"] > 0:
+        return ""
+    try:
+        seen = datetime.fromisoformat(row["last_seen"])
+    except ValueError:
+        return "Not found"
+    if seen.date() == (now or datetime.now()).date():
+        return f"Not found · last seen today {seen:%H:%M}"
+    return f"Not found · last seen {seen:%Y-%m-%d}"
+
+
+def _device_view(row: dict) -> dict:
+    """A remembered device as the Devices tab shows it."""
+    return {
+        "key": row["key"],
+        "name": row["name"],
+        "rate": row["rate"],
+        "choice": row["choice"],
+        "virtual": row["virtual"],
+        "found": row["rate"] > 0,
+        "foundText": found_text(row),
+    }
+
+
+def _counts(parts: list[tuple[int, str]], join: str) -> str:
+    return join.join(f"{n} {word}" for n, word in parts if n)
+
+
+def devices_summary(rows: list[dict]) -> str:
+    """S12: "4 automatic · 1 manual · 1 not found"; virtual ones don't count."""
+    rows = [r for r in rows if not r.get("virtual")]
+    if not rows:
+        return "No devices yet"
+    automatic = sum(r["choice"] == AUTOMATIC for r in rows)
+    missing = sum(r["rate"] <= 0 for r in rows)
+    return _counts(
+        [
+            (automatic, AUTOMATIC),
+            (len(rows) - automatic, MANUAL),
+            (missing, "not found"),
+        ],
+        " · ",
+    )
+
+
+def checked_text(rows: list[dict]) -> str:
+    """S27: "Checked 16:27 · 4 found, 1 not found"."""
+    found = sum(r["rate"] > 0 for r in rows)
+    counts = _counts([(found, "found"), (len(rows) - found, "not found")], ", ")
+    counts = counts or "No device is sending reports all the time."
+    return f"Checked {_clock_text()} · {counts}"
+
+
+def _automatic_rows() -> list[dict]:
+    return [r for r in saved_devices() if r["choice"] == AUTOMATIC and not r["virtual"]]
+
+
+def _row_of(device: Any, rows: list[dict], name_of: Callable) -> dict | None:  # noqa: ANN401
+    """The remembered row a connected device belongs to (S43). Its name is
+    read only when rows with different names share its numbers; a name that
+    can't be read leaves the row the device was last found as."""
+    instance_id = str(device.instance_id)
+    numbers = device_numbers(instance_id)
+    if not has_numbers(numbers):
+        key = device_key("", instance_id)
+        return next((r for r in rows if r["key"] == key), None)
+    same = [
+        r for r in rows if any(device_numbers(i) == numbers for i in r["instance_ids"])
     ]
+    if len(same) <= 1:
+        return same[0] if same else None
+    name = name_of(device)
+    if name:
+        key = device_key(name, instance_id)
+        return next((r for r in same if r["key"] == key), None)
+    known = [
+        r for r in same if instance_id.upper() in (i.upper() for i in r["instance_ids"])
+    ]
+    return known[0] if len(known) == 1 else None
+
+
+def _saved_pairs() -> list[tuple[str, str]]:
+    """The connected devices of the Automatic rows, as
+    DeviceDisabler.disable takes them: (name, id), never a virtual one
+    (S21, S35, S43). Looked up now, so a device in another USB port
+    counts."""
+    if not _automatic_rows():
+        return []
+    from gremlin import hid_report_scan
+
+    rows = saved_devices()
+    pairs: list[tuple[str, str]] = []
+    taken: set[str] = set()
+    for device in hid_report_scan.present():
+        instance_id = str(device.instance_id)
+        if not instance_id or instance_id.upper() in taken:
+            continue
+        row = _row_of(device, rows, hid_report_scan.device_name)
+        if row is None or row["choice"] != AUTOMATIC or row["virtual"]:
+            continue
+        if is_virtual_device(row["name"], instance_id):
+            continue
+        taken.add(instance_id.upper())
+        pairs.append((row["name"], instance_id))
+    return pairs
 
 
 # The saved Wake PC list (S28-S30) -------------------------------------------
@@ -634,10 +752,12 @@ _helper_starting = False
 
 
 def helper_wanted() -> bool:
-    """S25: Screen Saver Mode on, Power off displays on, saved list not
-    empty."""
+    """S25: Screen Saver Mode on, Power off displays on, at least one
+    Automatic device."""
     try:
-        return bool(_value(ENABLED)) and bool(_value(OFF_ON)) and bool(_saved_pairs())
+        return (
+            bool(_value(ENABLED)) and bool(_value(OFF_ON)) and bool(_automatic_rows())
+        )
     except Exception:
         _log.exception("Screen Saver Mode: the helper's settings could not be read")
         return False
@@ -702,16 +822,24 @@ def helper_message() -> str:
 
 
 def _before_power_off() -> tuple[int, Callable[[], bool]] | None:
-    """S21: the saved devices are disabled just before the power-off, when
+    """S21: the Automatic devices are disabled just before the power-off, when
     the helper runs (async). Returns (number of devices, probe) so the core
     waits for them (at most 10 s) before the power-off, or None when there
     is nothing to wait for."""
-    devices = _saved_pairs()
-    if not devices:
+    if not _automatic_rows():
         return None
     disabler = _disabler()
     if not disabler.helper_running():
         _trace("devices not disabled: the helper isn't running")
+        return None
+    try:
+        devices = _saved_pairs()
+    except Exception:
+        _log.exception("Screen Saver Mode: the connected devices could not be read")
+        _trace("devices not disabled: the connected devices could not be read")
+        return None
+    if not devices:
+        _trace("devices not disabled: no Automatic device is connected")
         return None
     disabler.disable(devices)
     return len(devices), lambda: not disabler.wait_idle(0)
@@ -950,7 +1078,7 @@ def _parse_minutes(text: str) -> int | None:
     return max(1, round(minutes * 60))
 
 
-# The wake count from which the Wake-ups row points at Switch off (S20).
+# The wake count from which the Wake-ups row points at Automatic (S20).
 WAKES_HINT_AT = 3
 
 _STALL_ENDED = re.compile(r"stall ended after (\d+) s")
@@ -1058,9 +1186,8 @@ class ScreenSaverModeModel(QtCore.QObject):
         self._status: Any = None
         self._test_remaining = 0
         self._pending_devices: list[str] = []
-        # S27: the saved list until the next Refresh Devices.
+        # S27: the remembered list.
         self._devices: list[dict] = saved_devices()
-        self._saved = list(self._devices)
         self._devices_message = ""
         self._helper_message = ""
         self._rows: dict[str, list[dict]] = {PROGRAMS: [], SYSTEM: []}
@@ -1100,9 +1227,8 @@ class ScreenSaverModeModel(QtCore.QObject):
     def _on_config(self) -> None:
         # The saved list put back by History (S27) shows at once.
         saved = saved_devices()
-        if saved != self._saved and not self._scanning_devices:
-            self._saved = list(saved)
-            self._devices = list(saved)
+        if saved != self._devices:
+            self._devices = saved
             self.devicesChanged.emit()
         # The Wake PC list put back by History shows at once (S28).
         self._remerge()
@@ -1550,7 +1676,7 @@ class ScreenSaverModeModel(QtCore.QObject):
             return row(
                 "Wake-ups",
                 f"Windows turned the displays back on {times}",
-                "a device may need Switch off (see Devices)",
+                "a device may need to be Automatic (see Devices)",
                 "warn",
             )
         return row("Wake-ups", f"Windows turned the displays back on {times}")
@@ -1622,28 +1748,49 @@ class ScreenSaverModeModel(QtCore.QObject):
 
     @QtCore.Property(list, notify=devicesChanged)
     def devices(self) -> list:
-        return list(self._devices)
+        """The remembered devices: {"key", "name", "rate", "choice",
+        "virtual", "found", "foundText"}."""
+        return [_device_view(r) for r in self._devices]
 
-    @QtCore.Slot(str, bool)
-    def setSwitchOff(self, instance_id: str, on: bool) -> None:
-        """S12: Switch off on/off for a device row; a virtual device stays
-        off. Saved at once (History records the setting)."""
-        instance_id = str(instance_id)
-        rows = [dict(r) for r in self._devices]
-        hit = [r for r in rows if r["instanceId"] == instance_id]
-        name = str(hit[0].get("name") or instance_id) if hit else instance_id
-        _trace(f"Switch off: {name}, {'on' if on else 'off'}")
-        if not hit or hit[0].get("virtual"):
-            return
-        hit[0]["switchOff"] = bool(on)
-        self._devices = rows
+    @QtCore.Property(str, notify=devicesChanged)
+    def devicesSummary(self) -> str:
+        """S12: the counts on Settings."""
+        return devices_summary(self._devices)
+
+    def _store_devices(self, rows: list[dict]) -> None:
+        """Saves the list at once and shows it."""
         try:
             save_devices(rows)
-            self._saved = saved_devices()
+            rows = saved_devices()
         except Exception:
             _log.exception("Screen Saver Mode: the Devices list could not be saved")
+        self._devices = rows
         ensure_helper()
         snapshot_changed()
+
+    @QtCore.Slot(str, str)
+    def setDeviceChoice(self, key: str, choice: str) -> None:
+        """S35: Automatic or Manual for a row; a virtual device is locked."""
+        rows = saved_devices()
+        hit = next((r for r in rows if r["key"] == key), None)
+        if hit is None or hit["virtual"] or choice not in (AUTOMATIC, MANUAL):
+            return
+        if hit["choice"] == choice:
+            return
+        _trace(f"Devices: {hit['name']}, {choice}")
+        hit["choice"] = choice
+        self._store_devices(rows)
+        self.devicesChanged.emit()
+
+    @QtCore.Slot(str)
+    def removeDevice(self, key: str) -> None:
+        """S27: Remove forgets a row; found again, it is new."""
+        rows = saved_devices()
+        hit = next((r for r in rows if r["key"] == key), None)
+        if hit is None:
+            return
+        _trace(f"Devices: {hit['name']}, removed")
+        self._store_devices([r for r in rows if r is not hit])
         self.devicesChanged.emit()
 
     @QtCore.Property(str, notify=devicesChanged)
@@ -1684,14 +1831,15 @@ class ScreenSaverModeModel(QtCore.QObject):
                 from gremlin import hid_report_scan
 
                 found = hid_report_scan.scan(SCAN_SECONDS, lambda: self._stop)
-                result: Any = [
-                    {
-                        "name": str(d.name),
-                        "instanceId": str(d.instance_id),
-                        "rate": float(d.reports_per_s),
-                    }
-                    for d in found
-                ]
+                # Stopped early: nothing was checked, the list stays.
+                result: Any = (
+                    None
+                    if self._stop
+                    else [
+                        (str(d.name), str(d.instance_id), float(d.reports_per_s))
+                        for d in found
+                    ]
+                )
             except Exception as exc:
                 _log.exception("Screen Saver Mode: Refresh Devices failed")
                 result = f"The devices couldn't be checked: {exc}"
@@ -1704,26 +1852,12 @@ class ScreenSaverModeModel(QtCore.QObject):
     def _take_devices(self, result: object) -> None:
         self._scanning_devices = False
         if isinstance(result, str):
-            self._devices = []
+            # A failed check never loses the list (S27).
             self._devices_message = result
             _log.warning(f"Screen Saver Mode: {result}")
-        else:
-            rows = result if isinstance(result, list) else []
-            self._devices = with_switch(sorted(rows, key=lambda d: -d["rate"]))
-            # S27: kept across restarts; a filled list may start the helper.
-            try:
-                save_devices(self._devices)
-                self._saved = saved_devices()
-                self._devices = list(self._saved)
-            except Exception:
-                _log.exception("Screen Saver Mode: the Devices list could not be saved")
-            ensure_helper()
-            self._devices_message = (
-                f"Checked {_clock_text()} · Screen Saver Mode ignores these."
-                if self._devices
-                else f"Checked {_clock_text()} · No device is sending reports "
-                "all the time."
-            )
+        elif isinstance(result, list):
+            self._store_devices(merge_devices(saved_devices(), result))
+            self._devices_message = checked_text(self._devices)
         _trace(f"Message shown: {self._devices_message}")
         self.busyChanged.emit()
         self.devicesChanged.emit()

@@ -61,6 +61,17 @@ def test_every_link_resolves(run: dict) -> None:
     assert not bad, "\n".join(bad)
 
 
+def test_option_page_links_resolve(run: dict) -> None:
+    """04 S96: Help points at Options' This profile pages, and no link goes
+    to the removed commands or toolbar buttons."""
+    hrefs = {x["href"]: x["reason"] for x in run["links"]}
+    for page in ("startup-macros", "vjoy", "scripts"):
+        assert hrefs.get(f"show:optionpage/{page}") == "", page
+    for gone in ("open:tools.profileSettings", "open:tools.scripts",
+                 "show:toolbar/Profile Settings", "show:toolbar/Scripts"):
+        assert gone not in hrefs, gone
+
+
 def test_open_links_are_on_the_allowed_list(run: dict) -> None:
     bad = [f"{x['topic']}: {x['href']}" for x in run["links"] if not x["allowed"]]
     assert not bad, "\n".join(bad)

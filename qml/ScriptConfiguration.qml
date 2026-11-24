@@ -23,10 +23,44 @@ ColumnLayout {
 
     property alias model: _repeater.model
 
+    // Options' search: only the variables it matches show (all of them when
+    // it matches groupText, the script's own row). searchFound counts them.
+    property string filterText: ""
+    property string groupText: ""
+    readonly property int searchFound: {
+        _repeater.revision
+        var n = 0
+        for (var i = 0; i < _repeater.count; i++) {
+            var row = _repeater.itemAt(i)
+            if (row && row.found)
+                n++
+        }
+        return n
+    }
+    readonly property int _firstFound: {
+        _repeater.revision
+        for (var i = 0; i < _repeater.count; i++) {
+            var row = _repeater.itemAt(i)
+            if (row && row.found)
+                return i
+        }
+        return -1
+    }
+
+    function matches(text) {
+        var needle = filterText.trim().toLowerCase()
+        return needle === "" || String(text).toLowerCase().indexOf(needle) >= 0
+    }
+
     spacing: 0
 
     Repeater {
         id: _repeater
+
+        // Goes up as rows come or go.
+        property int revision: 0
+        onItemAdded: revision++
+        onItemRemoved: revision++
 
         model: []
         delegate: _variableRenderer
@@ -273,12 +307,17 @@ ColumnLayout {
         id: _row
 
         default property alias control: _control.data
+        readonly property bool found: _root.matches(_root.groupText + " "
+            + modelData.name + " " + (modelData.description || ""))
 
+        visible: found
         Layout.fillWidth: true
+        // What it needs: its control whole and the least of its name.
+        implicitWidth: Style.dp(124) + Math.max(Style.dp(300), _control.implicitWidth)
         implicitHeight: _layout.implicitHeight + Style.dp(20)
 
         Rectangle {
-            visible: index > 0
+            visible: index > _root._firstFound
             width: parent.width
             height: Style.dp(1)
             color: Style.line

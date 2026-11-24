@@ -183,11 +183,21 @@ def quick_item() -> type:
     return QtQuick.QQuickItem
 
 
+def options_window() -> QtGui.QWindow | None:
+    return next(
+        (w for w in QtGui.QGuiApplication.allWindows()
+         if w.title() == "Options" and w.isVisible()), None)
+
+
 def scripts() -> None:
     script = work / "demo_script.py"
     script.write_text("import gremlin\n", encoding="utf-8")
-    # The Scripts window (04 S96).
-    ev(win, "_root.openScripts(); true")
+    # The Scripts page of Options (04 S96).
+    ev(win, 'Commands.trigger("tools.options"); true')
+    wait_until(lambda: options_window() is not None, 5000)
+    opened = options_window()
+    assert opened is not None, "no Options window"
+    assert ev(opened, 'showPage("scripts")') is True
 
     def walk(item):  # noqa: ANN001, ANN202
         yield item
@@ -195,11 +205,9 @@ def scripts() -> None:
             yield from walk(child)
 
     def scripts_page():  # noqa: ANN202
-        for w in QtGui.QGuiApplication.allWindows():
-            if w.objectName() == "scriptsWindow" and w.isVisible():
-                for it in walk(w.contentItem()):
-                    if it.metaObject().className().startswith("ScriptManager"):
-                        return it
+        for it in walk(opened.contentItem()):
+            if it.metaObject().className().startswith("ScriptManager"):
+                return it
         return None
 
     wait_until(lambda: scripts_page() is not None, 5000)
@@ -364,6 +372,7 @@ out["qml_errors"] = [
         for k in ("Error", "is not a function", "is not defined", "TypeError")
     )
     and any(f in m for f in ("Main.qml", "StatusPage.qml", "ScriptManager.qml",
+                             "DialogOptions.qml",
                              "OscPage.qml", "ControlTree.qml", "OutputModuleView.qml",
                              "confirm"))
 ][:8]

@@ -55,8 +55,6 @@ def test_tools_item_sits_in_the_bottom_group_and_opens_the_window() -> None:
         "tools.drivers",  # 06 S185
         "tools.history",
         "tools.options",
-        "tools.profileSettings",  # 01 S65, D-04-PROFILE-WINDOW
-        "tools.scripts",  # 01 S65
     ]
     js = _text("qml/main_commands.js")
     entry = js[js.index('id: "tools.screenSaverMode"') :]
@@ -212,12 +210,24 @@ def _refresh(model, qapp: object) -> None:  # noqa: ANN001
 
 def _fill_saved(m) -> None:  # noqa: ANN001
     from gremlin.config import Configuration
+    from gremlin.device_key import device_key
 
     Configuration().set(
         m.SECTION,
         m.GROUP,
         m.DEVICES,
-        [{"name": n, "instance_id": i, "rate": 1.0} for n, i in _SAVED_PAIRS],
+        [
+            {
+                "key": device_key(n, i),
+                "name": n,
+                "instance_ids": [i],
+                "rate": 1.0,
+                "choice": "automatic",
+                "virtual": False,
+                "last_seen": "2026-11-24T16:27:00",
+            }
+            for n, i in _SAVED_PAIRS
+        ],
     )
 
 
@@ -243,13 +253,14 @@ def test_s27_refresh_devices_is_saved_and_fills_the_list_after_a_restart(
     assert first.property("devices") == []
     _refresh(first, qapp)
     stored = Configuration().value(m.SECTION, m.GROUP, m.DEVICES)
-    assert [(d["name"], d["instance_id"]) for d in stored] == _SAVED_PAIRS
+    assert [(d["name"], *d["instance_ids"]) for d in stored] == _SAVED_PAIRS
     # A new window model (the program's next start; the real restart is
     # in test_ssm_e2e) shows it.
     again = model()
-    assert [(d["name"], d["instanceId"]) for d in again.property("devices")] == (
-        _SAVED_PAIRS
-    )
+    assert [(d["name"], d["choice"]) for d in again.property("devices")] == [
+        (n, "automatic") for n, _i in _SAVED_PAIRS
+    ]
+    assert again.property("devicesSummary") == "2 automatic"
     assert again.property("devicesMessage") == ""
 
 
@@ -781,7 +792,7 @@ def test_refresh_devices_calls_the_scan_and_fills_the_list(fakes, qapp: object) 
         "VKBSim NXT SEM THQ FSM.GA",
     ]
     assert round(rows[0]["rate"]) == 18
-    assert "Screen Saver Mode ignores these." in ssm.property("devicesMessage")
+    assert re.fullmatch(r"Checked \d\d:\d\d · 2 found", ssm.property("devicesMessage"))
 
 
 def test_refresh_programs_and_ignore_goes_back_on_failure(fakes, qapp: object) -> None:  # noqa: ANN001
@@ -1602,38 +1613,121 @@ def test_window_refresh_devices(window: dict) -> None:
     ]
 
 
-def test_window_device_rows_have_a_switch_off_switch(window: dict) -> None:
-    """S12, S35: a Switch off column; on at first; a virtual row's switch is
-    off and disabled with its note; toggling goes to the model."""
-    so = window["switchOff"]
-    assert so["header"] == "Switch off" and so["headerVisible"]
-    rows = so["rows"]  # (name, switchOff, virtual), in the list's order
-    assert sorted(r[0] for r in rows) == [
-        "PD200X Microphone (buttons)",
-        "VKBSim NXT SEM THQ FSM.GA",
-        "vJoy Device",
+_PD = "PD200X Microphone (buttons)"
+_VKB = "VKBSim NXT SEM THQ FSM.GA"
+_VJOY = "vJoy Device"
+
+
+def test_window_settings_devices_is_one_line_and_opens_the_tab(window: dict) -> None:
+    """S12: the counts and Open Devices; the list is on the Devices tab."""
+    assert window["summaryEmpty"] == "No devices yet"
+    assert window["openDevices"] == 1
+    assert window["detectionOnDevices"] == [], "S30: presses tick on Devices"
+    assert window["devices"]["summary"] == "2 automatic"
+    d = window["devices"]
+    assert d["message"] == d["modelMessage"] != ""
+
+
+def test_window_s28_header_and_tab_bar_on_every_tab(window: dict) -> None:
+    """The switch, Test now and the description stay on top; the bar below
+    them is full width in three equal parts, the open tab filled, its text
+    larger."""
+    for index, lay in enumerate(window["layouts"]):
+        bar = lay["bar"]
+        assert bar[0] == 0 and bar[2] == lay["width"]
+        for name, (shown, _x, y, _w, h) in lay["header"].items():
+            assert shown, (index, name)
+            assert y + h <= bar[1], (index, name)
+        xs = [t[0] for t in lay["tabs"]]
+        widths = [t[2] for t in lay["tabs"]]
+        assert max(widths) - min(widths) <= 1 and sum(widths) >= lay["width"] - 2
+        assert xs == sorted(xs) and xs[0] == 0
+        others = [i for i in range(3) if i != index]
+        assert all(lay["fills"][i] != lay["fills"][index] for i in others)
+        assert all(lay["sizes"][i] < lay["sizes"][index] for i in others)
+    # Nothing above the pages moves from tab to tab.
+    assert len({json.dumps(lay["header"]) for lay in window["layouts"]}) == 1
+    assert len({json.dumps(lay["bar"]) for lay in window["layouts"]}) == 1
+
+
+def test_window_devices_tab_texts_and_columns(window: dict) -> None:
+    t = window["devicesTab"]
+    assert t["heading"] == "Devices that never go quiet"
+    assert t["description"] == (
+        "Automatic devices are switched off while the displays are off. "
+        "Manual devices stay on the list and are left alone."
+    )
+    assert t["header"] == [
+        "Device",
+        "Reports per second",
+        "Automatic",
+        "Manual",
+        "Remove",
     ]
-    assert [(r[1], r[2]) for r in rows] == [
-        (not r[0].startswith("vJoy"), r[0].startswith("vJoy")) for r in rows
-    ]
-    sw = so["before"]["switches"]
-    # On and enabled for a real device; off and disabled for the virtual one.
-    assert [(s["checked"], s["enabled"]) for s in sw] == [
-        (r[1], not r[2]) for r in rows
-    ]
-    notes = so["before"]["notes"]
-    assert [n[1] for n in notes] == [r[2] for r in rows]
-    assert {n[0] for n in notes} == {"(virtual: never switched off)"}
-    # The first real device's switch was turned off: the model row follows, the switch
-    # stays off, the others are untouched.
-    want = [r[1] and i != so["picked"] for i, r in enumerate(rows)]
-    assert [r[1] for r in so["afterRows"]] == want
-    assert [s["checked"] for s in so["after"]["switches"]] == want
+
+
+def test_window_devices_tab_rows_at_the_minimum_width(window: dict) -> None:
+    """S35: a new device is Automatic; a virtual one is locked, with its
+    note; a long name elides and nothing leaves the window."""
+    t = window["devicesTab"]
+    rows = t["start"]
+    assert len(rows) == 4
+    for name, r in rows.items():
+        virtual = name == _VJOY
+        assert (r["automatic"], r["manual"]) == (not virtual, virtual), name
+        assert r["enabled"] == [not virtual] * 2, name
+        assert r["virtualNote"] == virtual
+        assert r["virtualText"] == "(virtual: never switched off)"
+        assert r["found"] == "" and not r["foundVisible"]
+        assert r["right"] <= t["width"], name
+    assert rows[_PD]["rate"] == "18"
+    long = next(r for n, r in rows.items() if n.startswith("A very long"))
+    assert long["truncated"]
+
+
+def test_window_devices_tab_one_choice_per_row(window: dict) -> None:
+    """S35: clicking one clears the other, in that row only, and is saved;
+    the locked virtual row doesn't answer."""
+    t = window["devicesTab"]
+
+    def picked(step: str) -> dict:
+        return {n: (r["automatic"], r["manual"]) for n, r in t[step]["rows"].items()}
+
+    start = {n: (r["automatic"], r["manual"]) for n, r in t["start"].items()}
+    assert picked("manual") == {**start, _PD: (False, True)}
+    assert t["manual"]["stored"][_PD] == "manual"
+    assert t["manual"]["stored"][_VKB] == "automatic"
+    # A virtual device doesn't count (S12).
+    assert t["manualSummary"] == "2 automatic · 1 manual"
+    assert picked("automatic") == start
+    assert t["automatic"]["stored"][_PD] == "automatic"
+    assert picked("locked")[_VJOY] == (False, True)
+
+
+def test_window_devices_tab_not_found_and_remove(window: dict) -> None:
+    """S27: not found keeps the row and its choice, without a rate, in the
+    warning color; Remove forgets it."""
+    t = window["devicesTab"]
+    row = t["gone"]["rows"][_PD]
+    assert row["foundVisible"] and row["found"].startswith(
+        "Not found · last seen today "
+    )
+    assert row["foundColor"] == t["warnColor"]
+    assert row["rate"] == "" and row["manual"] and not row["automatic"]
+    assert t["gone"]["rows"][_VKB]["rate"] == "13"
+    assert "1 not found" in t["goneSummary"]
+    assert t["goneMessage"].endswith("3 found, 1 not found")
+    assert len(t["removed"]["rows"]) == 3 and _PD not in t["removed"]["rows"]
+    assert _PD not in t["removed"]["stored"]
+
+
+def test_window_has_no_console_warnings(window: dict) -> None:
+    assert [w for w in window["warnings"] if ".qml" in w] == []
 
 
 def test_window_three_sections_stacked_each_with_its_button(window: dict) -> None:
     """Contract-3: Devices, Programs, System, stacked; each section holds its
-    own Refresh button, list and message; the texts as the mock-up."""
+    own button and texts; Devices' list is on its own tab (S12)."""
     sec = window["sections"]
     assert sec["order"] == [
         "ssmSectionDevices",
@@ -1641,8 +1735,10 @@ def test_window_three_sections_stacked_each_with_its_button(window: dict) -> Non
         "ssmSectionSystem",
     ]
     assert sec["homes"] == {
-        "ssmRefreshDevices": "ssmSectionDevices",
-        "ssmDeviceList": "ssmSectionDevices",
+        "ssmOpenDevices": "ssmSectionDevices",
+        "ssmDevicesSummary": "ssmSectionDevices",
+        "ssmRefreshDevices": "ssmDevicesPage",
+        "ssmDeviceList": "ssmDevicesPage",
         "ssmRefreshPrograms": "ssmSectionPrograms",
         "ssmProgramList": "ssmSectionPrograms",
         "ssmProgramsMessage": "ssmSectionPrograms",
@@ -1651,13 +1747,7 @@ def test_window_three_sections_stacked_each_with_its_button(window: dict) -> Non
         "ssmSystemMessage": "ssmSectionSystem",
     }
     t = sec["texts"]
-    assert t["ssmSectionDevices"][:3] == [
-        "Devices",
-        "Refresh Devices",
-        "Devices that never go quiet and keep Windows' idle time at 0. "
-        "Screen Saver Mode ignores them, and switches off the ones marked "
-        "Switch off while the displays are off.",
-    ]
+    assert t["ssmSectionDevices"] == ["Devices", "Open Devices", "2 automatic"]
     assert t["ssmSectionPrograms"][:3] == [
         "Programs",
         "🛡 Refresh Programs",
@@ -1730,19 +1820,20 @@ def test_window_refresh_system_and_its_ignore_switch(window: dict) -> None:
 
 def test_window_s26_helper_message_and_try_again_in_devices(window: dict) -> None:
     h = window["helper"]
-    assert h["saved"] == [r"HID\VID_1&PID_2\1", r"HID\VID_3&PID_4\1"]
+    assert h["saved"] == [[r"HID\VID_1&PID_2\1"], [r"HID\VID_3&PID_4\1"]]
     assert h["text"] == "Devices can't be disabled: the helper isn't running"
     assert h["visible"] and h["buttonVisible"]
     assert h["buttonText"] == "Try again"
-    assert h["section"] == ["ssmSectionDevices", "ssmSectionDevices"]
+    assert h["section"] == ["ssmDevicesPage", "ssmDevicesPage"]
     assert h["starts"] == 1
     after = window["helperAfter"]
     assert after == {"visible": False, "starts": 2}
 
 
-def test_window_s28_two_tabs_and_the_wake_pc_list(window: dict) -> None:
+def test_window_s28_three_tabs_and_the_wake_pc_list(window: dict) -> None:
     w = window["wake"]
-    assert w["tabs"] == ["Settings", "Wake PC"]
+    assert w["tabs"] == ["Settings", "Devices", "Wake PC"]
+    assert w["detectionOnDevices"] == [], "S30: detection on the Devices tab"
     assert w["startIndex"] == 0 and w["settingsShown"] and not w["wakeShown"]
     # Settings shows everything it did before.
     assert w["settingsHome"] == ["ssmEnabled", "ssmSectionDevices", "ssmStatusGrid"]

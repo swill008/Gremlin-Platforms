@@ -178,13 +178,13 @@ QtTest.QTest.qWait(500)
 
 out = {}
 profile = shared_state.current_profile
-# Profile Settings is a window of its own (04 S96): window.open opens it
-# at General, window.press moves it to vJoy (13 S29).
-out["open"] = control_windows.call_open({"id": "tools.profileSettings"})
+# The vJoy settings are a page of Options (04 S96): window.open opens it,
+# window.press moves it to vJoy (13 S29).
+out["open"] = control_windows.call_open({"id": "tools.options"})
 QtTest.QTest.qWait(500)
-title = "Profile Settings"
+title = "Options"
 out["press"] = control_windows.call_press(
-    {"window": title, "button": "profileSettingsSection:vjoy"})
+    {"window": title, "button": "optionsSection:vjoy"})
 QtTest.QTest.qWait(500)
 rows = control_windows.call_read({"window": title})["items"]
 out["boxes"] = {
@@ -212,9 +212,9 @@ os._exit(0)
 
 
 def test_initial_value_boxes_are_reachable_by_the_api(tmp_path: Path) -> None:
-    """The real program off-screen (stand-in vJoy 1): the Profile Settings
-    window opened by window.open tools.profileSettings and moved to its vJoy
-    section by window.press, window.read lists each initial value box
+    """The real program off-screen (stand-in vJoy 1): Options
+    opened by window.open tools.options and moved to its vJoy page
+    by window.press, window.read lists each initial value box
     as vjoyInitialValue:<vJoy>:<axis> with its value, and window.type sets
     the profile's initial value through the box."""
     import json

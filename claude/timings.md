@@ -1606,3 +1606,13 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-24 | WIRE: watch missing devices, retry on return + 15 tests (12 S23 gap) | agent fix | 3-8 min | 5 min | 16:10-16:15 |
 | 2026-11-24 | Lead review + map + targeted tests (249) + ruff/pyright + build + silent install (S23 fix) | test/build | ~10 min | 4 min | 16:15-16:19, lead |
 | 2026-11-24 | Live tests S23 (measure, failed list run, pass) read + reported | lead | no data | ~1 min each | 16:09, 16:21, 16:30, lead |
+| 2026-11-24 | Overlay pictures on real windows (screenshots via control API + overlay script, 4 pictures) | lead | rough guess 10 min | ~2 min | 16:50-16:52, lead |
+| 2026-11-24 | HELP: Help pages + glossary (Options pages, Automatic/Manual) | agent fix | 3-8 min | 3 min | 16:56-16:59 |
+| 2026-11-24 | SHELL: toolbar, Tools menu, Help page links + tests + map 01/04/13 | agent fix | 3-8 min | 5 min | 16:55-17:00 |
+| 2026-11-24 | OPT: Options profile pages + search + 11 tests | agent fix | 3-8 min | 6 min | 16:55-17:01 |
+| 2026-11-24 | SSM-MODEL: remembered devices, device_key.py + 31 new tests + map 12 (incl. S20 follow-up) | agent fix | 3-8 min | 6 min | 16:56-17:02 |
+| 2026-11-24 | OPT-TESTS: 10 old window test files moved to the Options pages; found the picker cut-off | agent fix | 3-8 min | 8 min | 16:56-17:04 |
+| 2026-11-24 | SSM-UI: Devices tab, tab bar, window + e2e tests | agent fix | 3-8 min | 9 min | 16:56-17:05 |
+| 2026-11-24 | OPT follow-up: vJoy picker fits on the Scripts page (100-200 %, 900 px) | agent fix | 3-8 min | 4 min | 17:04-17:08 |
+| 2026-11-24 | Quick tests (--changed, 3889 tests, 6 parts) | test/build | ~5-6 min | 11 min | 17:08-17:19, 5:37 run time; all passed |
+| 2026-11-24 | Gold strip + targeted tests (27) + build + silent install + live window check | test/build | ~10 min | 2 min | 17:19-17:21, lead |

@@ -75,8 +75,8 @@ for key in sys.argv[2].split(','):
         'manageRight': run(
             '_manageModesButton.mapToItem(null, _manageModesButton.width, 0).x'),
         'optionsRight': run(
-            # The last button is Scripts (01 S58, 04 S96).
-            '_scriptsButton.x + _scriptsButton.width + _toolbarRow.x'),
+            # The last button is Options (01 S58, 04 S96).
+            '_optionsButton.x + _optionsButton.width + _toolbarRow.x'),
         'content': run('_toolbarFlick.contentWidth'),
         'view': run('_toolbarFlick.width'),
         'modeList': run('_modeSelector.width'),

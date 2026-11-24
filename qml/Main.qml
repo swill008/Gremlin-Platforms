@@ -92,8 +92,7 @@ ApplicationWindow {
     readonly property int _modeListMinWidth: Style.dp(120)
     function _toolbarWidth(withCaptions) {
         var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, _searchButton, _healthButton,
-                       _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton,
-                       _profileSettingsButton, _scriptsButton]
+                       _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         var w =_homeButton.rightPadding + _toolbarRow.spacing * buttons.length
         for (var i = 0; i < buttons.length; i++)
             w += withCaptions ? buttons[i].fullWidth : buttons[i].compactWidth
@@ -221,8 +220,7 @@ ApplicationWindow {
     function _helpToolbarButton(name) {
         var want = _helpNorm(name)
         var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, _searchButton, _healthButton,
-                       _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton,
-                       _profileSettingsButton, _scriptsButton]
+                       _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         for (var i = 0; i < buttons.length; ++i) {
             var b = buttons[i]
             var names = [b.caption, b.tooltip]
@@ -338,6 +336,8 @@ ApplicationWindow {
             var hit = _helpOptionLabels.findSetting(rest.join("/"))
             return hit && hit.length ? "" : "No such setting in Options: " + rest.join("/")
         }
+        if (parts[0] === "optionpage")
+            return HelpLinks.isOptionPage(rest.join("/")) ? "" : "No such page in Options: " + rest.join("/")
         if (parts[0] === "devicemappingeditor")
             return _helpDeviceMappingEditorTargets.indexOf(rest.join("/")) >= 0
                 ? "" : "No such place in the Device Mapping Editor: " + rest.join("/")
@@ -395,6 +395,13 @@ ApplicationWindow {
             if (!win || typeof win.revealSetting !== "function")
                 return "Options didn't open."
             return win.revealSetting(rest.join("/")) ? "" : "No such setting in Options: " + rest.join("/")
+        }
+        if (parts[0] === "optionpage") {
+            Commands.trigger("tools.options")
+            var options = Helpers.windowOf("DialogOptions.qml")
+            if (!options || typeof options.showPage !== "function")
+                return "Options didn't open."
+            return options.showPage(rest.join("/")) ? "" : "No such page in Options: " + rest.join("/")
         }
         if (parts[0] === "devicemappingeditor") {
             // The window as it is, or opened blank (it picks a device).
@@ -1186,17 +1193,6 @@ ApplicationWindow {
         Helpers.createComponent(spec)
     }
 
-    // The one Profile Settings window (04 S96) at a section ("general" or
-    // "vjoy"); when it is open, brought to the front there.
-    function openProfileSettings(section) {
-        Helpers.createComponent("DialogProfileSettings.qml", { "section": String(section || "general") })
-    }
-
-    // The one Scripts window (04 S96); when it is open, brought to the front.
-    function openScripts() {
-        Helpers.createComponent("DialogScripts.qml")
-    }
-
     // The Device Library window (10 S2), on a device and one of its
     // dialogs ("copy", "swap", "output") or on nothing ("", "", "").
     function openDeviceLibrary(deviceName, guid, action) {
@@ -1945,8 +1941,6 @@ ApplicationWindow {
             ThemedMenuItem { command: "tools.drivers" }
             ThemedMenuItem { command: "tools.history" }
             ThemedMenuItem { command: "tools.options" }
-            ThemedMenuItem { command: "tools.profileSettings" }
-            ThemedMenuItem { command: "tools.scripts" }
         }
 
         ThemedMenu {
@@ -2144,49 +2138,14 @@ ApplicationWindow {
                         id: _optionsButton
                         compact: _root.toolbarCompact
                         text: "\uF3E5"
-                        // Program-wide settings; the profile's own are in Profile Settings.
+                        // The program's settings and, under This profile, the open
+                        // profile's own and its scripts (04 S96).
                         caption: "Options"
                         tooltip: qsTr("Options: settings for the whole program")
 
                         onClicked: () => {
                             Helpers.createComponent("DialogOptions.qml")
                         }
-                    }
-
-                    // 01 S58, 04 S96: the profile's own settings window, at
-                    // General. Bootstrap Icons has no file-with-gear glyph,
-                    // so a small gear sits on the file's lower right.
-                    JGToolButton {
-                        id: _profileSettingsButton
-                        objectName: "profileSettingsToolbarButton"
-                        compact: _root.toolbarCompact
-                        text: ""
-                        caption: "Profile Settings"
-                        tooltip: qsTr("Profile Settings: this profile's startup mode, macro delay and vJoy settings, saved with the profile")
-
-                        onClicked: () => { _root.openProfileSettings("general") }
-
-                        Label {
-                            text: ""
-                            font.family: Style.iconFont
-                            font.pixelSize: Style.dp(22)
-                            color: _profileSettingsButton.color
-                            x: (_profileSettingsButton.width + _profileSettingsButton.compactWidth) / 2
-                               - _profileSettingsButton.rightPadding - implicitWidth * 0.95
-                            y: _profileSettingsButton.topPadding + Style.dp(48) - implicitHeight * 0.95
-                        }
-                    }
-
-                    // The profile's scripts, a window of their own (04 S96).
-                    JGToolButton {
-                        id: _scriptsButton
-                        objectName: "scriptsToolbarButton"
-                        compact: _root.toolbarCompact
-                        text: ""
-                        caption: "Scripts"
-                        tooltip: qsTr("Scripts: this profile's scripts, saved with the profile")
-
-                        onClicked: () => { _root.openScripts() }
                     }
                 }
             }

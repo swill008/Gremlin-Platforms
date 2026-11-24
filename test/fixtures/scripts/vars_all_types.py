@@ -6,7 +6,7 @@
 
 Every variable is optional, so the script counts as configured as soon as
 it is added. It registers no callbacks; it only shows that each variable
-type appears on the Scripts window with its default and its limits.
+type appears on the Scripts page of Options with its default and its limits.
 """
 
 from gremlin import types, user_script

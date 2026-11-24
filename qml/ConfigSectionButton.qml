@@ -5,19 +5,14 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-import Gremlin.Config
 import Gremlin.Style
 
-// A section in the Options sidebar. The chosen one is highlighted with an
-// accent bar. Clicking it shows that section (and clears a search).
+// A row in the Options sidebar (a section, or one of the open profile's
+// pages). The chosen one is highlighted with an accent bar.
 AbstractButton {
     id: _button
 
-    required property int index
-    required property string name
-    required property ConfigGroupModel groupModel
-
-    readonly property bool current: _options.currentSection === index
+    property bool current: false
 
     Layout.fillWidth: true
     implicitHeight: Style.dp(36)
@@ -41,15 +36,10 @@ AbstractButton {
 
     contentItem: Label {
         leftPadding: Style.dp(16)
-        text: _button.name
+        text: _button.text
         color: _button.current ? Style.fgStrong : Style.fgSoft
         font.pixelSize: Style.dp(14)
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
-    }
-
-    onClicked: {
-        _options.currentSection = index
-        _search.text = ""
     }
 }

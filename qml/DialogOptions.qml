@@ -45,9 +45,41 @@ ApplicationWindow {
         ModelFactory.create("ConfigSectionModel", _options)
 
     property int currentSection: 0
+    onCurrentSectionChanged: profilePage = ""
+
+    // The open profile's pages (04 S96), and the one shown ("" none: the
+    // section is shown).
+    readonly property var profilePages: [
+        { id: "startup-macros", name: "Startup and macros", file: "ProfileSettingsGeneral.qml" },
+        { id: "vjoy", name: "vJoy", file: "ProfileSettingsVJoy.qml" },
+        { id: "scripts", name: "Scripts", file: "ScriptManager.qml" }
+    ]
+    property string profilePage: ""
+    onProfilePageChanged: _page.contentItem.contentY = 0
+
+    // Show one of the open profile's pages (and clear the search); false if
+    // there is no page with that id.
+    function showPage(id) {
+        if (!profilePages.some((page) => page.id === id))
+            return false
+        _search.text = ""
+        profilePage = id
+        return true
+    }
+
+    // Show a section (and clear the search).
+    function showSection(index) {
+        _search.text = ""
+        profilePage = ""
+        currentSection = index
+    }
+
     // The page's title ("General"), or "Search" while searching.
-    readonly property string sectionTitle: _search.text.trim().length
+    readonly property bool searching: _search.text.trim().length > 0
+    readonly property string sectionTitle: searching
         ? "Search"
+        : profilePage !== ""
+        ? profilePages.find((page) => page.id === profilePage).name
         : String(_sectionModel.data(_sectionModel.index(currentSection, 0), Qt.UserRole + 1) || "")
 
     // Every setting's on-screen label (Help's show:option/<label> links).
@@ -62,8 +94,7 @@ ApplicationWindow {
         var hit = _sectionModel.findSetting(String(label || ""))
         if (!hit || hit.length < 3)
             return false
-        _search.text = ""
-        currentSection = hit[0]
+        showSection(hit[0])
         var card = _settingCard(hit[1], hit[2])
         if (!card)
             return false
@@ -120,6 +151,17 @@ ApplicationWindow {
     // Settings the search finds (the search box's "N found"); -1 when
     // not searching.
     property int _found: -1
+
+    // The rows found on the open profile's pages.
+    readonly property int _profileFound: {
+        var n = 0
+        for (var i = 0; i < _profilePages.count; i++) {
+            var page = _profilePages.itemAt(i)
+            if (page)
+                n += page.found
+        }
+        return n
+    }
 
     // Counts the rows the built pages show for the search: every group's
     // matching rows (ConfigGroup.matches), across all sections.
@@ -194,7 +236,43 @@ ApplicationWindow {
 
                 Repeater {
                     model: _sectionModel
-                    delegate: ConfigSectionButton {}
+                    delegate: ConfigSectionButton {
+                        required property int index
+                        required property string name
+                        required property ConfigGroupModel groupModel
+
+                        text: name
+                        current: _options.profilePage === ""
+                            && _options.currentSection === index
+                        onClicked: _options.showSection(index)
+                    }
+                }
+
+                // The open profile's own pages.
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.topMargin: Style.dp(6)
+                    implicitHeight: Style.dp(1)
+                    color: Style.line
+                }
+                Label {
+                    objectName: "optionsProfileHeading"
+                    Layout.leftMargin: Style.dp(6)
+                    Layout.topMargin: Style.dp(4)
+                    text: "This profile"
+                    color: Style.fgMuted
+                    font.pixelSize: Style.dp(12)
+                }
+                Repeater {
+                    model: _options.profilePages
+                    delegate: ConfigSectionButton {
+                        required property var modelData
+
+                        objectName: "optionsSection:" + modelData.id
+                        text: modelData.name
+                        current: _options.profilePage === modelData.id
+                        onClicked: _options.showPage(modelData.id)
+                    }
                 }
 
                 Item { Layout.fillHeight: true }
@@ -237,8 +315,49 @@ ApplicationWindow {
                     Layout.preferredWidth: Style.dp(240)
                     Layout.alignment: Qt.AlignTop
                     placeholder: "Search options"
-                    count: _options._found
+                    count: _options._found < 0 ? -1
+                        : _options._found + _options._profileFound
                     onTextChanged: Qt.callLater(_options._countFound)
+                }
+            }
+
+            // The open profile's pages: its name, and where changes go.
+            Rectangle {
+                objectName: "optionsProfileStrip"
+                visible: _options.profilePage !== "" && !_options.searching
+                Layout.fillWidth: true
+                Layout.leftMargin: Style.dp(20)
+                Layout.rightMargin: Style.dp(20)
+                Layout.topMargin: Style.dp(8)
+                implicitHeight: _strip.implicitHeight + Style.dp(12)
+                radius: Style.dp(6)
+                color: Style.goldFill
+                border.color: Style.goldLine
+                border.width: Style.dp(1)
+
+                RowLayout {
+                    id: _strip
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Style.dp(14)
+                    anchors.rightMargin: Style.dp(14)
+                    spacing: Style.dp(16)
+
+                    Label {
+                        objectName: "optionsProfileName"
+                        Layout.fillWidth: true
+                        text: backend ? backend.windowTitle : ""
+                        color: Style.fgSoft
+                        font.pixelSize: Style.dp(13)
+                        elide: Text.ElideMiddle
+                    }
+                    Label {
+                        objectName: "optionsProfileSavedNote"
+                        text: "Saved with the profile (Save Profile)"
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                    }
                 }
             }
 
@@ -247,8 +366,56 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sectionModel: _sectionModel
-                currentIndex: _options.currentSection
+                currentIndex: _options.profilePage === "" ? _options.currentSection : -1
                 filterText: _search.text
+                fillsView: _options.profilePage === "scripts" && !_options.searching
+
+                // Loaded only while shown or searched.
+                Repeater {
+                    id: _profilePages
+                    model: _options.profilePages
+
+                    delegate: ColumnLayout {
+                        id: _profilePage
+
+                        required property var modelData
+                        readonly property bool shown:
+                            _options.profilePage === modelData.id
+                        readonly property int found:
+                            _options.searching && _pageLoader.item
+                            ? _pageLoader.item.searchFound : 0
+
+                        Layout.fillWidth: true
+                        spacing: 0
+                        visible: _options.searching ? found > 0 : shown
+
+                        Label {
+                            visible: _options.searching
+                            Layout.topMargin: Style.dp(18)
+                            text: _profilePage.modelData.name
+                            color: Style.fgStrong
+                            font.pixelSize: Style.dp(16)
+                        }
+
+                        Loader {
+                            id: _pageLoader
+                            objectName: "optionsPage:" + _profilePage.modelData.id
+
+                            // Scripts fills the view; its panes scroll.
+                            readonly property bool fills: !_options.searching
+                                && _profilePage.modelData.id === "scripts"
+                            readonly property real tall: item ? item.implicitHeight : 0
+
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: fills ? _page.availableHeight : tall
+                            active: _options.searching || _profilePage.shown
+                            source: _profilePage.modelData.file
+                            onLoaded: {
+                                item.filterText = Qt.binding(() => _search.text)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

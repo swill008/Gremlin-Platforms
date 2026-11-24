@@ -16,6 +16,7 @@ from __future__ import annotations
 import ctypes
 import logging
 import os
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol, cast
@@ -38,6 +39,15 @@ class DeviceRate:
     usage_page: int
     usage: int
     reports_per_s: float
+
+
+@dataclass(frozen=True)
+class PresentDevice:
+    """A HID interface Windows has now; it was not opened."""
+
+    instance_id: str
+    path: str = ""
+    description: str = ""
 
 
 class HidApi(Protocol):
@@ -78,6 +88,31 @@ def _trace(text: str) -> None:
         pass
 
 
+def _api(api: HidApi | None) -> HidApi:
+    if api is not None:
+        return api
+    if "pytest" in sys.modules:
+        raise RuntimeError("tests never read the real HID devices")
+    return cast("HidApi", _Win32Hid())
+
+
+def present(api: HidApi | None = None) -> list[PresentDevice]:
+    """The HID devices connected now (S21, S43); none is opened."""
+    return [PresentDevice(i, p, d) for p, i, d in _api(api).interfaces()]
+
+
+def device_name(device: PresentDevice, api: HidApi | None = None) -> str:
+    """A device's name as scan() gives it; opens the device to read it."""
+    hid = _api(api)
+    handle = hid.open(device.path)
+    if handle is None:
+        return ""
+    try:
+        return hid.product(handle) or device.description or device.instance_id
+    finally:
+        hid.close(handle)
+
+
 def scan(
     seconds: float = 4.0,
     should_stop: Callable[[], bool] | None = None,
@@ -98,7 +133,7 @@ def _scan(
     should_stop: Callable[[], bool] | None,
     api: HidApi | None,
 ) -> list[DeviceRate]:
-    hid: HidApi = api if api is not None else cast("HidApi", _Win32Hid())
+    hid = _api(api)
     stop = should_stop or (lambda: False)
     devices: list[_Device] = []
     not_opened = 0

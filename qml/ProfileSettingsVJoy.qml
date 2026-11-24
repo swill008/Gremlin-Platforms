@@ -10,33 +10,83 @@ import Gremlin.Profile
 import Gremlin.Style
 import Gremlin.UI
 
-// Profile Settings › vJoy (04 S62, S96-S98): each vJoy as output or input,
-// and the initial axis values used when the profile runs.
-ScrollView {
+// Options › vJoy (04 S62, S96-S98): each vJoy as output or input, and the
+// initial axis values used when the profile runs. Options scrolls it.
+ColumnLayout {
     id: _root
 
-    contentWidth: availableWidth
-    ScrollBar.vertical.interactive: true
-    Component.onCompleted: {
-        contentItem.boundsMovement = Flickable.StopAtBounds
+    // Options' search: only the rows it matches show.
+    property string filterText: ""
+    readonly property bool searching: filterText.trim() !== ""
+    readonly property int searchFound: _modesFound + _valuesFound
+
+    // The matching rows; counted again when rows come or go.
+    readonly property int _modesFound: {
+        _modeRepeater.revision
+        var n = 0
+        for (var i = 0; i < _modeRepeater.count; i++) {
+            var row = _modeRepeater.itemAt(i)
+            if (row && row.found)
+                n++
+        }
+        return n
+    }
+    readonly property int _valuesFound: {
+        _initialRepeater.revision
+        var n = 0
+        for (var i = 0; i < _initialRepeater.count; i++) {
+            var card = _initialRepeater.itemAt(i)
+            if (card)
+                n += card.axesFound
+        }
+        return n
     }
 
+    function matches(text) {
+        var needle = filterText.trim().toLowerCase()
+        return needle === "" || String(text).toLowerCase().indexOf(needle) >= 0
+    }
+
+    spacing: 0
+
     ColumnLayout {
-        width: _root.availableWidth - Style.dp(40)
-        x: Style.dp(20)
+        Layout.fillWidth: true
         spacing: Style.dp(4)
 
-        GroupLabel { text: "vJoy Behavior" }
+        GroupLabel {
+            text: "vJoy Behavior"
+            visible: !_root.searching || _root._modesFound > 0
+        }
         Card {
+            visible: !_root.searching || _root._modesFound > 0
             Repeater {
                 id: _modeRepeater
                 readonly property VJoyInputOrOutputModel _vjoyModes:
                     ModelFactory.create("VJoyInputOrOutputModel", _modeRepeater)
                 model: _vjoyModes
 
+                // Goes up as rows come or go.
+                property int revision: 0
+                onItemAdded: revision++
+                onItemRemoved: revision++
+
+                // The first row that shows (no divider above it).
+                readonly property int firstFound: {
+                    revision
+                    for (var i = 0; i < count; i++) {
+                        var row = itemAt(i)
+                        if (row && row.found)
+                            return i
+                    }
+                    return -1
+                }
+
                 delegate: OptionEntryCard {
+                    readonly property bool found: _root.matches(
+                        "vJoy Behavior " + title + " Output Input " + _modesNote.text)
+                    visible: found
                     Layout.fillWidth: true
-                    divider: index > 0
+                    divider: index > _modeRepeater.firstFound
                     title: `vJoy ${vid}`
 
                     RowLayout {
@@ -59,6 +109,8 @@ ScrollView {
             }
         }
         Label {
+            id: _modesNote
+            visible: !_root.searching || _root._modesFound > 0
             Layout.fillWidth: true
             Layout.topMargin: Style.dp(2)
             text: "Output: used by 'Map to vJoy'. Input: read like any other "
@@ -69,15 +121,34 @@ ScrollView {
             wrapMode: Text.WordWrap
         }
 
-        GroupLabel { text: "vJoy Initial Values (used when the profile runs)" }
+        GroupLabel {
+            id: _valuesLabel
+            text: "vJoy Initial Values (used when the profile runs)"
+            visible: !_root.searching || _root._valuesFound > 0
+        }
         Repeater {
             id: _initialRepeater
             readonly property OutputVJoyListModel _outputVJoys:
                 ModelFactory.create("OutputVJoyListModel", _initialRepeater)
             model: _outputVJoys
 
+            property int revision: 0
+            onItemAdded: revision++
+            onItemRemoved: revision++
+
             delegate: Card {
                 id: _card
+                readonly property int axesFound: {
+                    _axes.revision
+                    var n = 0
+                    for (var i = 0; i < _axes.count; i++) {
+                        var axis = _axes.itemAt(i)
+                        if (axis && axis.found)
+                            n++
+                    }
+                    return n
+                }
+                visible: !_root.searching || axesFound > 0
                 required property int vjoyId
                 required property var initialValuesModel
                 Layout.bottomMargin: Style.dp(12)
@@ -106,9 +177,17 @@ ScrollView {
                     rowSpacing: Style.dp(8)
 
                     Repeater {
+                        id: _axes
                         model: _card.initialValuesModel
 
+                        property int revision: 0
+                        onItemAdded: revision++
+                        onItemRemoved: revision++
+
                         delegate: RowLayout {
+                            readonly property bool found: _root.matches(
+                                _valuesLabel.text + ` vJoy ${_card.vjoyId} ` + label)
+                            visible: found
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             spacing: Style.dp(12)
@@ -138,8 +217,6 @@ ScrollView {
                 }
             }
         }
-
-        Item { Layout.preferredHeight: Style.dp(16) }
     }
 
     // A small heading over a card, as ConfigGroup's.

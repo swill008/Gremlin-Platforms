@@ -2,11 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""04 S63, D-04-LAST-ACTIVE: Profile Settings > Startup Mode offers Last
-Active and every mode by name, no Use Heuristic; a setting that isn't listed
+"""04 S63, D-04-LAST-ACTIVE: Options > Startup and macros > Startup Mode offers
+Last Active and every mode by name, no Use Heuristic; a setting that isn't listed
 shows as Last Active; picking a mode sets the profile's Startup Mode.
 
-Opens the real Profile Settings window (04 S96) at General in the running
+Opens the real Options at its Startup and macros page (04 S96) in the running
 program off-screen (stand-in hardware), in its own process, and drives its
 Startup Mode box."""
 
@@ -49,13 +49,18 @@ out = {}
 from PySide6 import QtGui
 win = app.main_window
 QtQml.QQmlExpression(
-    QtQml.qmlContext(win), win, '_root.openProfileSettings("general")').evaluate()
+    QtQml.qmlContext(win), win, 'Commands.trigger("tools.options")').evaluate()
 QtTest.QTest.qWait(500)
 found = [w for w in QtGui.QGuiApplication.allWindows()
-         if w.objectName() == "profileSettingsWindow"]
+         if w.title() == "Options" and w.isVisible()]
+if found:
+    QtQml.QQmlExpression(
+        QtQml.qmlContext(found[0]), found[0],
+        'showPage("startup-macros")').evaluate()
+    QtTest.QTest.qWait(500)
 page = found[0].contentItem() if found else None
 if page is None:
-    out["error"] = "no Profile Settings window"
+    out["error"] = "no Options window"
 else:
     def walk(item):
         yield item

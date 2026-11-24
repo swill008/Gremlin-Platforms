@@ -3,7 +3,7 @@
 
 """Screen Saver Mode model, batch SSM2 (contract-SSM2.md, items 1-3, 5, 8, 9,
 10, 12, 13): the status table rows, the devices wait setting, Test now, the
-tray's three calls, the Switch off trace by name and the state snapshot.
+tray's three calls, the Devices trace and the state snapshot.
 The core, the disabler and the trace are stand-ins; no real device is touched."""
 
 from __future__ import annotations
@@ -111,7 +111,7 @@ def test_power_off_row_says_switching_devices_off_while_waiting(fakes: tuple) ->
     assert _rows(ssm)["Power off displays"]["value"] == "switching devices off…"
 
 
-def test_wakeups_row_hints_at_switch_off_only_from_three(fakes: tuple) -> None:
+def test_wakeups_row_hints_at_automatic_only_from_three(fakes: tuple) -> None:
     manager, model, _m = fakes
     ssm = model()
     ssm.setEnabled(True)
@@ -125,7 +125,7 @@ def test_wakeups_row_hints_at_switch_off_only_from_three(fakes: tuple) -> None:
     manager.extra = {"wakes": 3}
     row = _rows(ssm)["Wake-ups"]
     assert row["value"] == "Windows turned the displays back on 3 times"
-    assert row["detail"] == "a device may need Switch off (see Devices)"
+    assert row["detail"] == "a device may need to be Automatic (see Devices)"
 
 
 def test_hold_row_shows_the_hold_text(fakes: tuple) -> None:
@@ -292,22 +292,6 @@ def test_tray_functions(fakes, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa
     assert done == [1]
 
 
-def test_switch_off_is_traced_by_device_name(
-    fakes: tuple,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from gremlin import trace
-
-    _manager, model, m = fakes
-    m.save_devices([{"name": "VKB Gladiator", "instanceId": "HID\\A", "rate": 1.0}])
-    ssm = model()
-    lines: list[str] = []
-    monkeypatch.setattr(trace, "screen_saver", lambda text, *a, **k: lines.append(text))
-    ssm.setSwitchOff("HID\\A", False)
-    assert "Switch off: VKB Gladiator, off" in lines
-    assert not any("HID" in t for t in lines)
-
-
 def test_snapshot_provider_lines_and_change_notice(
     fakes: tuple,
     monkeypatch: pytest.MonkeyPatch,
@@ -325,10 +309,14 @@ def test_snapshot_provider_lines_and_change_notice(
     )
     monkeypatch.setattr(trace, "snapshot_changed", changed.append, raising=False)
     m.save_devices(
-        [
-            {"name": "VKB Gladiator", "instanceId": "HID\\A", "rate": 1.0},
-            {"name": "vJoy Device", "instanceId": "ROOT\\V", "rate": 1.0},
-        ]
+        m.merge_devices(
+            [],
+            [
+                ("VKB Gladiator", "HID\\A", 1.0),
+                ("Mic", "HID\\B", 1.0),
+                ("vJoy Device", "ROOT\\V", 1.0),
+            ],
+        )
     )
     m.save_wake_rows(
         [
@@ -342,14 +330,18 @@ def test_snapshot_provider_lines_and_change_notice(
         ]
     )
     ssm = model()
+    ssm.setDeviceChoice("HID\\B", "manual")
+    assert "Screen Saver Mode" in changed
     assert "Screen Saver Mode" in registered
     ssm.setDevicesWaitS(15)
     assert "Screen Saver Mode" in changed
     text = "\n".join(registered["Screen Saver Mode"]())
     assert "Screen Saver Mode: off" in text
     assert "Wait for devices to switch off: 15 s" in text
-    assert "Switch off: VKB Gladiator, on" in text
-    assert "Switch off: vJoy Device (virtual), off" in text
+    assert "Devices: VKB Gladiator, automatic" in text
+    assert "Devices: Mic, manual" in text
+    assert "Devices: vJoy Device (virtual), manual" in text
+    assert "Switch off" not in text
     assert "Wake PC ticked: Logitech G815" in text
     assert "Ignore Programs: none" in text
     assert "Ignore System: none" in text

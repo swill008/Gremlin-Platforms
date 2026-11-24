@@ -15,7 +15,7 @@ Run as a script, this file is the child process: the real program
 off-screen (journey harness: temporary home, fake hardware), printing
 RESULT. ``argv[1]`` is the folder for the screenshots, ``argv[2]`` the
 UI scale (default 100); at 150 and 200 % only the Script settings page is
-checked, in the Scripts window (04 S96) at 1000 x 700 in UI units
+checked, on the Scripts page of Options (04 S96) at 1000 x 700 in UI units
 (to-do 98).
 """
 
@@ -233,13 +233,14 @@ def _script_page(j, shots: pathlib.Path, scale: int) -> None:  # noqa: ANN001
     from gremlin import util
 
     out = j.out
-    # The Script settings, in the Scripts window (04 S96): a script's vJoy
+    # The Script settings, on the Scripts page of Options (04 S96): a script's vJoy
     # setting.
     folder = pathlib.Path(util.scripts_dir())
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "press.py").write_text(SCRIPT, encoding="utf-8")
-    j.ev("_root.openScripts()")
-    window = j.window("Scripts")
+    j.ev('Commands.trigger("tools.options")')
+    window = j.window("Options")
+    assert j.ev('showPage("scripts")', window) is True
     # 1000 x 700 in UI units.
     window.setWidth(1000 * scale // 100)
     window.setHeight(700 * scale // 100)
