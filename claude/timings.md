@@ -1556,3 +1556,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent MAPCHECK: today's map entries to built, names/tests/counts on 12 pages (30b71778) | agent docs | 8-10 min | 6 min | 20:47-20:53, MAPCHECK |
 | 2026-11-23 | Full run B3+B4+B5 merged (5 failed: 2 release fakes, Help bold, OSC regression, journey flake) | test | ~11 min | 8 min | 20:47-20:55, lead |
 | 2026-11-23 | Agent REL-FIX: release-live-mode fakes keep Logical state (82fa7757) | agent fix | 3-8 min | 1 min | 20:57-20:58, REL-FIX |
+| 2026-11-23 | Agent OSC-FIX: OSC e2e race (not a regression), _run/_stop wait for the input thread (b84b068b) | agent fix | 5-10 min | 8 min | 20:57-21:05, OSC-FIX |
+| 2026-11-23 | Build (PyInstaller + installer) B3+B4+B5 | build | 1-7 min | 1 min | 21:06-21:07, lead |
+| 2026-11-23 | Silent install + live mode-release check x2 (INCONCLUSIVE: keyboard input lost) | live test | ~3 min | 2 min | 21:07-21:09, lead |
+| 2026-11-23 | Lead: bisect with frozen builds (5727af13 ok, 3fc09dda PASS, 1f50123b PASS, 433bb71b mid-state, HEAD+off-input-thread send PASS) + restart installed | investigation | ~3 min/step | 9 min | 21:15-21:24, lead |
+| 2026-11-23 | Agent KBD-FIX: key sender thread in keyboard.py, 6 tests (6b4efe87) | agent fix | 5-10 min | 5 min | 21:25-21:30, KBD-FIX |
+| 2026-11-23 | Rebuild + silent install + live mode-release check x2 (PASS, PASS) + run/trace | build/test | ~3 min | 2 min | 21:31-21:33, lead |
