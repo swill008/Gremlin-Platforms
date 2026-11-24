@@ -1536,3 +1536,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent B3-CONT: container plugins Foreign paths + 11 tests (50ada217, needs B3-CORE) | refactor | 5-10 min | 7 min | 20:11-20:18, B3-CONT |
 | 2026-11-23 | Agent B3-CORE: ModeType, pending table, Foreign gate, ButtonReleaseActions removed (6f83c414) | refactor | 5-10 min | 8 min | 20:10-20:18, B3-CORE |
 | 2026-11-23 | Agent B3-TEST: 20 mode-change release tests + 5 pinned files (5b648f3a) | refactor | 5-10 min | 10 min | 20:11-20:21, B3-TEST |
+| 2026-11-23 | Agent R-MEASURE: probe after the release batch (+ --release option, 6-block B) | run | ~8 min | 16 min | 20:12-20:28, R-MEASURE |

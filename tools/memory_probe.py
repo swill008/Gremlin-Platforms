@@ -13,6 +13,7 @@ of the journey harness (test/journeys/_harness.py): nothing reaches the PC.
     python tools/memory_probe.py                    # A B C D in parallel
     python tools/memory_probe.py --scenarios A,D --reps 10
     python tools/memory_probe.py --per-window       # D split: one process per window
+    python tools/memory_probe.py --scenarios B --release  # release_unused each block
     python tools/memory_probe.py --child A ...      # one scenario (internal)
 
 Scenarios: A profile load (two profiles in turn), B page switch (Device
@@ -334,6 +335,19 @@ def child(scenario: str, reps: int, warm: int, blocks: int) -> None:
         for _ in range(warm):
             rep()
         say("warm-up done")
+        # The probe's rounds never leave the 1.5 s idle the debounced
+        # release (gremlin/ui/memory_release.py, S199) waits for, so
+        # --release calls it at the end of the warm-up and of each block.
+        do_release = os.environ.get("MEMPROBE_RELEASE") == "1"
+
+        def release() -> None:
+            if do_release:
+                from gremlin.ui import memory_release
+
+                memory_release.release_unused(getattr(j.app, "engine", None))
+                pump(100)
+
+        release()
         tracemalloc.start(1)
         snaps = []
         r = reading(j.app, names)
@@ -345,6 +359,7 @@ def child(scenario: str, reps: int, warm: int, blocks: int) -> None:
             for _ in range(reps):
                 rep()
             out["rep_seconds"].append(round((time.monotonic() - started) / reps, 3))
+            release()
             r = reading(j.app, names)
             r["block"] = block
             out["readings"].append(r)
@@ -590,6 +605,11 @@ def main() -> int:
         action="store_true",
         help="skip the QObject walk (findChildren keeps what it returns alive)",
     )
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="call the program's release_unused (S199) before each reading",
+    )
     parser.add_argument("--timeout", type=float, default=900)
     parser.add_argument(
         "--out", default=str(pathlib.Path(tempfile.gettempdir()) / "memory_probe")
@@ -597,6 +617,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.no_qobjects:
         os.environ["MEMPROBE_NO_QOBJECTS"] = "1"
+    if args.release:
+        os.environ["MEMPROBE_RELEASE"] = "1"  # the children inherit it
     if args.js_gc:
         os.environ["MEMPROBE_JS_GC"] = "1"  # the children inherit it
     if args.child:

@@ -509,3 +509,144 @@ The plan's thresholds are no kept shells, and private bytes flat from block
      the feedback cache).
    - c) A separate investigation of B's native growth (native heap tools or
      a QML-only repro).
+
+## After the release batch
+
+Agent R-MEASURE, 2026-11-23, 20:12-20:28. Measured after the release batch:
+the `release_unused` helper (`gremlin/ui/memory_release.py`, 01 S199), the
+`HardwareLayoutModel` listener clean-up, the feedback cache clean-up and the
+QML-warning list that stops after start-up. No program code was changed and
+nothing was committed.
+
+### How it was run
+
+- Same probe and set-up as stage 2: off-screen, temporary `USERPROFILE`,
+  stand-in hardware, fake vJoy, 2 warm-up repetitions, then 3 blocks of 25,
+  `--no-qobjects`.
+- Main run: A, B, C, E and D for each of the seven windows (one process
+  per window), 4 processes at a time. D for all seven windows ran on its own
+  afterwards.
+- **The probe never lets the release fire by itself.** The release runs
+  1.5 s (`DELAY_MS`) after the last page unload or window close, and each
+  request restarts that wait. The probe's longest pause is 150 ms (B), 300 ms
+  (D) or 500 ms (A), and a reading pumps 2 x 150 ms. So the main run measures
+  the program *without* the release, as when someone switches pages
+  non-stop. A new probe option, `--release`, calls `release_unused(engine)`
+  after the warm-up and at the end of each block, before the reading. That
+  is what happens in the program once the user pauses for 1.5 s.
+- B and D (all seven) ran with `--release`. Because B's 3 blocks were mixed
+  up by a one-time step (below), B then ran for 6 blocks with and without
+  `--release`, side by side.
+- Raw JSON and logs: session scratchpad `relrun`, `relrunR`, `relrunD`,
+  `relB6`, `relB6R` (not in the repo).
+
+### Before and after, block 1 to block 3 (50 repetitions)
+
+Private bytes are in MB, with the two block steps in brackets. The Python
+heap change is in MB. Shells were 0 in every scenario, every block, every
+run; the live `Profile` count stayed at 1 everywhere.
+
+| Scenario | Private: stage 2 | after release batch | with `--release` | Heap: stage 2 | after |
+|---|---|---|---|---|---|
+| A. Profile load | +0.1 (+0.57, -0.47) | **+0.09** (-0.35, +0.44) | | +0.02 | +0.02 |
+| B. Page switch (one round) | +26.4 (+7.4, +19.0) | +11.9 (+9.84, +2.06) | +9.1 (-0.97, +10.07) | +0.07 | +0.03 |
+| C. Action pane open and close | +2.5 (+1.5, +1.0) | +3.5 (+0.44, +3.04) | | +0.03 | +0.02 |
+| D. Seven windows (one round) | +9.9 (+1.3, +8.5) | +6.3 (+0.87, +5.39) | **+1.1** (+0.93, +0.18) | +0.04 | +0.02 |
+| E. Load + pane, twice | +1.5 (+1.41, +0.12) | +1.4 (+0.17, +1.20) | | +0.06 | +0.03 |
+
+B, 6 blocks of 25 (150 rounds after block 1), steps per block:
+
+| B run | Steps per 25 rounds (MB) | Total, block 1 to 6 |
+|---|---|---|
+| Without release | +3.94, +10.2, +4.2, +2.97, +6.85 | **+28.2** |
+| With `--release` | +4.07, +2.31, -1.16, +4.42, -0.38 | **+9.3** |
+
+D, one window at a time (25 opens per block, without release):
+
+| Window | Stage 2 (steps) | After release batch (steps) |
+|---|---|---|
+| Options | +0.92 (+0.11, +0.81) | +0.85 (+0.72, +0.13) |
+| Input Viewer | +1.79 (+1.24, +0.55) | +2.46 (+1.92, +0.54) |
+| Manage Modes | +0.38 (+0.31, +0.07) | +0.39 (+0.31, +0.08) |
+| Device Information | +1.37 (+0.37, +1.00) | +1.37 (+1.24, +0.13) |
+| Calibration | +0.63 (+0.24, +0.39) | +1.04 (+0.60, +0.44) |
+| Live Log | +0.67 (+0.37, +0.30) | +0.57 (+0.33, +0.24) |
+| Device Mapping Editor | +0.43 (+0.50, -0.07) | +1.10 (+0.86, +0.24) |
+
+### The three Python-side growths from stage 2
+
+- `hardware_layout.py` relay listeners: **gone.** In stage 2 `tracemalloc`
+  showed +196 relay allocations at `:446` per 50 rounds of B, and the `gc`
+  object count grew about 10 per round. Now `:446` is not in B's top 15,
+  and the `gc` count grows by 3 per block of 25 rounds (78,175 to 78,196
+  over 6 blocks). What is left is `:498`, the `destroyed` hook (+11
+  allocations, 557 B per 50 rounds), and `:193`, the live models' input map
+  (2.3 KB). Both are small and come from models that are still alive.
+- `joystick_gremlin.py:1155` QML-warning list: **gone** from every top 15,
+  D included.
+- `action_analysis.py` feedback cache: **gone** from C's and E's top 15.
+- Still in the lists, small as before (about 46 B per call, 1.5-6 KB per 50
+  repetitions): `model_factory.py:177` (`setObjectOwnership`) and
+  `window_placement.py:317` (`setWindowStates`). The cause is **unverified**
+  (most likely shiboken's per-call caches, as noted in stage 2).
+
+### Verdicts against the plan's thresholds
+
+The plan's thresholds are no kept shells, and private bytes flat from block
+1 to block 3 or levelling off (under about 1 MB per 25 repetitions).
+
+- **No shells: met everywhere**, as in stage 2.
+- **A. Profile load: flat.** +0.09 MB over 50 loads. Passes.
+- **E. Profile load + pane: levels off.** +0.17 then +1.20 MB per 25.
+  About the same as stage 2 (+1.5). Passes (borderline on the second block).
+- **D, single windows: pass, about the same as stage 2.** Every window's
+  second block is at or under 0.54 MB per 25; first blocks of up to
+  1.9 MB (Input Viewer) and 1.24 MB (Device Information). Without the
+  release, a window opened over and over keeps about 10-40 KB per open.
+- **D, seven windows: passes with the release, not without.** Without the
+  release: +0.87 then +5.39 MB per 25 rounds (stage 2: +1.3, +8.5). With
+  the release at each block: **+0.93 then +0.18**: flat. So most of D's
+  growth was the engine's unused component cache and late JavaScript
+  garbage collection (native-growth.md items 1 and 2), and the release
+  frees it.
+- **B. Page switch: levels off with the release; still grows without it.**
+  - Without the release (non-stop switching): about +4 to +7 MB per 25
+    rounds, steadily, plus one +10 MB step: +28 MB over 150 rounds. That is
+    lower than stage 2 (+19 MB in the second block alone), probably thanks
+    to the listener fix (the `gc` count is now flat), but it still fails the
+    threshold.
+  - With the release at each block: +9.3 MB over 150 rounds, and after
+    block 2 the steps are +2.31, -1.16, +4.42, -0.38. That averages about
+    +1.3 MB per 25 rounds, up and down: **levelling off, at the edge of
+    the threshold.** The noise (about +-4 MB per block) is larger than what
+    is left.
+  - The single +10 MB step (block 2 without the release, block 3 in the
+    3-block release run) fits native-growth.md item 7: one set of large
+    buffers (likely fonts or glyphs) copied once, at a random block, then
+    flat. It is a one-time step, not a leak. That explains why B's 3-block
+    release run (-0.97, +10.07) looked worse than the 6-block run.
+- **C. Action pane: borderline, as before.** +0.44 then +3.04 MB per 25
+  (stage 2: +1.5, +1.0); heap flat (+0.02). C was not run with
+  `--release`: a pane open and close does not unload a page or close a
+  window, so it does not ask for the release in the program either.
+  **Unverified** whether C's growth is the same component-cache growth.
+
+### What still grows
+
+1. **Non-stop page switching (B without a 1.5 s pause):** about 4-7 MB per
+   25 rounds of six page opens (0.16-0.27 MB per round). It is outside
+   Python (heap +0.05 MB over 150 rounds, no shells, flat `gc` count). The
+   release removes most of it as soon as the user pauses for 1.5 s, so in
+   normal use the growth is handed back. With the release, B still drifts
+   up about 1 MB per 25 rounds within the noise.
+2. **C, the action pane:** 0.4-3 MB per 25 opens, outside Python. It does
+   not trigger the release. Unverified cause.
+3. **Small Python-side items:** `model_factory.py:177` and
+   `window_placement.py:317`, about 46 B per call. Negligible (a few KB per
+   50 repetitions).
+4. **The one-time step of about 10 MB** (native-growth.md item 7): a step,
+   not a growth.
+
+The probe's `--release` option (`tools/memory_probe.py`) is how to measure
+the program with the release on; without it the probe measures non-stop
+use.
