@@ -1584,3 +1584,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-24 | Read trace after user's Turn displays off now check | lead | ~1 min (guess) | 2 min | 04:25-04:27, lead |
 | 2026-11-24 | SNAP-HOLD: Hold now snapshot line + rewrite on hold change + 3 tests (01 S185, to-do 153) | agent fix | 3-8 min | 3 min | 04:23-04:26 |
 | 2026-11-24 | Lead review + quick tests (--changed 352, pyright) + build + silent install + live check (Hold now line) | test/build | ~20 min end to end | 6 min | 04:26-04:32, lead; install wait hung on -Wait (installer's child process), stopped |
+| 2026-11-24 | Study: vJoy wake lines + profile restart during switch off (code, trace, upstream develop + v13.1) | review | no data | 6 min | 04:38-04:44, lead |
+| 2026-11-24 | SSM-NORELOAD: pause Device change behavior while switching devices + 4 tests (12 S21) | agent fix | 3-8 min | 6 min incl. hold | 04:48-04:54 |
+| 2026-11-24 | Lead fix (pause only for devices kept off) + test + quick tests (--changed 2459) + build + silent install | test/build | ~10 min | 7 min | 04:54-05:01, lead |
+| 2026-11-24 | Read Test now trace (no restart, 2 wakes) + vJoy raw input path check (HIDCLASS Col01-03) | lead | ~2 min | 4 min | 05:10-05:14, lead |

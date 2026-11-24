@@ -24,6 +24,7 @@ from gremlin import (
     code_runner,
     common,
     config,
+    device_disable,
     device_helpers,
     device_initialization,
     event_handler,
@@ -34,6 +35,7 @@ from gremlin import (
     profile_recovery,
     shared_state,
     threads,
+    trace,
     user_script,
     util,
 )
@@ -533,6 +535,14 @@ class Backend(QtCore.QObject):
         signal.profileChanged.emit()
 
     def _device_change(self) -> None:
+        # D-12-SWITCH-OFF-NO-RELOAD: devices Screen Saver Mode switches off
+        # or back on don't stop or reload the running profile.
+        if device_disable.devices_switching():
+            trace.screen_saver(
+                "device change: profile kept running (devices being "
+                "switched by Screen Saver Mode)"
+            )
+            return
         behavior = self.config.value("global", "general", "device-change-behavior")
         match behavior:
             case "Disable":

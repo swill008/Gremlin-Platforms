@@ -47,6 +47,10 @@ PING_TIMEOUT_S = 10.0
 # The helper runs pnputil bounded 30 s per device.
 PER_DEVICE_TIMEOUT_S = 30.0
 ANSWER_SLACK_S = 10.0
+# D-12-SWITCH-OFF-NO-RELOAD: how long after the last disable/enable job
+# Device change behavior stays paused, so the plug-in that Windows reports
+# a moment after an enable still finds it paused.
+SWITCH_GRACE_S = 10.0
 
 ENABLED, DISABLED, NOT_PRESENT = "enabled", "disabled", "not present"
 TO_BE_DISABLED, DISABLE_FAILED = "to be disabled", "disable failed"
@@ -403,6 +407,10 @@ class DeviceDisabler:
         self._busy = 0
         self._idle = threading.Event()
         self._idle.set()
+        # The journal listed a device not "enabled" after the last job.
+        self._held_off = False
+        # clock.monotonic() until which switching() stays True.
+        self._quiet_until = 0.0
 
     # Paths ---------------------------------------------------------------
 
@@ -614,10 +622,33 @@ class DeviceDisabler:
             except Exception:
                 _log.exception("Screen Saver Mode: device %s failed", name)
             finally:
+                held = self._journal_holds_off()
                 with self._lock:
+                    self._held_off = held
                     self._busy -= 1
                     if self._busy == 0:
+                        self._quiet_until = clock.monotonic() + SWITCH_GRACE_S
                         self._idle.set()
+
+    def _journal_holds_off(self) -> bool:
+        # Only devices kept off: one left "to be enabled" (unplugged) or
+        # "enable failed" must not pause Device change behavior for good.
+        try:
+            states = (e.get("state") for e in self.journal().entries.values())
+            return any(s in (DISABLED, TO_BE_DISABLED) for s in states)
+        except Exception:
+            _log.exception("Screen Saver Mode: device journal unreadable")
+            return False
+
+    def switching(self) -> bool:
+        """D-12-SWITCH-OFF-NO-RELOAD: devices are being switched off, are
+        held off, or are being switched back on (or were, under
+        SWITCH_GRACE_S ago): a job is queued or running, or the journal
+        held a device off after the last one. Never blocks."""
+        with self._lock:
+            if self._busy > 0 or self._held_off:
+                return True
+            return clock.monotonic() < self._quiet_until
 
     def wait_idle(self, timeout: float) -> bool:
         """Waits (bounded) until no disable/enable job is queued or running."""
@@ -843,6 +874,14 @@ def _write_key(path: str, authkey: bytes) -> None:
 
 _manager: DeviceDisabler | None = None
 _manager_lock = threading.Lock()
+
+
+def devices_switching() -> bool:
+    """DeviceDisabler.switching() of the one instance; False when none was
+    ever made (Screen Saver Mode never switched a device)."""
+    with _manager_lock:
+        disabler = _manager
+    return disabler is not None and disabler.switching()
 
 
 def manager() -> DeviceDisabler:
