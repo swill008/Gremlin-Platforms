@@ -13,10 +13,7 @@ import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import shared_state
 from gremlin.config import Configuration
-from gremlin.error import (
-    GremlinError,
-    MissingImplementationError,
-)
+from gremlin.error import MissingImplementationError
 from gremlin.plugin_manager import PluginManager
 from gremlin.profile import Library
 from gremlin.signal import signal
@@ -445,14 +442,13 @@ class ActionModel(QtCore.QObject):
             target_sidx: sequence index of the target action
             container: name of the container to insert the action into
         """
-        try:
-            if container is None:
-                self._binding_model.move_action(source_sidx, target_sidx)
-            else:
-                self._binding_model.move_action(source_sidx, target_sidx, container)
-        except GremlinError:
-            # A move the tree refuses leaves it as it was.
-            pass
+        # A move into the action's own children or a missing container is
+        # refused before anything is removed (05 S144); redraw so the
+        # dragged item goes back.
+        if not self._binding_model.can_move_action(source_sidx, target_sidx, container):
+            self._binding_model.sync_data()
+            return
+        self._binding_model.move_action(source_sidx, target_sidx, container)
 
     sharedWith = QtCore.Property(str, fget=_shared_with, notify=actionChanged)
 

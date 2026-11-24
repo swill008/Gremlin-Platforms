@@ -402,6 +402,10 @@ class InputItemBindingModel(QtCore.QObject):
         """
         if _edit_refused():
             return
+        # Checked before anything is removed, so a refused move keeps the
+        # tree as it was (05 S144).
+        if not self.can_move_action(source_idx, target_idx, container):
+            return
         s_model = self.get_action_model_by_sidx(source_idx)
         t_model = self.get_action_model_by_sidx(target_idx)
 
@@ -443,6 +447,41 @@ class InputItemBindingModel(QtCore.QObject):
 
         self._create_action_models()
         self.rootActionChanged.emit()
+
+    def can_move_action(
+        self, source_idx: int, target_idx: int, container: str | None = None
+    ) -> bool:
+        """Returns whether move_action would move the action.
+
+        An action can't go into itself or its own children, and the
+        container it goes into must exist on the target (05 S144).
+
+        Args:
+            source_idx: sequence index of the action to move
+            target_idx: sequence index of the target action
+            container: name of the target's container, if any
+        """
+        if source_idx not in self._index_lookup or target_idx not in self._index_lookup:
+            return False
+        if self._is_descendant_of(target_idx, source_idx):
+            return False
+        if container is not None:
+            t_data = self.get_action_model_by_sidx(target_idx).action_data
+            if container not in t_data._valid_selectors():
+                return False
+        return True
+
+    def _is_descendant_of(self, index: int, ancestor: int) -> bool:
+        """Returns whether the action at index is ancestor or inside it."""
+        ancestor_data = self.get_action_model_by_sidx(ancestor).action_data
+        current: int | None = index
+        while current is not None:
+            if current == ancestor:
+                return True
+            if self.get_action_model_by_sidx(current).action_data is ancestor_data:
+                return True
+            current = self._index_lookup[current].parent_index
+        return False
 
     def remove_action(
         self,
