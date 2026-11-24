@@ -1574,3 +1574,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent META-MOD: @Slot on 3 module models, 6 tests (f92f2cc4) | agent fix | 5-10 min | 5 min | 22:53-22:58, META-MOD |
 | 2026-11-23 | Agent META-SAFE: metaObject() trap — tests unparented + guard, action_model/control_windows safe reads (6550bd7c) | agent fix | 8-10 min | 13 min | 22:58-23:11, META-SAFE |
 | 2026-11-23 | Full runs x2 after META-SAFE (136 failed + crash; then 1 crash in test_metaobject_safe_reads) + undo of its program changes | test/fix | ~10 min each | 9 + 9 min | 23:12-23:21, 23:26-23:35, lead |
+| 2026-11-23 | Full run after undo (all green) + build + install + live check + push 2fe32018 | test/build | ~15 min | 10 min | 23:36-23:46, lead |
+| 2026-11-24 | CI on 2fe32018 (B3+B4+B5 + CI fixes + QMetaObject), run 45335718065 | ci | ~25 min | 27 min | 23:46-00:13, success |
