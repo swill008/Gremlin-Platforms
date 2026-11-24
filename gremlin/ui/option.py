@@ -55,7 +55,9 @@ _ENTRY_TITLES = {
     # (D-07-RECOVERY-COPIES).
     "recovery-copies": "Keep recovery copies",
     "recovery-seconds": "Seconds between recovery copies",
-    "remain-active-on-focus-loss": "Keep running when the program loses focus",
+    # 02 S90, S90a (D-B5-UPSTREAM).
+    "no-profile-action": "When a program with no profile comes to the front",
+    "default-profile": "Default profile",
     "enable-auto-loading": "Load profiles automatically",
     "auto-loading": "Programs and their profiles",
     "resolution-mode": "Mode cycle resolution",
@@ -125,7 +127,8 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ("Auto-load", [
             ("profile", "automation", "enable-auto-loading"),
             ("profile", "automation", "auto-loading"),
-            ("profile", "automation", "remain-active-on-focus-loss"),
+            ("profile", "automation", "no-profile-action"),
+            ("profile", "automation", "default-profile"),
         ]),
     ]),
     ("Home", [
@@ -158,7 +161,41 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
 # "Disable" is Stop (glossary Run / Stop; 02 Q2).
 _SHOWN_CHOICES: dict[tuple[str, str, str], dict[str, str]] = {
     ("global", "general", "device-change-behavior"): {"Disable": "Stop"},
+    # 02 S90: what Auto-load does when a program with no profile comes to
+    # the front.
+    ("profile", "automation", "no-profile-action"): {
+        "stop": "Stop the profile",
+        "keep": "Keep running",
+        "default": "Load the default profile",
+    },
 }
+
+# Rows usable only while another setting holds one value (shown greyed out
+# otherwise): the Default profile file only with "Load the default profile"
+# (02 S90a).
+_ENABLED_WHEN: dict[tuple[str, str, str], tuple[tuple[str, str, str], Any]] = {
+    ("profile", "automation", "default-profile"): (
+        ("profile", "automation", "no-profile-action"), "default",
+    ),
+}
+
+# File rows whose chooser remembers its own kind's folder
+# (gremlin/ui/folder_memory.py KINDS); the others use "other".
+_PICKER_KINDS: dict[tuple[str, str, str], str] = {
+    ("profile", "automation", "default-profile"): "profile",
+}
+
+
+def setting_enabled(key: tuple[str, str, str]) -> bool:
+    """False while the row's setting has no effect (_ENABLED_WHEN)."""
+    rule = _ENABLED_WHEN.get(key)
+    if rule is None:
+        return True
+    other, wanted = rule
+    cfg = gremlin.config.Configuration()
+    if not cfg.exists(*other):
+        return True
+    return cfg.value(*other) == wanted
 
 
 # Settings whose truth is outside the settings file: Options shows the
@@ -384,8 +421,19 @@ def shown_setting(key: tuple[str, str, str]) -> Any:  # noqa: ANN401
         return _LIVE_VALUES[key][0]()
     value = cfg.value(section, group, name)
     if cfg.data_type(section, group, name) == PropertyType.Path:
-        value = str(value)
+        value = _path_text(key, value)
     return shown_choice(key, value)
+
+
+def _path_text(key: tuple[str, str, str], value: Any) -> str:  # noqa: ANN401
+    """A path setting as text; a file row with no file chosen shows empty,
+    not Path("")'s "." (a folder's "." stays: its row reads it)."""
+    text = str(value)
+    if text == ".":
+        props = gremlin.config.Configuration().get(*key, "properties") or {}
+        if not props.get("is_folder", False):
+            return ""
+    return text
 
 
 def change_setting(key: tuple[str, str, str], value: Any) -> bool:  # noqa: ANN401
@@ -629,6 +677,8 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"description"),
         QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"properties"),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"name"),
+        # False while the setting has no effect (_ENABLED_WHEN).
+        QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"enabled"),
     }
 
     def __init__(
@@ -668,6 +718,8 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         role_name = bytes(self.roles[role].data()).decode()
         if role_name == "name":
             return entry_title(name)
+        if role_name == "enabled":
+            return setting_enabled((section, group, name))
         value = None
         # A custom widget wins over a stored value of the same name.
         if name in self._option.entries(section, group):
@@ -687,13 +739,16 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
                 value = _LIVE_VALUES[key][0]()
             elif role_name == "value":
                 if self._config.data_type(section, group, name) == PropertyType.Path:
-                    value = str(value)
+                    value = _path_text(key, value)
                 value = shown_choice(key, value)
             elif role_name == "properties" and key in _SHOWN_CHOICES:
                 value = dict(value)
                 value["valid_options"] = [
                     shown_choice(key, v) for v in value.get("valid_options", [])
                 ]
+            elif role_name == "properties" and key in _PICKER_KINDS:
+                value = dict(value)
+                value["picker_kind"] = _PICKER_KINDS[key]
             if isinstance(value, PropertyType):
                 value = PropertyType.to_string(value)
         return value
@@ -714,6 +769,13 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         if self.roles[role] == "value":
             done = change_setting((section, group, name), value)
             self.dataChanged.emit(index, index, [role])
+            # Rows that depend on this one turn usable or greyed out.
+            enabled_role = QtCore.Qt.ItemDataRole.UserRole + 6
+            for row, key in enumerate(self._keys):
+                rule = _ENABLED_WHEN.get(key)
+                if rule is not None and rule[0] == (section, group, name):
+                    dependent = self.index(row, 0)
+                    self.dataChanged.emit(dependent, dependent, [enabled_role])
             return done
         return False
 

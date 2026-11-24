@@ -172,6 +172,9 @@ ColumnLayout {
                 wide: true
                 visible: _group.matches(index)
                 divider: index > _group.firstMatch
+                // Greyed out while the setting has no effect (02 S90a:
+                // Default profile only with "Load the default profile").
+                enabled: model.enabled !== false
 
                 title: name
                 explanation: description
@@ -243,9 +246,15 @@ ColumnLayout {
                 FilePicker {
                     id: _pathPicker
                     objectName: "optionPathPicker"
-                    // The Logs folder has its own memory; every other setting shares "other".
-                    kind: String(name).toLowerCase() === "logs folder" ? "log" : "other"
+                    // The Logs folder and rows with a picker_kind (Default
+                    // profile: "profile") have their own memory; every other
+                    // setting shares "other".
+                    kind: properties["picker_kind"]
+                        ? String(properties["picker_kind"])
+                        : String(name).toLowerCase() === "logs folder" ? "log" : "other"
                     mode: properties["is_folder"] ? "folder" : "open"
+                    nameFilters: properties["picker_kind"] === "profile"
+                        ? ["Profile files (*.xml)"] : []
                     title: _pickerTitle()
                     onPicked: (selected) => {
                         model.value = String(selected).substring("file:///".length)
