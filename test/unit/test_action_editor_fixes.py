@@ -133,7 +133,7 @@ def test_merge_operations_read_as_words() -> None:
     labels, values = _operation_list()
     assert "Prefer Center" in labels and "Maximum Deflection" in labels
     assert sorted(values) == sorted(MergeOperation.to_string(o) for o in MergeOperation)
-    assert labels[values.index("prefercenter")] == "Prefer Center"
+    assert labels[values.index("closest-to-center")] == "Prefer Center"
     assert labels[values.index("maximum-deflection")] == "Maximum Deflection"
 
 

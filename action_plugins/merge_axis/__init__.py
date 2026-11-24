@@ -59,7 +59,7 @@ class MergeOperation(Enum):
     Maximum = 2
     Sum = 3
     Bidirectional = 4
-    Prefercenter = 5
+    ClosestToCenter = 5
     MaximumDeflection = 6
 
     @classmethod
@@ -94,7 +94,7 @@ _NAMES: dict[MergeOperation, tuple[str, str]] = {
     MergeOperation.Maximum: ("maximum", "Maximum"),
     MergeOperation.Sum: ("sum", "Sum"),
     MergeOperation.Bidirectional: ("bidirectional", "Bidirectional"),
-    MergeOperation.Prefercenter: ("prefercenter", "Prefer Center"),
+    MergeOperation.ClosestToCenter: ("closest-to-center", "Prefer Center"),
     MergeOperation.MaximumDeflection: ("maximum-deflection", "Maximum Deflection"),
 }
 
@@ -150,7 +150,7 @@ class MergeAxisFunctor(AbstractFunctor):
         return (value2 - value1) / 2.0
 
     @staticmethod
-    def _prefercenter(value1: float, value2: float) -> float:
+    def _closest_to_center(value1: float, value2: float) -> float:
         """Use the axis closest to center."""
         return value1 if abs(value1) < abs(value2) else value2
 
@@ -165,7 +165,7 @@ class MergeAxisFunctor(AbstractFunctor):
         MergeOperation.Maximum: _maximum,
         MergeOperation.Sum: _sum,
         MergeOperation.Bidirectional: _bidirectional,
-        MergeOperation.Prefercenter: _prefercenter,
+        MergeOperation.ClosestToCenter: _closest_to_center,
         MergeOperation.MaximumDeflection: _maximum_deflection,
     }
 

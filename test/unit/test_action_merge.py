@@ -122,8 +122,40 @@ def test_operation_names_round_trip(operation: merge_axis.MergeOperation) -> Non
     assert b.operation == operation
 
 
-def test_maximum_deflection_is_stored_with_its_own_name() -> None:
-    """05 S114: stored "maximum-deflection"; "prefercenter" keeps its name."""
+def test_operations_use_upstreams_stored_names() -> None:
+    """05 S114 (D-05-UPSTREAM-B2): Prefer Center is stored as upstream's
+    "closest-to-center"; the old "prefercenter" is not kept."""
     op = merge_axis.MergeOperation
     assert op.to_string(op.MaximumDeflection) == "maximum-deflection"
-    assert op.to_string(op.Prefercenter) == "prefercenter"
+    assert op.to_string(op.ClosestToCenter) == "closest-to-center"
+    assert op.to_display(op.ClosestToCenter) == "Prefer Center"
+    with pytest.raises(Exception):
+        op.to_enum("prefercenter")
+
+
+def test_saving_prefer_center_writes_closest_to_center() -> None:
+    a = merge_axis.MergeAxisData(types.InputType.JoystickAxis)
+    a.operation = merge_axis.MergeOperation.ClosestToCenter
+    for ref, guid in ((a.axis_in1, _DEVICE_GUID_1), (a.axis_in2, _DEVICE_GUID_2)):
+        ref.device_guid = guid
+        ref.input_type = types.InputType.JoystickAxis
+        ref.input_id = 1
+    node = a._to_xml()
+    value = node.find("./property/name[.='operation']/../value")
+    assert value.text == "closest-to-center"
+
+
+def test_upstream_profile_with_closest_to_center_loads(
+    xml_dir: pathlib.Path, tmp_path: pathlib.Path
+) -> None:
+    """An upstream (JoystickGremlin develop) Merge Axis snippet reads as
+    Prefer Center."""
+    text = (xml_dir / "action_merge_axis.xml").read_text(encoding="utf-8")
+    text = text.replace("<value>minimum</value>", "<value>closest-to-center</value>")
+    path = tmp_path / "upstream_merge.xml"
+    path.write_text(text, encoding="utf-8")
+    p = Profile()
+    p.from_xml(str(path))
+    a = p.library.get_action(_ACTION_ID)
+    assert a.operation == merge_axis.MergeOperation.ClosestToCenter
+    assert merge_axis.MergeOperation.to_display(a.operation) == "Prefer Center"
