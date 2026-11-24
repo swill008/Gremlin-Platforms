@@ -205,6 +205,7 @@ class DeviceLiveState(QtCore.QObject):
             self.guidChanged.emit()
         self._bump()
 
+    @QtCore.Slot()
     def _device_list_changed(self) -> None:
         # Set while its stick was unplugged: read it now it is back.
         if self._device is None and self._wanted:
@@ -310,6 +311,7 @@ class DeviceLiveState(QtCore.QObject):
         except Exception:
             return False
 
+    @QtCore.Slot()
     def _poll_output(self) -> None:
         """vJoy dest Device Bindings live: this output module's feeder only."""
         if not self._live_while_active:
@@ -364,6 +366,7 @@ class DeviceLiveState(QtCore.QObject):
         self._stamp += 1
         self.stampChanged.emit()
 
+    @QtCore.Slot()
     def _flush_axes(self) -> None:
         if self._get_locked():
             self._axis_dirty = False

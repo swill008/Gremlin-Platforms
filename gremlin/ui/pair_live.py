@@ -94,6 +94,7 @@ class PairLiveThrottle(QtCore.QObject):
         self._button_stamp += 1
         self.buttonStampChanged.emit()
 
+    @QtCore.Slot()
     def _flush(self) -> None:
         if self._axis_dirty:
             self._axis_dirty = False
@@ -136,6 +137,7 @@ class PairLiveThrottle(QtCore.QObject):
         elif not self._vjoy_poll.isActive():
             self._vjoy_poll.start()
 
+    @QtCore.Slot()
     def _poll_vjoy(self) -> None:
         axes: dict[tuple[str, int], float] = {}
         buttons: dict[tuple[str, int], float] = {}
