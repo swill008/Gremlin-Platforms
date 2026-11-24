@@ -1097,6 +1097,7 @@ def _autoload_backend(
         gremlinActive=running,
         _wanted_active=running,
         _autoload_held=None,
+        _autoload_missing=set(),
         activate_gremlin=lambda on: calls.append(("active", on)),
         loadProfile=lambda path: calls.append(("load", path)),
     )

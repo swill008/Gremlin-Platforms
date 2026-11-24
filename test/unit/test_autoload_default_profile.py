@@ -37,6 +37,7 @@ def _fake(
         ),
         _wanted_active=running,
         _autoload_held=None,
+        _autoload_missing=set(),
         calls=calls,
     )
 
@@ -161,3 +162,14 @@ def test_own_window_changes_nothing(tmp_path: Path) -> None:
         fake = _fake(action, str(default))
         _AUTOLOAD(fake, sys.executable)
         assert fake.calls == []
+
+
+def test_own_and_default_both_missing_each_said_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, notes: list
+) -> None:
+    own = tmp_path / "game.xml"
+    monkeypatch.setattr(config, "get_profile_with_regex", lambda path: str(own))
+    fake = _fake("default", str(tmp_path / "gone.xml"))
+    for _ in range(3):
+        _AUTOLOAD(fake, "C:/x/game.exe")
+    assert [n[1].split(" ")[0] for n in notes] == ["game.xml", "gone.xml"]

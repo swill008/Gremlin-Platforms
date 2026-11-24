@@ -70,6 +70,7 @@ def _fake(unsaved: bool) -> types.SimpleNamespace:
         gremlinActive=False,
         _wanted_active=False,
         _autoload_held=None,
+        _autoload_missing=set(),
         activate_gremlin=lambda on: calls.append(("active", on)),
         loadProfile=lambda path: calls.append(("load", path)),
         calls=calls,

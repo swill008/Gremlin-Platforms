@@ -342,7 +342,7 @@ class _AutoLoadState(Protocol):
     """What auto-load's helpers read on Backend."""
 
     config: _Configuration
-    _autoload_held: str | None
+    _autoload_missing: set[str]
 
 
 def _no_profile_action(backend: _AutoLoadState) -> str:
@@ -352,8 +352,8 @@ def _no_profile_action(backend: _AutoLoadState) -> str:
 
 def _note_missing_once(backend: _AutoLoadState, profile_path: str) -> None:
     """Auto-load's missing-file notice, once per file (02 S89, S90a)."""
-    if backend._autoload_held != profile_path:  # noqa: SLF001
-        backend._autoload_held = profile_path  # noqa: SLF001
+    if profile_path not in backend._autoload_missing:  # noqa: SLF001
+        backend._autoload_missing.add(profile_path)  # noqa: SLF001
         signal.showNotification.emit(
             "Auto-load",
             f"{Path(profile_path).name} was not loaded: the file is missing.",
@@ -425,6 +425,8 @@ class Backend(QtCore.QObject):
         self._action_state = {}
         # Auto-load target held back by unsaved edits (said once).
         self._autoload_held: str | None = None
+        # Missing files already said once (02 S89, S90a).
+        self._autoload_missing: set[str] = set()
         # The Run itself lives on the input thread (RunControl); its runner
         # is read here for the status only.
         self._run_control = code_runner.run_control()
@@ -637,9 +639,10 @@ class Backend(QtCore.QObject):
                     )
                 return
             if own:
-                # A missing file's notice stays said while the default
-                # stands in for it.
+                # A program's own profile opened: notices may show again.
+                # Not for the default, which stands in for a missing file.
                 self._autoload_held = None
+                self._autoload_missing.clear()
             self.activate_gremlin(False)
             self.loadProfile(profile_path)
         if not self._wanted_active:
