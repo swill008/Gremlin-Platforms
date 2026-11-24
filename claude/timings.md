@@ -1578,3 +1578,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-24 | CI on 2fe32018 (B3+B4+B5 + CI fixes + QMetaObject), run 45335718065 | ci | ~25 min | 27 min | 23:46-00:13, success |
 | 2026-11-24 | Live check: Map to Mouse clicks from the input thread (script tools/live_mouse_click_check.py + run) | live check | ~5 min (guess, no data) | 2 min | 04:11-04:13, lead, PASS |
 | 2026-11-24 | Map line + lint + guard tests + local commit (Map to Mouse live check) | lead | ~1 min | 1 min | 04:13-04:14, lead |
+| 2026-11-24 | Read the overnight trace (date line, wake-cause lines) | lead | no data | 4 min | 04:15-04:19, lead |
+| 2026-11-24 | Display-off cause (powercfg, event log, code) + to-do 152-154 + local commit | lead | no data | 5 min | 04:19-04:24, lead |

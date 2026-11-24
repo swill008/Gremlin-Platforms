@@ -68,6 +68,8 @@ older text is in git history.
 
 ## Hands-on checks
 
+154. (user 2026-11-24: "1a") Overnight wake-cause check, night of 2026-11-24: the user leaves no window full screen; next morning read trace.log for power-off, keep-off, `wakes` and wake-cause lines. Night of 2026-11-23 gave none: a full-screen hold all night, the screens switched off by something else (likely Windows' 5 min display-off). The date line worked (`--- 2026-11-24 ---` once, first line after midnight).
+
 5. **Program-run part done 2026-10-07** (e50c4ed8, results in
    `claude/hands-on-results/`, page https://claude.ai/artifact/XDkvyR895esB8smH439BWD):
    247 rows, 194 pass, 20 fail, 6 blocked, 27 need a person. Left:
@@ -115,6 +117,8 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 16. DONE except the compiled-QML cache, NOT ADDED (batch N, CICACHE 2026-10-12: Qt's cache check rejects every entry after a fresh checkout because file times change; full saving under 1 s of a ~21 min run; the default disk cache already works within a run; would need an mtime-restore step + cache step). PARTLY (scrub 2026-10-12: split + test-times cache done (a840239d); venv cache tried and dropped (5745aecf); compiled-QML cache not done). Faster CI: cache the venv and compiled QML (with item 2).
 17. PARTLY (scrub 2026-10-12: binding_catalog.py 1147->242 done; hardware_profile.py (2477) and module_model.py (3132) have grown). Keep shrinking hardware_profile.py, module_model.py, binding_catalog.py.
 18. PARTLY (scrub 2026-10-12: some windows checked at 100/150/175; no full screenshot suite; waits on item 1). Screenshot tests at several UI scales (70–175 %).
+152. (user 2026-11-24: "2a") Screen Saver Mode trace: write a line each time Windows reports the displays off or on (`on_display_state`, gremlin/screen_saver_mode.py; today noted silently unless Gremlin is keeping them off). Found 2026-11-24: the screens were off in the morning, but the overnight trace had no line saying when or by whom (likely Windows' own 5 min display-off; unverified). Spec first: page 12. Owner: page 12.
+153. (user 2026-11-24: "2a") Screen Saver Mode trace: the summary written at Tracing on should name a hold already in effect (and the full-screen program). Found 2026-11-24: `hold ended: fullscreen` at 04:00 with no `hold began` since start, because the hold began just before tracing came on (23:46:32 start, 23:46:33 trace on; from timestamps, unverified). Spec first: page 12. Owner: page 12.
 
 ## Carried-over fixes (one at a time, spec first)
 
