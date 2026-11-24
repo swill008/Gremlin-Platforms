@@ -1527,3 +1527,12 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent FIX-OSCLAYOUT: test isolation (flag race fixture, OSC models deleted) + test | agent fix | 3-8 min | 4 min | 20:00-20:04, FIX-OSCLAYOUT |
 | 2026-11-23 | Stage 2 build + install + live check (22 windows, pages, log clean) + run/trace | build/test | ~4 min | 2 min | 20:05-20:07, lead |
 | 2026-11-23 | Agent B2-NAMES: shared input_label helper, Input names refresh, 4 tests (7658f369) | refactor | 5-10 min | 14 min | 19:51-20:05, B2-NAMES: waited behind other runs |
+| 2026-11-23 | Lead: B3 plan, spec S38/S38a-d committed (b441a1d4), 6 worktree briefs | lead planning | ~8 min | 6 min | 20:09-20:15, lead |
+| 2026-11-23 | Agent R-RELEASE: memory_release.py release_unused, PageLoader + helpers.js hooks, tray, 4 tests (96d6639c) | agent fix | rough 15-30 min | 21 min | 19:50-20:11, R-RELEASE: 5 min waiting for another run |
+| 2026-11-23 | Agent R-QMLWARN: Calibration destroy() on factory models (stage-1 bug) + start-up qml_errors collector + test (491544aa) | agent fix | 3-8 min | 22 min | 19:50-20:12, R-QMLWARN |
+| 2026-11-23 | Agent B3-LIVE: live_mode_release_check.py (5a113ef3) | agent fix | 3-8 min | 3 min | 20:10-20:13, B3-LIVE |
+| 2026-11-23 | B3 live test before (inconclusive: F13 claim; user's Keyboard claim F13-F24 codes fixed with backup; rerun shows GAP) | live test | ~3 min | 4 min | 20:13-20:17, lead |
+| 2026-11-23 | Agent B3-DOC: page 06/05/02 map + Help for S38 (dbe9680d) | agent fix | 3-8 min | 5 min | 20:11-20:16, B3-DOC |
+| 2026-11-23 | Agent B3-CONT: container plugins Foreign paths + 11 tests (50ada217, needs B3-CORE) | refactor | 5-10 min | 7 min | 20:11-20:18, B3-CONT |
+| 2026-11-23 | Agent B3-CORE: ModeType, pending table, Foreign gate, ButtonReleaseActions removed (6f83c414) | refactor | 5-10 min | 8 min | 20:10-20:18, B3-CORE |
+| 2026-11-23 | Agent B3-TEST: 20 mode-change release tests + 5 pinned files (5b648f3a) | refactor | 5-10 min | 10 min | 20:11-20:21, B3-TEST |
