@@ -250,7 +250,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 - **S7** It should show a failed hot-plug update in the error dialog ("The device list could not be updated."), not lose it on a background thread. [test: test_device_scan.py::test_hot_plug_error_is_shown_not_lost]
 - **S8** It should do nothing when a scan finds the same device ids as before (no vJoy reset, no reload). [test: test_device_scan.py::test_nothing_changed_resets_nothing]
 - **S9** It should list in Device Information every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID and Device ID, including left-out vJoy devices (marked "left out (see message)") and this program's own Xbox pads (marked "this program's Xbox pad"). [help: Device Information] [changed 2026-10-07 to follow decisions Q6, D-02-Q6-WORDING and Q12, which win over the earlier wording "Device GUID" and the Q6 note]
-- **S10** It should label inputs from `device_db.json` by VID/PID when Options > Input names asks for labels, and fall back to "Axis 3" style names otherwise. [user confirmed 2026-10-06; was code only]
+- **S10** It should label inputs from `device_db.json` by VID/PID when Options > Input names asks for labels, and fall back to "X Axis" style names otherwise [changed 2026-11-23, D-05-UPSTREAM-B2 (4a), upstream 32eebedc: editors such as Merge Axis, Dual Axis Deadzone and the script physical-input variable use the same input names as the rest of the program, and follow an Options > Input names change in open editors (5a)]. [user confirmed 2026-10-06; was code only]
 
 ### B. Identical devices (twins)
 

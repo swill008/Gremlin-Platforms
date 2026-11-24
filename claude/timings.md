@@ -1514,3 +1514,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Agent FIX-CLOSE: Health/Search close slots, clear_on_change, guard test | agent fix | 3-8 min | 4 min | 19:27-19:31, FIX-CLOSE |
 | 2026-11-23 | Agent S2-NATIVE: growth outside Python investigated (component cache, JS GC, heap retention) | review | rough 10-15 min | 15 min | 19:19-19:34, S2-NATIVE |
 | 2026-11-23 | Agent S2-MEASURE: probe after stage 2 (A-E, per window, QObject, JS GC runs) | run | ~8 min | 12 min | 19:31-19:43, S2-MEASURE |
+| 2026-11-23 | Lead: stage 2 commit a4845a3e (local), B2 spec (05 S114/S116/S144-S146/S105, 02 S10), 10 worktree briefs | lead planning | ~8 min | 8 min | 19:48-19:56, lead; --changed selection hung 15+ min (to investigate) |
