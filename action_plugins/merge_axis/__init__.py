@@ -94,7 +94,7 @@ _NAMES: dict[MergeOperation, tuple[str, str]] = {
     MergeOperation.Maximum: ("maximum", "Maximum"),
     MergeOperation.Sum: ("sum", "Sum"),
     MergeOperation.Bidirectional: ("bidirectional", "Bidirectional"),
-    MergeOperation.ClosestToCenter: ("closest-to-center", "Prefer Center"),
+    MergeOperation.ClosestToCenter: ("closest-to-center", "Closest to Center"),
     MergeOperation.MaximumDeflection: ("maximum-deflection", "Maximum Deflection"),
 }
 

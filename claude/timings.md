@@ -1525,3 +1525,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-23 | Lead: diagnosed 4 OSC full-run failures (leftover OscLayoutModel reacts in later tests) | review | ~5 min | 5 min | 19:59-20:04, lead |
 | 2026-11-23 | Agent B2-COND: S145 branch memory + reset hook, S146 unplugged false + stored name, 17 tests (be433dcc) | agent fix | 5-10 min | 11 min | 19:51-20:02, B2-COND |
 | 2026-11-23 | Agent FIX-OSCLAYOUT: test isolation (flag race fixture, OSC models deleted) + test | agent fix | 3-8 min | 4 min | 20:00-20:04, FIX-OSCLAYOUT |
+| 2026-11-23 | Stage 2 build + install + live check (22 windows, pages, log clean) + run/trace | build/test | ~4 min | 2 min | 20:05-20:07, lead |
+| 2026-11-23 | Agent B2-NAMES: shared input_label helper, Input names refresh, 4 tests (7658f369) | refactor | 5-10 min | 14 min | 19:51-20:05, B2-NAMES: waited behind other runs |

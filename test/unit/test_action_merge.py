@@ -128,7 +128,7 @@ def test_operations_use_upstreams_stored_names() -> None:
     op = merge_axis.MergeOperation
     assert op.to_string(op.MaximumDeflection) == "maximum-deflection"
     assert op.to_string(op.ClosestToCenter) == "closest-to-center"
-    assert op.to_display(op.ClosestToCenter) == "Prefer Center"
+    assert op.to_display(op.ClosestToCenter) == "Closest to Center"
     with pytest.raises(Exception):
         op.to_enum("prefercenter")
 
@@ -158,4 +158,4 @@ def test_upstream_profile_with_closest_to_center_loads(
     p.from_xml(str(path))
     a = p.library.get_action(_ACTION_ID)
     assert a.operation == merge_axis.MergeOperation.ClosestToCenter
-    assert merge_axis.MergeOperation.to_display(a.operation) == "Prefer Center"
+    assert merge_axis.MergeOperation.to_display(a.operation) == "Closest to Center"

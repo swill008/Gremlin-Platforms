@@ -131,9 +131,9 @@ def test_merge_operations_read_as_words() -> None:
     """05 S114: shown as words; the drop-down values are the stored names."""
 
     labels, values = _operation_list()
-    assert "Prefer Center" in labels and "Maximum Deflection" in labels
+    assert "Closest to Center" in labels and "Maximum Deflection" in labels
     assert sorted(values) == sorted(MergeOperation.to_string(o) for o in MergeOperation)
-    assert labels[values.index("closest-to-center")] == "Prefer Center"
+    assert labels[values.index("closest-to-center")] == "Closest to Center"
     assert labels[values.index("maximum-deflection")] == "Maximum Deflection"
 
 

@@ -190,8 +190,8 @@ def test_help_covers_run_asking_and_the_keyboard_draft() -> None:
 
 def test_merge_axis_help_says_prefer_center() -> None:
     plugin = _read("action_plugins/merge_axis/__init__.py")
-    assert '"Prefer Center"' in plugin
-    assert "Prefer Center" in _topic("Merge Axis")
+    assert '"Closest to Center"' in plugin
+    assert "Closest to Center" in _topic("Merge Axis")
     assert "Prefercenter" not in _GUIDE
 
 
