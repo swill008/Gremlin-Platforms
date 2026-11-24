@@ -567,6 +567,7 @@ An Xbox pad can change layout under the same Device ID: when its Xbox connection
 - Raw-listener guard: `test_raw_input_listeners.py`. Layer guard for modules: `test_modules_layer.py`.
 - Keyboard claim gate: `test_keyboard_gate.py`, `test_audit_devices.py`.
 - B1 upstream sync (2026-11-23): F13-F24 scan codes `test_f13_f24_scan_codes.py` (13); write-only Qt properties `test_qt_property_getters.py` (`test_selector_with_valid_types_button_lists_only_buttons`, guard `test_no_qt_property_has_a_setter_without_a_getter`); the vJoy Viewer's short press `test_input_viewer_short_press.py`; the Device Bindings jump limit `test_input_redraw_limit.py`.
+- B2 input names (2026-11-23, S10, D-05-UPSTREAM-B2): `test_input_names_shared.py` (4: an editor's axis label reads "<device> - X Axis"; the device database name shows as Options > Input names asks; `references.input_label` is the one helper `InputIdentifier.label`, `action_model.input_name` and the device input list use; an Input names change sends the device names notice (`device_aliases._settings_changed`) and an open editor's label is read again).
 - Hooks off in tests and off-screen; hook stop does not hang: `test_bounded_waits.py`, `test_threads.py`, `test_audit3_startup.py`.
 - Process path read: `test_audit_runtime.py::test_the_program_path_is_read_in_full`. Auto-load: `test_audit_saving.py`, `test_audit2_saving.py`, `test_autoload_and_mode_prompts.py`.
 - Modes known/renamed: `test_audit2_modes.py`, `test_modes.py`, `test_audit3_modes.py`.

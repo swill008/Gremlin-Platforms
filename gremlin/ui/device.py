@@ -70,7 +70,8 @@ class InputIdentifier(QtCore.QObject):
         self.device_guid = device_guid
         self.input_type = input_type
         self.input_id = input_id
-        # The label carries the device's shown name (D-01-OWNER-NOTICES).
+        # The label carries the device's shown name (D-01-OWNER-NOTICES)
+        # and Options > Input names (D-05-UPSTREAM-B2): both send this notice.
         signal.deviceNamesChanged.connect(self.changed)
 
     @QtCore.Property(str, notify=changed)
@@ -85,11 +86,13 @@ class InputIdentifier(QtCore.QObject):
                 from gremlin.ui.device_names import shown_name
 
                 dev_name = shown_name(self.device_guid)
-            return (
-                f"{dev_name} - "
-                + f"{InputType.to_string(self.input_type).capitalize()} "
-                + f"{self.input_id}"
+            # The one input naming (02 S10, D-05-UPSTREAM-B2).
+            from gremlin import references
+
+            control = references.input_label(
+                self.input_type, self.input_id, self.device_guid
             )
+            return f"{dev_name} - {control}"
         else:
             return "No input"
 
@@ -426,10 +429,9 @@ class Device(QtCore.QAbstractListModel):
         return identifier
 
     def _name(self, identifier: tuple[InputType, int]) -> str:
-        if self._device_mapping is not None:
-            return self._device_mapping.input_name(identifier)
-        else:
-            return common.input_to_ui_string(*identifier)
+        from gremlin import references
+
+        return references.input_label(*identifier, mapping=self._device_mapping)
 
     def _convert_index(self, index: int) -> tuple[InputType, int]:
         assert self._device is not None

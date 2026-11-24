@@ -34,7 +34,7 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 def input_name(item: InputItem) -> str:
     """An input as the user knows it: device, control and mode."""
-    from gremlin import common
+    from gremlin import references
     from gremlin.input_monitor import device_name
 
     guid, kind, ident = item.device_id, item.input_type, item.input_id
@@ -46,10 +46,7 @@ def input_name(item: InputItem) -> str:
         device = device_name(guid)
     control = str(ident)
     if kind is not None and ident is not None:
-        try:
-            control = common.input_to_ui_string(kind, ident)
-        except Exception:
-            pass
+        control = references.input_label(kind, ident, guid)
     return f"{device} {control} ({item.mode})"
 
 

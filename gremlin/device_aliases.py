@@ -117,12 +117,30 @@ def _stored_raw() -> list:
     return [list(e) if isinstance(e, list) else e for e in raw]
 
 
+# Options > Input names: the inputs' shown names follow it, so a change
+# sends the same notice a rename does (02 S10, D-05-UPSTREAM-B2).
+_INPUT_NAMES_KEY = ("ui", "general", "display-mode")
+_ANNOUNCED_INPUT_NAMES: object = None
+
+
+def _input_names() -> object:
+    try:
+        return Configuration().value(*_INPUT_NAMES_KEY)
+    except Exception:  # noqa: BLE001 - not registered (some tests)
+        return None
+
+
 def _settings_changed() -> None:
-    global _ANNOUNCED_RAW
+    global _ANNOUNCED_RAW, _ANNOUNCED_INPUT_NAMES
     raw = _stored_raw()
+    mode = _input_names()
     if raw != _ANNOUNCED_RAW:
         before, _ANNOUNCED_RAW = _ANNOUNCED_RAW, raw
+        _ANNOUNCED_INPUT_NAMES = mode
         _sync_folders(before or [], raw)
+        notify_names()
+    elif mode != _ANNOUNCED_INPUT_NAMES:
+        _ANNOUNCED_INPUT_NAMES = mode
         notify_names()
 
 
@@ -165,7 +183,9 @@ def _listen_names(_timer: NoticeTimer) -> None:
     global _ANNOUNCED_RAW, _SCAN_NAMES
     from gremlin.signal import signal
 
+    global _ANNOUNCED_INPUT_NAMES
     _ANNOUNCED_RAW = _stored_raw()
+    _ANNOUNCED_INPUT_NAMES = _input_names()
     signal.configChanged.connect(_settings_changed)
     try:
         from gremlin import event_handler

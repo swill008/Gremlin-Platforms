@@ -130,14 +130,55 @@ def profile(path: object) -> tuple:
     return ("profile", path_key(path))
 
 
-def input_label(input_type: object, input_id: object) -> str:
-    """An input as the program shows it ("Button 3", "X Axis")."""
+_DEVICE_DB_TYPES = (
+    InputType.JoystickAxis,
+    InputType.JoystickButton,
+    InputType.JoystickHat,
+)
+
+
+def input_label(
+    input_type: object,
+    input_id: object,
+    device: object = None,
+    mapping: object = None,
+) -> str:
+    """An input as the program shows it ("Button 3", "X Axis"): the one
+    helper every page names inputs with (02 S10, D-05-UPSTREAM-B2). Given
+    the device (or its device database mapping), its device_db.json name is
+    applied as Options > Input names asks."""
     from gremlin import common
 
     try:
-        return common.input_to_ui_string(input_type, input_id)  # type: ignore[arg-type]
+        plain = common.input_to_ui_string(input_type, input_id)  # type: ignore[arg-type]
     except Exception:  # noqa: BLE001 - an input type with no ui string
         return f"{input_type} {input_id}"
+    if input_type not in _DEVICE_DB_TYPES:
+        return plain
+    if mapping is None and device is not None:
+        mapping = _device_mapping(device)
+    if mapping is None:
+        return plain
+    try:
+        return str(mapping.input_name((input_type, input_id)))  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - a mapping that can't name it
+        syslog.debug("references: no database name for %s", plain, exc_info=True)
+        return plain
+
+
+def _device_mapping(device: object) -> object:
+    """The device database mapping of a physical device, or None."""
+    from gremlin.modules.device_class import INTERNAL_INPUTS
+
+    uid = getattr(device, "uuid", device)
+    if uid in INTERNAL_INPUTS:
+        return None
+    try:
+        from gremlin.input_cache import DeviceDatabase
+
+        return DeviceDatabase().get_mapping_by_uuid(uid)  # type: ignore[arg-type]
+    except Exception:  # noqa: BLE001 - a device DILL doesn't know
+        return None
 
 
 def device_name(guid: object) -> str:
