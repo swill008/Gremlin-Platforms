@@ -35,7 +35,7 @@ def install_text(version: str) -> str:
         f"- Portable: unzip {name}.zip anywhere (Documents, Desktop, etc), not"
         " in Program Files, and run gremlin_platforms.exe. A portable copy"
         " tells you about new versions but does not update itself.\n"
-        "- Requires vJoy already installed.\n"
+        "- Needs vJoy: setup can install it; for the portable copy, install it first.\n"
         "- Unsigned build: SmartScreen may warn on first run"
         " (More info -> Run anyway).\n"
     )

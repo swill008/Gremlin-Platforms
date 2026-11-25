@@ -1631,3 +1631,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-25 | Quick tests (--changed, 2155 tests, 6 parts) | test/build | 4 min | 4 min | 03:56-04:01; all passed |
 | 2026-11-25 | Build program + installer + silent install + start | test/build | ~3 min | 2 min | 04:01-04:03, lead |
 | 2026-11-25 | Live test check + commit (device counts, queued switch-on) | lead | ~2 min | ~2 min | 04:05-04:05, lead |
+| 2026-11-25 | Release 1.1.2 NOTES | agent docs | 3-8 min | 1 min | 04:10-04:11 |
+| 2026-11-25 | Release 1.1.2 MAPCHECK (full map check) | study | 5-10 min | 4 min | 04:10-04:14 |
+| 2026-11-25 | Release 1.1.2 notes edit, version, install line, checks | lead | not quoted | ~4 min | 04:11-04:15, lead |
