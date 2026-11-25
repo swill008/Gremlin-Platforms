@@ -1616,3 +1616,18 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-24 | OPT follow-up: vJoy picker fits on the Scripts page (100-200 %, 900 px) | agent fix | 3-8 min | 4 min | 17:04-17:08 |
 | 2026-11-24 | Quick tests (--changed, 3889 tests, 6 parts) | test/build | ~5-6 min | 11 min | 17:08-17:19, 5:37 run time; all passed |
 | 2026-11-24 | Gold strip + targeted tests (27) + build + silent install + live window check | test/build | ~10 min | 2 min | 17:19-17:21, lead |
+| 2026-11-24 | Commit b8b714aa + push (bc385ad5, b8b714aa) | lead | ~2 min | ~2 min | 17:24-17:27, lead |
+| 2026-11-24 | CI run 45509786118 (b8b714aa) | CI | ~27 min | 26 min | 17:25-17:51; passed |
+| 2026-11-25 | Read the overnight trace (to-do 154, overnight wake-cause check) | lead | not quoted | ~2 min | 03:22-03:22, lead |
+| 2026-11-25 | Close to-do 154, record gap SSM-API-DEVICES-BACK (page 12, README count) | lead | not quoted | ~2 min | 03:27-03:27, lead |
+| 2026-11-25 | Device counts: spec, contract, log window, briefs | lead | not quoted | ~2 min | 03:39-03:41, lead |
+| 2026-11-25 | Device counts DIS (SwitchRecord, 14 tests) | agent fix | 3-8 min | 2 min | 03:40-03:42 |
+| 2026-11-25 | Device counts CORE (core, model, tests updated) | agent fix | 3-8 min | 3 min | 03:40-03:43 |
+| 2026-11-25 | Device counts E2E (5 tests, old-code proof) | agent fix | 3-8 min | 2 min | 03:40-03:42 |
+| 2026-11-25 | Device counts: lead check, map, pyright baseline | lead | ~5 min | ~2 min | 03:43-03:45, lead |
+| 2026-11-25 | Quick tests (--changed, 2154 tests, 6 parts) | test/build | ~6-11 min | 4 min | 03:43-03:47; all passed |
+| 2026-11-25 | Build program + installer + silent install + start | test/build | ~2 min | 3 min | 03:47-03:50, lead |
+| 2026-11-25 | Queued switch-on fault: failing test, fix, 85 related tests | lead | 3-8 min | 2 min | 03:55-03:56, lead |
+| 2026-11-25 | Quick tests (--changed, 2155 tests, 6 parts) | test/build | 4 min | 4 min | 03:56-04:01; all passed |
+| 2026-11-25 | Build program + installer + silent install + start | test/build | ~3 min | 2 min | 04:01-04:03, lead |
+| 2026-11-25 | Live test check + commit (device counts, queued switch-on) | lead | ~2 min | ~2 min | 04:05-04:05, lead |

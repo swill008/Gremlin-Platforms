@@ -1662,16 +1662,42 @@ def test_hooks_are_traced(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class _Devices:
-    """A fake disabler: busy until done() (the hook's probe reads it)."""
+    """A fake disabler: busy until `busy` is False; each hook call makes a
+    new record (contract-device-counts.md)."""
 
     def __init__(self, count: int = 2) -> None:
         self.count = count
         self.busy = True
         self.starts = 0
+        self.records: list[_Record] = []
 
-    def hook(self) -> tuple[int, Callable[[], bool]]:
+    def hook(self) -> _Record:
         self.starts += 1
-        return self.count, lambda: self.busy
+        self.records.append(_Record(self))
+        return self.records[-1]
+
+
+class _Record:
+    """device_disable.SwitchRecord as the core sees it."""
+
+    def __init__(self, dev: _Devices) -> None:
+        self._dev = dev
+        self.asked = dev.count
+        self.off, self.back = 0, 0
+        self.busy_error: Exception | None = None
+        self.counts_error: Exception | None = None
+        self.lock: Any = None  # must be free while counts() runs
+
+    def busy(self) -> bool:
+        if self.busy_error is not None:
+            raise self.busy_error
+        return self._dev.busy
+
+    def counts(self) -> tuple[int, int]:
+        assert self.lock is None or not self.lock.locked()
+        if self.counts_error is not None:
+            raise self.counts_error
+        return self.off, self.back
 
 
 def _traced(monkeypatch: pytest.MonkeyPatch) -> list[str]:
@@ -2471,10 +2497,141 @@ def test_ssm2_last_away_filled_when_input_ends_keep_off(env: Env) -> None:
     run(1)
     away = mode.status().last_away
     assert away is not None
-    assert away["wakes"] == 1 and away["devices_off"] == 2
+    assert away["wakes"] == 1 and away["devices_off"] == 0  # none confirmed
     assert 61.0 <= away["off_s"] <= 63.0
     assert away["end"] >= away["start"]
     assert mode.status().wake_count == mode.status().wakes
+
+
+# ----- S38: the device counts come from the time away's record
+
+
+def _away_and_back(env: Env, dev: _Devices) -> None:
+    """One whole time away, ended by input."""
+    mode, _api, clk, _now, run, _t = env
+    dev.busy = False
+    run(130)
+    assert mode.status().keeping_off
+    clk.note_input(source=0x1001, kind="mouse")
+    run(1)
+    assert not mode.status().keeping_off
+
+
+def _device_counts(mode: ssm.ScreenSaverMode) -> tuple[int, int]:
+    away = mode.status().last_away
+    assert away is not None
+    assert set(away) == {
+        "off_s",
+        "wakes",
+        "devices_off",
+        "devices_back",
+        "start",
+        "end",
+    }
+    return away["devices_off"], away["devices_back"]
+
+
+@pytest.mark.parametrize("mode_off", [False, True], ids=["on", "off"])
+def test_s38_counts_are_read_at_each_status(env: Env, mode_off: bool) -> None:
+    mode, *_ = env
+    dev = _Devices(3)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    _away_and_back(env, dev)
+    if mode_off:
+        mode.apply(ssm.Settings(enabled=False))  # status() is _off_status()
+    record = dev.records[0]
+    record.lock = mode._keep_lock  # noqa: SLF001
+    assert _device_counts(mode) == (0, 0)
+    record.off = 2
+    assert _device_counts(mode) == (2, 0)
+    record.back = 1
+    assert _device_counts(mode) == (2, 1)
+    record.back = 2
+    assert _device_counts(mode) == (2, 2)
+
+
+def test_s38_the_next_power_off_leaves_last_away_until_it_ends(env: Env) -> None:
+    mode, _api, clk, _now, run, _t = env
+    dev = _Devices(2)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    _away_and_back(env, dev)
+    dev.records[0].off, dev.records[0].back = 2, 1
+    dev.busy = True
+    run(125)  # the next one is switching devices off
+    assert len(dev.records) == 2 and mode.status().waiting_for_devices
+    dev.records[1].off = 1
+    assert _device_counts(mode) == (2, 1)
+    # Cancelled by input: still the time before.
+    clk.note_input(source=0x1001, kind="mouse")
+    run(1)
+    assert _device_counts(mode) == (2, 1)
+    dev.busy = False
+    run(125)
+    assert mode.status().keeping_off and len(dev.records) == 3
+    dev.records[2].off = 1
+    assert _device_counts(mode) == (2, 1)
+    dev.records[0].back = 2  # plugged in later: still counts in its own time
+    assert _device_counts(mode) == (2, 2)
+    clk.note_input(source=0x1001, kind="mouse")
+    run(1)
+    assert _device_counts(mode) == (1, 0)
+    # Ended by the mode instead: nothing changes.
+    run(125)
+    assert mode.status().keeping_off
+    mode.apply(ssm.Settings(enabled=False))
+    assert _device_counts(mode) == (1, 0)
+
+
+def test_s38_no_record_counts_nothing(env: Env) -> None:
+    mode, *_ = env
+    dev = _Devices(2)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    _away_and_back(env, dev)
+    dev.records[0].off = 2
+    mode.set_device_hooks(lambda: None, None)  # no devices / no helper
+    _away_and_back(env, dev)
+    assert _device_counts(mode) == (0, 0)
+
+
+def test_s38_a_repeated_power_off_without_devices_keeps_the_record(env: Env) -> None:
+    mode, _api, clk, _now, run, _t = env
+    dev = _Devices(2)
+    dev.busy = False
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    run(125)
+    dev.records[0].off = 2
+    mode.set_device_hooks(lambda: None, None)
+    mode.turn_off_now()  # within the same time away
+    run(5)
+    clk.note_input(source=0x1001, kind="keyboard", press=True)
+    run(1)
+    assert _device_counts(mode) == (2, 0)
+
+
+def test_s38_a_raising_record_is_logged(
+    env: Env, caplog: pytest.LogCaptureFixture
+) -> None:
+    mode, api, clk, _now, run, _t = env
+    caplog.set_level("INFO", logger="system")
+    dev = _Devices(2)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    run(120)
+    assert api.powered_off == 0  # busy
+    dev.records[0].busy_error = RuntimeError("no disabler")
+    run(1)
+    assert api.powered_off == 1  # a raising busy() is not busy
+    clk.note_input(source=0x1001, kind="mouse")
+    run(1)
+    dev.records[0].counts_error = RuntimeError("no counts")
+    assert _device_counts(mode) == (0, 0)
+    for text in ("device wait probe failed", "device counts could not be read"):
+        failed = [r for r in caplog.records if text in r.getMessage()]
+        assert failed and all(r.exc_info for r in failed)
 
 
 # ----- S40: Turn displays off now ignores movement and program input

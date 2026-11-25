@@ -138,7 +138,7 @@ def test_the_power_off_takes_the_ports_in_use_then(fakes, qapp) -> None:  # noqa
     calls.disabler.running = True
     calls.present = [("VKB", VKB_PORT), ("Other", r"HID\VID_1&PID_2\1")]
     answer = m._before_power_off()  # noqa: SLF001
-    assert answer is not None and answer[0] == 1
+    assert answer is not None and answer.asked == 1
     assert calls.disabler.disabled == [[("VKB", VKB_PORT)]]
     calls.present = []
     assert m._before_power_off() is None  # noqa: SLF001

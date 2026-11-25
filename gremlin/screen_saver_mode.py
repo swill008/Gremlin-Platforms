@@ -31,7 +31,7 @@ from collections import deque
 from collections.abc import Callable, Iterable
 from ctypes import wintypes
 from dataclasses import dataclass, field, replace
-from typing import Any
+from typing import Any, Protocol
 
 from gremlin import clock, threads, trace, windows_event_hook
 
@@ -71,17 +71,49 @@ POWER_OFF_GAP_S = 1.0
 TURN_OFF_QUIET_S = 2.0
 # S21: the wait for the devices to be switched off before the power-off is
 # Settings.devices_wait_s (at most; default 10, 1-60); the listener thread
-# polls the disabler's probe this often.
+# polls the record's busy() this often.
 DEVICES_WAIT_DEFAULT_S = 10
 DEVICES_WAIT_MIN_S = 1
 DEVICES_WAIT_MAX_S = 60
 DEVICES_POLL_S = 0.1
-# What before_power_off returns: (devices being switched off, "still busy?").
-PowerOffWait = tuple[int, Callable[[], bool]]
+
+
+class PowerOffWait(Protocol):
+    """One time away's switching, as before_power_off returns it
+    (device_disable.SwitchRecord)."""
+
+    asked: int  # devices asked to be switched off
+
+    def busy(self) -> bool:
+        """Still switching (cheap, never blocks)."""
+        ...
+
+    def counts(self) -> tuple[int, int]:
+        """(switched off, switched on again since), as Windows confirmed."""
+        ...
 
 
 def _log() -> logging.Logger:
     return logging.getLogger("system")
+
+
+def _record_busy(record: PowerOffWait) -> bool:
+    try:
+        return bool(record.busy())
+    except Exception:
+        _log().exception("Screen Saver Mode: device wait probe failed")
+        return False
+
+
+def _record_counts(record: PowerOffWait | None) -> tuple[int, int]:
+    if record is None:
+        return 0, 0
+    try:
+        off, back = record.counts()
+        return int(off), int(back)
+    except Exception:
+        _log().exception("Screen Saver Mode: device counts could not be read")
+        return 0, 0
 
 
 def _trace(text: str, ring: bool = True, t: float | None = None) -> None:
@@ -157,7 +189,8 @@ class Status:
     # S21: devices being switched off before the power-off is sent.
     waiting_for_devices: bool = False
     # The last keep-off ended by input: {"off_s", "wakes", "devices_off",
-    # "devices_back", "start", "end"} (wall times); None until one ends.
+    # "devices_back", "start", "end"} (wall times; the device counts as of
+    # this read); None until one ends.
     last_away: dict | None = None
     # "" | "locked" | "no_wake_device" | "fullscreen" | "display_request"
     hold: str = ""
@@ -1871,14 +1904,16 @@ class ScreenSaverMode:
         self._events: deque[tuple[str, int, str, float]] = deque(maxlen=1000)
         # Device hooks (S21, S23), main thread only.
         self._before_power_off: Callable[[], PowerOffWait | None] | None = None
-        # S21: (still-busy probe, started at, the counted input it waits
-        # after) while the devices are being switched off before the
-        # power-off; under _keep_lock (the listener thread polls it).
-        self._power_wait: tuple[Callable[[], bool], float, float] | None = None
-        self._devices_off = 0  # devices the last before_power_off switched off
+        # S21: (record, started at, the counted input it waits after) while
+        # the devices are being switched off before the power-off; under
+        # _keep_lock (the listener thread polls it).
+        self._power_wait: tuple[PowerOffWait, float, float] | None = None
+        # The latest power-off's device record (main thread only).
+        self._device_record: PowerOffWait | None = None
         # The power-off that started the current keep-off: (monotonic, wall).
         self._off_sent: tuple[float, float] = (0.0, 0.0)
-        self._last_away: dict | None = None
+        # last_away without its device counts, and the record they come from.
+        self._last_away: tuple[dict, PowerOffWait | None] | None = None
         # Test now: when the sequence starts (monotonic, 0 = none) and the
         # counted input it was started after.
         self._test_at = 0.0
@@ -1904,9 +1939,8 @@ class ScreenSaverMode:
         """before_power_off: just before the Power off displays timer's
         first power-off of an idle period (S21; must return fast). It
         starts switching the devices off and returns None (nothing to wait
-        for) or (number of devices, probe); the probe says whether they are
-        still being switched off (cheap, never blocks). The power-off is
-        sent when the probe says done, or after Settings.devices_wait_s.
+        for) or the time away's record (PowerOffWait). The power-off is
+        sent when the record isn't busy, or after Settings.devices_wait_s.
         after_input: once at the first counted input after it (S23).
         Both on the main thread; never while the mode is off."""
         self._before_power_off = before_power_off
@@ -2423,20 +2457,20 @@ class ScreenSaverMode:
             )
             return False
         self._hooked = True
-        self._devices_off = 0
-        wait = self._call_hook("before power off", self._before_power_off)
-        if isinstance(wait, tuple) and len(wait) == 2:
-            count, pending = wait
-            self._devices_off = int(count) if isinstance(count, int) else 0
-            try:
-                busy = bool(pending())
-            except Exception:
-                _log().exception("Screen Saver Mode: device wait probe failed")
-                busy = False
-            if busy:
+        record: PowerOffWait | None = self._call_hook(
+            "before power off", self._before_power_off
+        )
+        with self._keep_lock:
+            keeping_off = self._keeping_off
+        # A repeated power-off with nothing to switch, in the same time away
+        # (Test now, Turn displays off now), keeps that time's record.
+        if record is not None or not keeping_off:
+            self._device_record = record
+        if record is not None:
+            if _record_busy(record):
                 with self._keep_lock:
-                    self._power_wait = (pending, now, self._period.input_at)
-                _trace(f"switching devices off first ({count})")
+                    self._power_wait = (record, now, self._period.input_at)
+                _trace(f"switching devices off first ({record.asked})")
                 # Polled on the listener thread (no main thread needed);
                 # the tick is the fallback.
                 arm = getattr(self._clock, "arm_poll_timer", None)
@@ -2488,14 +2522,10 @@ class ScreenSaverMode:
             wait = self._power_wait
         if wait is None:
             return None
-        pending, started, input_at = wait
+        record, started, input_at = wait
         if self._counted_since(input_at):
             return None  # counted input: the tick cancels it
-        try:
-            busy = bool(pending())
-        except Exception:
-            _log().exception("Screen Saver Mode: device wait probe failed")
-            busy = False
+        busy = _record_busy(record)
         took = now - started
         limit = self._settings.devices_wait_s
         if busy and took < limit:
@@ -2689,15 +2719,13 @@ class ScreenSaverMode:
             sent_mono, sent_wall = self._off_sent
         if input_at is not None:
             off_s = max(0.0, input_at - sent_mono)
-            # devices_back: filled by the model from the disabler (contract).
-            self._last_away = {
+            away = {
                 "off_s": off_s,
                 "wakes": wakes,
-                "devices_off": self._devices_off,
-                "devices_back": 0,
                 "start": sent_wall,
                 "end": sent_wall + off_s,
             }
+            self._last_away = (away, self._device_record)
         self._drain_events()
         _log().info(
             f"Screen Saver Mode: stopped keeping the displays off ({reason}): "
@@ -2706,6 +2734,15 @@ class ScreenSaverMode:
         )
         _trace(f"keep off ended: {reason}; {wakes} wakes")
         self._watch_controllers(False)
+
+    def _away_now(self) -> dict | None:
+        """last_away with its device counts as of now (not under _keep_lock)."""
+        last = self._last_away
+        if last is None:
+            return None
+        away, record = last
+        off, back = _record_counts(record)
+        return {**away, "devices_off": off, "devices_back": back}
 
     def _watch_controllers(self, on: bool) -> None:
         """Game controllers are heard only while keeping the displays off,
@@ -2823,7 +2860,7 @@ class ScreenSaverMode:
             wakes = self._wakes
         return Status(
             wake_count=wakes,
-            last_away=dict(self._last_away) if self._last_away else None,
+            last_away=self._away_now(),
             enabled=s.enabled,
             saver_wait_s=saver_wait,
             saver_windows_wait_s=saver_windows,
@@ -2919,7 +2956,7 @@ class ScreenSaverMode:
             st.keeping_off, st.wakes = self._keeping_off, self._wakes
             st.waiting_for_devices = self._power_wait is not None
         st.wake_count = st.wakes
-        st.last_away = dict(self._last_away) if self._last_away else None
+        st.last_away = self._away_now()
         return st
 
 

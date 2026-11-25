@@ -227,6 +227,18 @@ class FakeManager:
         self.shut = True
 
 
+class FakeRecord:
+    """device_disable.SwitchRecord as the fake disabler returns it."""
+
+    def __init__(self, asked: int, busy: Callable[[], bool]) -> None:
+        self.asked = asked
+        self.busy = busy
+        self.off = self.back = 0
+
+    def counts(self) -> tuple[int, int]:
+        return self.off, self.back
+
+
 HELPER_TEXT = "Devices can't be disabled: the helper isn't running"
 
 
@@ -274,8 +286,9 @@ class FakeDisabler:
         self.stops += 1
         self.running = False
 
-    def disable(self, devices: list[tuple[str, str]]) -> None:
+    def disable(self, devices: list[tuple[str, str]]) -> FakeRecord:
         self.disabled.append(list(devices))
+        return FakeRecord(len(devices), lambda: not self.wait_idle(0))
 
     def enable_pending(self) -> None:
         self.enables += 1

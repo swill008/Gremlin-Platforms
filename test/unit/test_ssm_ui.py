@@ -402,11 +402,10 @@ def test_s21_s23_hooks_disable_the_saved_list_and_enable_on_input(fakes) -> None
         calls.disabler.idle = False
         wait = manager.before_power_off()
         assert calls.disabler.disabled == [_SAVED_PAIRS]
-        # S21: the core waits on the probe until the disabler is idle.
-        count, pending = wait
-        assert count == len(_SAVED_PAIRS) and pending() is True
+        # S21: the core waits on the record until the disabler is idle.
+        assert wait.asked == len(_SAVED_PAIRS) and wait.busy() is True
         calls.disabler.idle = True
-        assert pending() is False
+        assert wait.busy() is False
         manager.after_input()
         assert calls.disabler.enables == 1
     finally:

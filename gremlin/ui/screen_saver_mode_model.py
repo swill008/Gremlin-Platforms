@@ -38,7 +38,7 @@ import time
 import types
 from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from PySide6 import QtCore
 
@@ -48,6 +48,9 @@ from gremlin.device_key import device_key, device_numbers, has_numbers
 from gremlin.signal import signal
 from gremlin.types import PropertyType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
+
+if TYPE_CHECKING:
+    from gremlin.screen_saver_mode import PowerOffWait
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
@@ -821,11 +824,11 @@ def helper_message() -> str:
         return HELPER_MESSAGE
 
 
-def _before_power_off() -> tuple[int, Callable[[], bool]] | None:
+def _before_power_off() -> PowerOffWait | None:
     """S21: the Automatic devices are disabled just before the power-off, when
-    the helper runs (async). Returns (number of devices, probe) so the core
-    waits for them (at most 10 s) before the power-off, or None when there
-    is nothing to wait for."""
+    the helper runs (async). Returns the disabler's record of it, which the core
+    waits on before the power-off and counts from (S38), or None when there
+    is nothing to switch off."""
     if not _automatic_rows():
         return None
     disabler = _disabler()
@@ -841,8 +844,7 @@ def _before_power_off() -> tuple[int, Callable[[], bool]] | None:
     if not devices:
         _trace("devices not disabled: no Automatic device is connected")
         return None
-    disabler.disable(devices)
-    return len(devices), lambda: not disabler.wait_idle(0)
+    return disabler.disable(devices)
 
 
 def _after_input() -> None:
@@ -1119,17 +1121,15 @@ def _freeze_text(start: float, end: float) -> str:
     return "window not responding" if began else "no freeze"
 
 
-def _last_away_text(away: dict, pending: int = 0) -> tuple[str, str]:
-    """(value, detail) for Last time away from the core's last_away; the
-    core leaves devices_back 0, so it is the devices switched off less the
-    ones the journal still lists as to be enabled."""
+def _last_away_text(away: dict) -> tuple[str, str]:
+    """(value, detail) for Last time away from the core's last_away."""
     try:
         value = "Displays off " + duration_text(float(away.get("off_s", 0.0) or 0.0))
         parts: list[str] = []
         wakes = int(away.get("wakes", 0) or 0)
         parts.append(f"{wakes} wake-up" + ("" if wakes == 1 else "s"))
         off = int(away.get("devices_off", 0) or 0)
-        back = max(int(away.get("devices_back", 0) or 0), off - max(0, pending))
+        back = int(away.get("devices_back", 0) or 0)
         if off:
             word = "device" if off == 1 else "devices"
             parts.append(
@@ -1689,7 +1689,7 @@ class ScreenSaverModeModel(QtCore.QObject):
         away = self._st("last_away", None)
         if not isinstance(away, dict):
             return row("Last time away", "none yet")
-        return row("Last time away", *_last_away_text(away, len(self._pending_devices)))
+        return row("Last time away", *_last_away_text(away))
 
     def _devices_back_row(self, row: Callable[..., dict]) -> dict:
         names = self._pending_devices

@@ -347,29 +347,51 @@ def test_snapshot_provider_lines_and_change_notice(
     assert "Ignore System: none" in text
 
 
-def test_can_test_follows_the_mode_and_devices_back_is_filled_in(
-    fakes: tuple, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    manager, model, m = fakes
-    disabler = _Disabler({"A": {"name": "VKB", "state": "to be enabled"}})
-    monkeypatch.setattr(m, "_disabler", lambda: disabler)
+def test_can_test_follows_the_mode(fakes: tuple) -> None:
+    _manager, model, _m = fakes
     ssm = model()
     assert ssm.property("canTest") is False
     ssm.setEnabled(True)
     assert ssm.property("canTest") is True
+
+
+@pytest.mark.parametrize(
+    ("off", "back", "still_off", "text"),
+    [
+        (3, 1, 0, "3 devices switched off, 1 back on"),
+        (1, 0, 0, "1 device switched off, 0 back on"),
+        (2, 2, 0, "2 devices switched off and back on"),
+        # A device left from an older time away is S39's row only.
+        (2, 2, 1, "2 devices switched off and back on"),
+        (3, 1, 1, "3 devices switched off, 1 back on"),
+        (0, 0, 1, "0 wake-ups · "),
+    ],
+)
+def test_last_time_away_device_counts_are_the_cores(
+    fakes: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+    off: int,
+    back: int,
+    still_off: int,
+    text: str,
+) -> None:
+    manager, model, m = fakes
+    entries = {
+        str(n): {"name": f"VKB {n}", "state": "to be enabled"} for n in range(still_off)
+    }
+    monkeypatch.setattr(m, "_disabler", lambda: _Disabler(entries))
+    ssm = model()
     now = time.time()
     manager.extra = {
         "last_away": {
             "off_s": 60.0,
             "wakes": 0,
-            "devices_off": 2,
-            "devices_back": 0,
+            "devices_off": off,
+            "devices_back": back,
             "start": now - 90,
             "end": now - 30,
         }
     }
     detail = _rows(ssm)["Last time away"]["detail"]
-    assert "2 devices switched off, 1 back on" in detail
-    disabler.entries["A"]["state"] = "enabled"
-    detail = _rows(ssm)["Last time away"]["detail"]
-    assert "2 devices switched off and back on" in detail
+    assert text in detail and ("device" in detail) is bool(off)
+    assert ssm.property("devicesBackRetry") is bool(still_off)

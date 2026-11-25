@@ -394,6 +394,38 @@ def _real_watch(on_arrival: Callable[[str], None]) -> Watch:
 # The disabler --------------------------------------------------------------
 
 
+class SwitchRecord:
+    """The switching of one time away (S38): how many devices Windows
+    confirmed off, and how many of those back on. Thread-safe; reads no file
+    and nothing from Windows."""
+
+    def __init__(self, asked: int, busy: Callable[[], bool]) -> None:
+        self.asked = asked
+        self._busy = busy
+        self._lock = threading.Lock()
+        self._off: set[str] = set()
+        self._back: set[str] = set()
+
+    def busy(self) -> bool:
+        """A disable/enable job is queued or running; never blocks."""
+        return self._busy()
+
+    def note_off(self, device_id: str) -> None:
+        with self._lock:
+            self._off.add(device_id)
+
+    def note_back(self, device_id: str) -> None:
+        """Counts only a device this record noted off, once."""
+        with self._lock:
+            if device_id in self._off:
+                self._back.add(device_id)
+
+    def counts(self) -> tuple[int, int]:
+        """(off, back)"""
+        with self._lock:
+            return len(self._off), len(self._back)
+
+
 class DeviceDisabler:
     """The helper's connection and the disable/enable flows."""
 
@@ -437,6 +469,8 @@ class DeviceDisabler:
         self._jobs: queue.Queue[_Job] = queue.Queue()
         self._queued_enable: _Job | None = None
         self._running: _Job | None = None
+        # The latest started disable job's; the worker's jobs alone use it.
+        self._record: SwitchRecord | None = None
         self._worker: threading.Thread | None = None
         # Jobs queued or running (wait_idle).
         self._busy = 0
@@ -655,6 +689,9 @@ class DeviceDisabler:
                     queued.counted = True
                     self._switching += 1
                 return
+            if name == "disable":
+                # An enable asked after this disable must run after it.
+                self._queued_enable = None
             job = _Job(name, run, counted)
             if name == "enable":
                 self._queued_enable = job
@@ -737,12 +774,18 @@ class DeviceDisabler:
 
     # Disable (S21) ----------------------------------------------------------
 
-    def disable(self, devices: list[tuple[str, str]]) -> None:
-        """Disables (name, id) devices, async; only while the helper runs."""
+    def disable(self, devices: list[tuple[str, str]]) -> SwitchRecord:
+        """Disables (name, id) devices, async; only while the helper runs.
+        The record counts them off, and back as enable jobs bring them back."""
         devices = list(devices)
-        self._enqueue("disable", lambda: self._disable(devices))
+        record = SwitchRecord(len(devices), lambda: not self.wait_idle(0))
+        self._enqueue("disable", lambda: self._disable(devices, record))
+        return record
 
-    def _disable(self, devices: list[tuple[str, str]]) -> None:
+    def _disable(self, devices: list[tuple[str, str]], record: SwitchRecord) -> None:
+        # Not before the job starts: an enable queued earlier counts for the
+        # older record.
+        self._record = record
         if not self.helper_running():
             _trace("Disable devices: skipped, the helper isn't running")
             return
@@ -766,6 +809,7 @@ class DeviceDisabler:
             if status == DISABLED:
                 if ours:
                     journal.set(device_id, name, DISABLED, "was already disabled")
+                    record.note_off(device_id)
                     _note(name, device_id, DISABLED, "was already disabled")
                 else:
                     # Someone else disabled it: never ours to enable later.
@@ -793,6 +837,7 @@ class DeviceDisabler:
             status = self._read(device_id)
             if status == DISABLED:
                 journal.set(device_id, name, DISABLED, said)
+                record.note_off(device_id)
                 _note(name, device_id, DISABLED, said)
             else:
                 why = f"{said}; Windows has it {status}"
@@ -848,6 +893,7 @@ class DeviceDisabler:
             # while it runs: enable it anyway (S34).
             if status == ENABLED and state != DISABLE_FAILED:
                 journal.set(device_id, name, ENABLED, "was already enabled")
+                self._note_back(device_id)
                 _note(name, device_id, ENABLED, "was already enabled")
             elif status == NOT_PRESENT:
                 journal.set(device_id, name, TO_BE_ENABLED, "not present")
@@ -873,6 +919,7 @@ class DeviceDisabler:
                 _note(name, device_id, TO_BE_ENABLED, said)
             elif status == ENABLED:
                 journal.set(device_id, name, ENABLED, said)
+                self._note_back(device_id)
                 _note(name, device_id, ENABLED, said)
             elif status == NOT_PRESENT:
                 journal.set(device_id, name, TO_BE_ENABLED, f"{said}; not present")
@@ -882,6 +929,10 @@ class DeviceDisabler:
                 journal.set(device_id, name, ENABLE_FAILED, why)
                 _note(name, device_id, ENABLE_FAILED, why)
             journal.save()
+
+    def _note_back(self, device_id: str) -> None:
+        if self._record is not None:
+            self._record.note_back(device_id)
 
     def recover_at_start(self) -> None:
         """S24: when the journal lists a device not "enabled", starts the

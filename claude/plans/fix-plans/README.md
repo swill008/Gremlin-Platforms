@@ -44,3 +44,5 @@ Step 3 ("before" measurement runs) skipped: user answered "b) No: skip before". 
 
 - ssm-freeze-displays-off.md (FREEZE, 2026-11-20): main thread freezes 6-10 s at the power-off while the helper disables devices and a profile runs; native wait, cause chain, slow Reload after it, fix options.
 - ssm-freeze-peekmessage.md (PEEKSTUDY, 2026-11-20): Qt 6.11 QEventDispatcherWin32 inner PeekMessage loop starves posted events and timers; main thread held inside NtUserPeekMessage while displays flick; what lives on the main thread; cause chain and fix options.
+
+`contract-device-counts.md` (2026-11-25): device counts of the last time away (D-12-DEVICE-COUNTS), built 2026-11-25.
